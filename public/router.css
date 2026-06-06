@@ -255,3 +255,7 @@ body.present .loop-spine { padding-top: 16px; padding-bottom: 14px; }
 body.present .ls-step { font-size: var(--fs-mono); }
 body.present .causal-line { font-size: var(--fs-lg); }
 body.present .present-toggle { color: var(--p-accent); border-color: var(--p-accent-edge); }
+
+/* cross-nav link */
+.cross-nav { color: var(--p-accent); text-decoration: none; }
+.cross-nav:hover { color: var(--text); }
