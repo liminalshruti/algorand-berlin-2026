@@ -1,0 +1,43 @@
+sequenceDiagram
+  autonumber
+  actor Client
+  participant Wallet as Wallet (Pera)
+  participant Router as Router (:3001)
+  participant Algorand as Algorand (TestNet)
+
+  Note over Client,Algorand: Phase A - agent onboards into the IdentityRegistry
+  Client->>Wallet: register agent (agentURI, metadata)
+  Wallet->>Algorand: signed register() txn
+  Algorand-->>Wallet: agentId minted (owner = agentWallet = sender)
+  Note right of Algorand: canonical id = {agentRegistry, agentId}
+  Wallet-->>Client: registered (txid to explorer)
+  Note over Router: boot seedProviders() writes agents into ctx.providers
+  Note over Router: chain to router adapter is a seam, not wired yet
+
+  Note over Client,Algorand: Phase B - client request routed to that agent
+  Client->>Router: POST /api/route {task, register}
+  Note right of Router: discover(ctx.providers) filter by register tag
+  Note right of Router: price from provider.quote, rank (repState reroute on re-run)
+  Router-->>Client: route_id + ranked options[] (option_id maps to provider_id)
+
+  Client->>Router: POST /api/pay {route_id, option_id}
+  Note right of Router: resolve option.provider_id to provider.register (payTo)
+  Router->>Algorand: settle() real ALGO to provider
+  Algorand-->>Router: txid + confirmed round
+  Router->>Algorand: anchorNote() 0-ALGO hash-only ledger txn
+  Algorand-->>Router: anchor txid + round
+  Router-->>Client: payment_id, txids, quoted, settled
+
+  opt operator signs the settlement self-anchor
+    Client->>Wallet: Sign on TestNet
+    Wallet->>Algorand: signed 0-ALGO self-anchor (x402.settle.pera)
+    Algorand-->>Wallet: txid to ledger
+  end
+
+  Note over Client,Algorand: Feedback loop - changes future routing
+  Client->>Router: POST /api/validate {payment_id}
+  Note right of Router: price_match (settled <= quoted), response 0|60|100
+  Note right of Router: repState.writeBack(provider_id) reroutes on re-run
+  Router->>Algorand: anchorNote() verdict hash
+  Algorand-->>Router: verdict_txid
+  Router-->>Client: price_match, response, new_reputation, verdict_txid
