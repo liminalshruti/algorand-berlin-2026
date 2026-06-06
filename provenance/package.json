@@ -1,0 +1,31 @@
+{
+  "name": "liminal-berlin-algorand",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Liminal's Algorand integration for Berlin: provenance (canonical packet hashing + anchoring + verifier, hash-only on chain) and x402 agent-commerce settlement (bounded-agent refusal guard + verify/settle), on one Algorand substrate.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "demo": "node bin/demo.ts",
+    "demo:localnet": "LIMINAL_ALGO_NETWORK=localnet node bin/demo.ts",
+    "demo:testnet": "LIMINAL_ALGO_NETWORK=testnet node bin/demo.ts",
+    "demo:x402": "node bin/x402-demo.ts",
+    "demo:x402:localnet": "LIMINAL_ALGO_NETWORK=localnet node bin/x402-demo.ts",
+    "demo:x402:testnet": "LIMINAL_ALGO_NETWORK=testnet node bin/x402-demo.ts",
+    "demo:loop": "node bin/loop-demo.ts",
+    "demo:loop:localnet": "LIMINAL_ALGO_NETWORK=localnet node bin/loop-demo.ts",
+    "demo:loop:testnet": "LIMINAL_ALGO_NETWORK=testnet node bin/loop-demo.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "optionalDependencies": {
+    "algosdk": "^3.5.2"
+  }
+}
