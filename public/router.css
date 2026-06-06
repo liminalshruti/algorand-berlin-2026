@@ -268,3 +268,10 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 .copy-ic { margin-left: 6px; color: var(--text-faint); cursor: copy; }
 .copy-ic:hover { color: var(--p-accent); }
 .lm-sub { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); margin: 14px 0 8px; }
+
+/* #2 flag / dispute + #4 schema raw */
+.prov-flag.flagged { color: var(--watch); background: var(--amber-orn-bg); border: 1px solid var(--amber-orn-edge); }
+.dispo-btn.da-flag { color: var(--red); border-color: var(--stability-edge); }
+.dispo-btn.da-flag:hover { background: var(--stability-bg); }
+.dispo-btn.da-flag[disabled] { opacity: 0.6; color: var(--watch); }
+.lm-raw { color: var(--text-faint); font-family: var(--mono); font-size: 9px; }

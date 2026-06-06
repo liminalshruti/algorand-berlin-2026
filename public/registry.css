@@ -146,3 +146,21 @@ body.present .frame { box-shadow: var(--shadow-card-lifted), 0 0 0 1px var(--p-a
 body.present .card-eyebrow, body.present .ar-name { font-size: var(--fs-md); }
 .toast.is-bad { border-left: 3px solid var(--red); }
 .toast.is-bad .t-glyph { color: var(--red); }
+
+/* #3 search inputs */
+.rail-search { padding: 8px 18px; border-bottom: 1px solid var(--frame-border); }
+.rail-search .rb-input { font-size: var(--fs-xs); padding: 6px 9px; }
+
+/* #1 hub · discovery */
+.hub-controls { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
+.hub-select { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-mid); background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-2); padding: 3px 6px; margin-left: 6px; }
+.hub-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.hub-table { width: 100%; border-collapse: collapse; }
+.hub-table th { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--frame-border); }
+.hub-table td { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-mid); padding: 9px 8px; border-bottom: 1px solid var(--frame-border); vertical-align: top; }
+.hub-table td b { color: var(--text); font-family: var(--serif); font-size: var(--fs-sm); }
+.hub-row { cursor: pointer; transition: background var(--tx-base) var(--ease); }
+.hub-row:hover { background: var(--frame-bg-3); }
+.hub-id { color: var(--text-faint); }
+.hub-owner { font-size: 9px; color: var(--text-faint); margin-top: 2px; }
+.hub-table .unrated { color: var(--text-faint); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); font-size: 9px; }

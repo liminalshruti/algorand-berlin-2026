@@ -12,6 +12,10 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 let sel = null;            // selected agentId
 let callerRole = "admin";
 let evtFilter = "all";
+let agentQuery = "";       // #3 agents search
+let eventQuery = "";       // #3 transaction search
+let hubRegister = "all";   // #1 hub register filter
+let hubSort = "rep";       // #1 hub sort
 let toastTimer = null;
 function toast(msg, bad) { const t = $("toast"), m = $("toast-msg"); m.textContent = msg; t.classList.toggle("is-bad", !!bad); t.classList.add("is-shown"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("is-shown"), 3400); }
 function copy(text) { try { navigator.clipboard.writeText(text); toast("copied to clipboard"); } catch (_) { toast("copy failed", true); } }
@@ -30,7 +34,9 @@ function renderAgents() {
   const ids = [...A.state.agents.keys()];
   $("agentCount").textContent = ids.length;
   $("agentsMeta").textContent = `${ids.length} registered`;
+  const q = agentQuery.toLowerCase();
   const rows = ids.map((id) => { const a = A.state.agents.get(id); const { summary, clients } = repOf(id); return { id, a, score: summary.count ? summary.summaryValue : null, count: summary.count, clients: clients.length }; })
+    .filter((r) => !q || `${r.a.metadata.get("name") || ""} #${r.id} ${r.a.owner}`.toLowerCase().includes(q))
     .sort((x, y) => (y.score ?? -1) - (x.score ?? -1));
   $("agentsList").innerHTML = rows.map((r) => `
     <button class="case-item agent-row ${sel === r.id ? "is-active" : ""}" data-id="${r.id}">
@@ -172,7 +178,10 @@ function eventCardHTML(e) {
 
 /* ── right rail · transaction log ──────────────────────────────────── */
 function renderEvents() {
-  const list = A.state.events.filter((e) => evtFilter === "all" ? true : evtFilter === "agent" ? (e.args.agentId === sel) : e.registry === evtFilter);
+  const q = eventQuery.toLowerCase();
+  const list = A.state.events
+    .filter((e) => evtFilter === "all" ? true : evtFilter === "agent" ? (e.args.agentId === sel) : e.registry === evtFilter)
+    .filter((e) => !q || `${e.registry}.${e.name} ${JSON.stringify(e.args)} ${e.txid}`.toLowerCase().includes(q));
   $("eventLog").innerHTML = list.length ? list.slice(0, 40).map((e, i) => `<button class="evt-card" data-i="${A.state.events.indexOf(e)}"><div class="evt-top"><span class="evt-name">${e.registry}.${e.name}</span><span class="evt-tx">${short(e.txid)}</span></div><div class="evt-args">${esc(JSON.stringify(e.args))}</div></button>`).join("") : `<div class="reg-empty">no transactions yet</div>`;
   [...$("eventLog").children].forEach((el) => el.dataset && el.dataset.i != null && (el.onclick = () => { const e = A.state.events[+el.dataset.i]; modal(`${e.registry} · ${e.name}`, "ARC-28 event", kvRows({ ...e.args }) + `<div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorer(e.txid)}" target="_blank" rel="noopener">${e.txid} ↗</a></div><div class="lm-kv"><span>round</span><code>r${e.round} · ${A.NET}</code></div>`); }));
 }
@@ -231,6 +240,40 @@ function renderMethods() {
   if (sel != null) [...document.querySelectorAll(".m-in")].forEach((el) => { const m = METHODS[+el.dataset.mi]; if (m.f[+el.dataset.j] === "agentId" && !el.value) el.value = sel; });
 }
 
+/* ── #1 hub · discovery (rank/filter all agents) ───────────────────── */
+function renderHub() {
+  const registers = ["all", ...new Set([...A.state.agents.values()].map((a) => a.metadata.get("register")).filter(Boolean))];
+  let rows = [...A.state.agents.keys()].map((id) => {
+    const a = A.state.agents.get(id); const { summary, clients } = repOf(id);
+    const valAvg = A.val.getSummary(id, []).averageResponse;
+    return { id, name: a.metadata.get("name") || `agent #${id}`, register: a.metadata.get("register") || "—", owner: a.owner, rep: summary.count ? summary.summaryValue : null, count: summary.count, clients: clients.length, valAvg };
+  });
+  if (hubRegister !== "all") rows = rows.filter((r) => r.register === hubRegister);
+  rows.sort((x, y) => hubSort === "validation" ? y.valAvg - x.valAvg : hubSort === "feedback" ? y.count - x.count : (y.rep ?? -1) - (x.rep ?? -1));
+  $("hubPanel").innerHTML = `
+    <section class="card">
+      <div class="card-h"><span class="card-eyebrow">Discovery hub · ${rows.length} agents</span>
+        <span class="hub-controls">sort
+          <select id="hubSortSel" class="hub-select"><option value="rep">reputation</option><option value="validation">validation</option><option value="feedback">feedback</option></select>
+        </span></div>
+      <div class="hub-filters">${registers.map((r) => `<button class="ef-chip ${hubRegister === r ? "is-active" : ""}" data-reg="${esc(r)}">${esc(r)}</button>`).join("")}</div>
+      <table class="hub-table">
+        <tr><th>agent</th><th>register</th><th>reputation</th><th>validation</th><th>feedback</th><th>clients</th></tr>
+        ${rows.map((r) => `<tr class="hub-row" data-id="${r.id}">
+          <td><b>${esc(r.name)}</b> <span class="hub-id">#${r.id}</span><div class="hub-owner">${short(r.owner)}</div></td>
+          <td>${esc(r.register)}</td>
+          <td>${r.rep == null ? '<span class="unrated">unrated</span>' : `<b>${r.rep}</b>`}</td>
+          <td>${r.valAvg ? r.valAvg + "/100" : "—"}</td>
+          <td>${r.count}</td>
+          <td>${r.clients}</td></tr>`).join("")}
+      </table>
+    </section>`;
+  $("hubSortSel").value = hubSort;
+  $("hubSortSel").onchange = (e) => { hubSort = e.target.value; renderHub(); };
+  [...document.querySelectorAll("#hubPanel .ef-chip")].forEach((c) => c.onclick = () => { hubRegister = c.dataset.reg; renderHub(); });
+  [...document.querySelectorAll(".hub-row")].forEach((el) => el.onclick = () => { document.querySelector('.console-tab[data-view="agent"]').click(); selectAgent(+el.dataset.id); });
+}
+
 /* ── caller / admin switching ──────────────────────────────────────── */
 function setCaller(addr, role) { A.setCaller(addr); callerRole = role; $("callerShort").textContent = short(A.caller); $("callerRole").textContent = role; }
 function refresh(full = true) { renderAgents(); renderEvents(); if (full && sel != null) renderAgentDetail(); renderReceipt(); }
@@ -253,9 +296,12 @@ function boot() {
 
   [...document.querySelectorAll(".console-tab")].forEach((t) => t.onclick = () => {
     [...document.querySelectorAll(".console-tab")].forEach((x) => x.classList.remove("is-active")); t.classList.add("is-active");
-    const v = t.dataset.view; $("viewAgent").hidden = v !== "agent"; $("viewMethods").hidden = v !== "methods";
+    const v = t.dataset.view; $("viewAgent").hidden = v !== "agent"; $("viewMethods").hidden = v !== "methods"; $("viewHub").hidden = v !== "hub";
     if (v === "methods") renderMethods();
+    if (v === "hub") renderHub();
   });
+  $("agentSearch").oninput = (e) => { agentQuery = e.target.value; renderAgents(); };
+  $("eventSearch").oninput = (e) => { eventQuery = e.target.value; renderEvents(); };
   [...document.querySelectorAll(".ef-chip")].forEach((c) => c.onclick = () => { [...document.querySelectorAll(".ef-chip")].forEach((x) => x.classList.remove("is-active")); c.classList.add("is-active"); evtFilter = c.dataset.f; renderEvents(); });
 
   $("detailModalClose").onclick = closeModal;

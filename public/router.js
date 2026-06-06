@@ -28,11 +28,23 @@ const REGISTER_TASKS = {
   Judgment:   "Verdict: is this LOI worth countersigning as written?",
   Operations: "Reconcile the June invoice batch against the ledger",
 };
+// #4 — friendly, on-pitch labels for both the UI mock schemas AND the live
+// server schemas (Navid anchors `payment-v1`; reputation anchors `algorand-rep-v1`)
+// so the live ledger reads the same as the demo narrative.
 const SCHEMA_MEANING = {
   "x402.settle": "the x402 payment settlement (quoted amount)",
   "x402.settle.fee": "the second settlement — the hidden fee charged above quote",
   "erc8004.feedback": "the validation verdict feeding the provider's reputation",
+  "payment-v1": "the x402 payment settlement, anchored hash-only on Algorand",
+  "algorand-rep-v1": "the reputation feedback entry (ERC-8004-shaped)",
+  "liminal.dispute": "an operator dispute filed against a caught provider",
 };
+const SCHEMA_LABEL = {
+  "x402.settle": "x402 settle", "x402.settle.fee": "hidden fee", "erc8004.feedback": "verdict",
+  "payment-v1": "x402 settle", "algorand-rep-v1": "reputation", "liminal.dispute": "dispute",
+};
+const schemaLabel = (s) => SCHEMA_LABEL[s] || s;
+const isFeeSchema = (s) => s.includes("fee");
 
 /* ──────────────────────── mock backend state ──────────────────────── */
 const mock = {
@@ -187,7 +199,17 @@ function setStep(active) {
 }
 
 /* ──────────────────────────── ui state ────────────────────────────── */
-const ui = { route: null, picked: null, register: "Diligence", runs: 0, repDetail: {}, lastPpositions: null };
+const ui = { route: null, picked: null, register: "Diligence", runs: 0, repDetail: {}, flagged: new Set() };
+function flagProvider(opt) {   // #2 operator dispute on a caught provider
+  if (ui.flagged.has(opt.provider_id)) return toast(`${opt.name} already flagged`);
+  ui.flagged.add(opt.provider_id);
+  mock.ledger.unshift({ txid: rand32(), schema: "liminal.dispute", ref_id: opt.provider_id, hash: hashHex(), round: ++mockRound, network: NETWORK });
+  toast(`Dispute filed — ${opt.name} flagged for the registry.`, true);
+  const card = [...$("providerList").children].find((c) => c.dataset && c.dataset.providerId === opt.provider_id);
+  if (card && !card.querySelector(".prov-flag.flagged")) card.querySelector(".prov-head").insertAdjacentHTML("beforeend", '<span class="prov-flag flagged">⚑ flagged</span>');
+  const fb = $("flagBtn"); if (fb) { fb.textContent = "⚑ flagged"; fb.disabled = true; }
+  renderLedger();
+}
 
 /* ──────────────────────────── rendering ───────────────────────────── */
 function renderProviders(route, prevById) {
@@ -207,6 +229,7 @@ function renderProviders(route, prevById) {
       <div class="prov-head">
         <span class="prov-name">${opt.name}</span>
         ${dropped ? `<span class="prov-flag caught">caught${tag ? " · " + tag : ""}</span>` : ""}
+        ${ui.flagged.has(opt.provider_id) ? '<span class="prov-flag flagged">⚑ flagged</span>' : ""}
         <span class="prov-rank">#${i + 1}</span>
         <span class="prov-inspect" data-act="inspect" role="button" title="Inspect reputation provenance">ⓘ</span>
       </div>
@@ -340,9 +363,10 @@ function renderSignedPacket(pay, v, picked, prevRep) {
     </div>
     <div class="da-foot">
       <div class="da-hash"><span class="da-hash-label">SHA-256</span><code class="copyable" data-copy="${packetHash}" title="click to copy">${packetHash}</code></div>
-      <div class="da-handoff"><button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
+      <div class="da-handoff">${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag provider</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
     </div>`;
   $("rerunBtn").addEventListener("click", () => doRoute(true));
+  if ($("flagBtn")) $("flagBtn").addEventListener("click", () => flagProvider(picked));
 }
 
 function renderRegistry(prevScores) {
@@ -380,7 +404,7 @@ async function renderLedger() {
   ui.anchors = anchors;
   $("ledgerCount").textContent = anchors.length;
   $("auditRows").innerHTML = anchors.slice(0, 6).map((a, i) =>
-    `<button class="ar-row" data-anchor="${i}"><span class="ar-time">r${a.round}</span><span class="ar-event ${a.schema.includes("fee") ? "refused" : ""}">${a.schema} ${shortTx(a.txid)}</span></button>`).join("");
+    `<button class="ar-row" data-anchor="${i}"><span class="ar-time">r${a.round}</span><span class="ar-event ${isFeeSchema(a.schema) ? "refused" : ""}">${schemaLabel(a.schema)} ${shortTx(a.txid)}</span></button>`).join("");
   [...$("auditRows").children].forEach((el) => el.addEventListener("click", () => openLedger(+el.dataset.anchor)));
 }
 
@@ -394,8 +418,8 @@ function openLedger(focusIdx) {   // #5 explorable ledger
   const anchors = ui.anchors || [];
   const html = anchors.length ? anchors.map((a, i) => `
     <div class="lm-row ${i === focusIdx ? "is-focus" : ""}">
-      <div class="lm-top"><span class="lm-schema">${a.schema}</span><span class="lm-round">round r${a.round} · ${a.network}</span></div>
-      <div class="lm-mean">${SCHEMA_MEANING[a.schema] || "anchored record"}</div>
+      <div class="lm-top"><span class="lm-schema">${schemaLabel(a.schema)}</span><span class="lm-round">round r${a.round} · ${a.network}</span></div>
+      <div class="lm-mean">${SCHEMA_MEANING[a.schema] || "anchored record"} <span class="lm-raw">· schema ${a.schema}</span></div>
       <div class="lm-kv"><span>ref</span><code class="copyable" data-copy="${a.ref_id}">${a.ref_id}</code></div>
       <div class="lm-kv"><span>hash</span><code class="copyable" data-copy="${a.hash}">${a.hash}</code></div>
       <div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorer(a.txid)}" target="_blank" rel="noopener">${a.txid} ↗</a> <span class="copy-ic copyable" data-copy="${a.txid}">⧉</span></div>

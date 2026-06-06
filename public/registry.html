@@ -39,6 +39,7 @@
     </header>
 
     <nav class="product-row">
+      <button class="product-tab console-tab" data-view="hub"><span class="pt-glyph"></span>hub<span class="pt-shape">discovery</span></button>
       <button class="product-tab console-tab is-active" data-view="agent"><span class="pt-glyph"></span>agent<span class="pt-shape">drill-in</span></button>
       <button class="product-tab console-tab" data-view="methods"><span class="pt-glyph"></span>methods<span class="pt-shape">full ABI</span></button>
       <div class="surface-meta">
@@ -61,6 +62,7 @@
           <input id="newAgentURI" class="rb-input" placeholder="agentURI (ipfs:// · https:// · data:)" />
           <button id="registerBtn" class="dispo-btn is-primary">＋ Register agent</button>
         </div>
+        <div class="rail-search"><input id="agentSearch" class="rb-input" placeholder="search agents · name / #id / owner" /></div>
         <div class="rail-subhead"><span>Registry</span><span class="rs-meta" id="leaderMeta">by reputation</span></div>
         <div id="agentsList" aria-live="polite"></div>
       </aside>
@@ -76,6 +78,11 @@
               <h2 class="se-headline">Select an agent to drill into its identity and the transactions behind its reputation.</h2>
               <p class="se-helper">Register a new agent on the left, or click one in the registry. Switch "acting as" to give feedback, request validation, or manage as the owner.</p></div>
           </div>
+        </div>
+
+        <!-- HUB · DISCOVERY -->
+        <div class="view view-hub" id="viewHub" hidden>
+          <div id="hubPanel"></div>
         </div>
 
         <!-- ALL METHODS EXPLORER -->
@@ -97,6 +104,7 @@
           <button class="ef-chip" data-f="validation">validation</button>
           <button class="ef-chip" data-f="agent" title="only the selected agent's transactions">◦ selected</button>
         </div>
+        <div class="rail-search"><input id="eventSearch" class="rb-input" placeholder="search transactions…" /></div>
         <div class="event-log" id="eventLog" aria-live="polite"></div>
       </aside>
     </main>
