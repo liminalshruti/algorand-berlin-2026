@@ -130,7 +130,8 @@ ctx.routeStore.set(route_id, {
 - `makeValidationRoutes(ctx)` **injects `ctx.repState`** (in-memory; score = (landed−corrected)/landed) so `/api/route` reroutes after a write-back — no `router-server.ts` change needed.
 - Verdict anchored hash-only via `ctx.deps.anchorNote` (real txid on LocalNet; skipped if algod down).
 - On-chain registries deploy via new `smart_contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
-- ⚠️ TODO (yours): `giveFeedback` needs mandatory x402 `paymentTxid`+`nonce` (ARC-8004 §x402 Profile) — recompile; then mirror the in-memory write to the on-chain client (seam noted in `routes.validation.ts`).
+- **On-chain write wired (env-gated):** `onchain.ts::maybeWriteReputation` calls `giveFeedback` on the deployed Reputation registry from `/api/validate` (best-effort; returns the txid in `on_chain_feedback_txid` + a `erc8004.giveFeedback` ledger entry). Enable with `REPUTATION_APP_ID` + `REPUTATION_SUBMITTER_MNEMONIC` (or `PAYER_MNEMONIC`). No-op/safe when unset.
+- ⚠️ TODO (yours): add mandatory x402 `paymentTxid`+`nonce` to the on-chain `giveFeedback` (ARC-8004 §x402 Profile) — recompile, then pass them through `onchain.ts`. Confirm the generated client method/arg names match `onchain.ts`.
 
 **What's ready for you to consume:**
 

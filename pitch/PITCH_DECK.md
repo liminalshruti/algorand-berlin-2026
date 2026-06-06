@@ -12,7 +12,7 @@ Keep ≤12 words per line on screen.
 - ◇ **Liminal · x402 Trust Router**
 - *Reputation the chain enforces, not self-reported.*
 - Algorand Builders Berlin · Infrastructure track
-**Visual:** wordmark on near-black; one faint line: `ERC-8004-shaped · Algorand-native · x402`.
+**Visual:** wordmark on near-black; one faint line: `ERC-8004-shaped · Algorand-native · x402 · TestNet`.
 **Note:** "We built the trust layer for agent-to-agent commerce. Thirty seconds on why it's needed, then a live demo."
 
 ---
@@ -43,7 +43,7 @@ Keep ≤12 words per line on screen.
 - **LIVE DEMO**
 - the caught-cheating self-correction
 **Visual:** switch to the app. (Fallback: pre-recorded clip — see DEMO_STORYBOARD.md.)
-**Note:** Drive the loop. The beat that must land: **settled > quoted → reputation drops (anchored) → re-run reroutes to the honest provider.** Then open the ARC-8004 console and click a score to show the **transactions behind it**.
+**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **settled > quoted → reputation drops (written on-chain) → re-run reroutes to the honest provider.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (deployed registry app-ids + ABI).
 
 ---
 
@@ -66,7 +66,7 @@ L1  Algorand                   sub-cent · instant-final · 1KB note
 - **Same-ledger x402** → proof-of-payment is native, not a foreign hash.
 - **Sub-cent + instant finality** → feedback is a routine side-effect; next route can trust it.
 - **1KB note** → hash-only anchor: verifiable by anyone, exposes nothing.
-**Visual:** a ledger row → explorer link; "hash-only" stamp.
+**Visual:** a ledger row → **TestNet** explorer link (`lora.algokit.io/testnet`); "hash-only" stamp.
 **Note:** "On Algorand the payment and its proof are on the same chain. That's the unlock for an agent-economy trust layer."
 
 ---
@@ -74,12 +74,12 @@ L1  Algorand                   sub-cent · instant-final · 1KB note
 ## Slide 7 — Honesty + ask (Criterion 7)
 **On slide:**
 - ERC-8004: Aug-2025 **draft**, not on Algorand → ours is **ERC-8004-shaped, Algorand-native**.
-- Demo: **mock-first** + **live x402 settlement / hash-only anchoring on LocalNet** (real txids).
+- **Live on TestNet** (real txids): x402 settlement · hash-only anchoring · one on-chain `giveFeedback` per verdict.
+- On-chain registries (Identity/Reputation/Validation) built + unit/e2e-tested; ranking math is an in-memory mirror today.
 - "Validated reputation" = price-vs-quote + output checks — not a general oracle.
-- **The agent economy needs earned trust, not another rail.**
 - *ERC-8004 gives agents a passport. We give the marketplace a conscience.*
 **Visual:** tagline large; small repo/QR.
-**Note:** "We were deliberate about not faking the chain parts. Here's what's real today and what's next. Thank you."
+**Note:** "We were deliberate about not faking the chain parts. Real today: settlement, anchoring, the reputation write. Next: full ranking on-chain. Thank you."
 
 ---
 

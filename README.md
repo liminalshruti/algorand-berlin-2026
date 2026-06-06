@@ -50,6 +50,7 @@ tsx localnet-e2e.ts     # full ABI exercise on LocalNet algod
 - ✅ **Payment + integration** (Navid) — `/api/pay` + `/api/ledger`, real settle + hash-only anchor, verified on-chain.
 - ✅ **Identity + discovery + ranking** (Reza) — `/api/route` + `/api/providers`; on-chain Identity registry.
 - ✅ **Reputation + Validation** (Shayaun) — router glue (`/api/validate`, `/api/reputation`) + on-chain registries + LocalNet e2e.
+- ✅ **One real on-chain reputation write** in the loop — `/api/validate` calls `giveFeedback` on the deployed Reputation registry (env-gated `onchain.ts::maybeWriteReputation`; set `REPUTATION_APP_ID` + a funded submitter mnemonic).
 - ⚠️ **Known follow-ups:** on-chain `giveFeedback` still omits the mandatory x402 `paymentTxid`/`nonce` (ARC-8004 §x402 Profile); `sandbox/lib/router/ranking.ts` is an unused stub (ranking lives in `providers.ts::discoveryOptions`).
 
 ---
