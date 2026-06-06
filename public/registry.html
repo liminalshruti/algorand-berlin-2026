@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Liminal · ARC-8004 Registry &amp; Admin Console</title>
+<title>Liminal · Agent Registry</title>
 
 <!--
-  ARC-8004 Registry & Admin Console · UI lane (Shruti)
-  Full method surface (Identity / Reputation / Validation) + drill-in:
-  click an agent → identity + metadata + every reputation/validation transaction
-  behind its score. Act-as (admin) caller switching exercises the spec guards.
+  ARC-8004 Agent Registry · role-adaptive console.
+  Two surfaces for two jobs:
+    · Marketplace (client/buyer) — discover agents, judge trust, rate the ones you paid.
+    · Manage (owner) — register & run your own agents; respond to feedback.
+  Progressive disclosure: actions stay collapsed until you ask for them.
   Client: arc8004.js (mock-first, ABI-faithful). Shell: cut-shell.css.
 -->
 
@@ -22,7 +23,7 @@
 <link rel="stylesheet" href="brand-upgrade.css" />
 <link rel="stylesheet" href="registry.css" />
 </head>
-<body data-product="business">
+<body data-product="business" data-view="marketplace">
 
 <div class="stage">
   <div class="frame">
@@ -31,82 +32,24 @@
       <div class="lights"><span class="light red"></span><span class="light yellow"></span><span class="light green"></span></div>
       <div class="title-row">
         <span class="diamond">◇</span>
-        <span class="tb-wedge">ARC-8004 registry &amp; admin · identity · reputation · validation, anchored on Algorand.</span>
+        <span class="tb-wedge">Agent registry · trust you can audit to a payment.</span>
         <span class="crumb-sep">·</span>
         <a class="breadcrumb cross-nav" href="router.html">Trust Router ↗</a>
       </div>
-      <button class="vault-pill" id="agentsPill"><span class="diamond">◇</span>agents: <strong id="agentCount">0</strong></button>
+      <div class="id-chip" id="identityChip" title="Who you're acting as"></div>
     </header>
 
     <nav class="product-row">
-      <button class="product-tab console-tab" data-view="hub"><span class="pt-glyph"></span>hub<span class="pt-shape">discovery</span></button>
-      <button class="product-tab console-tab is-active" data-view="agent"><span class="pt-glyph"></span>agent<span class="pt-shape">drill-in</span></button>
-      <button class="product-tab console-tab" data-view="methods"><span class="pt-glyph"></span>methods<span class="pt-shape">full ABI</span></button>
-      <div class="surface-meta">
-        <span class="caller-bar">acting as <code id="callerShort">—</code>
-          <span class="caller-role" id="callerRole">admin</span>
-          <button class="caller-switch" id="actOwner" title="Act as the selected agent's owner">owner</button>
-          <button class="caller-switch" id="actClient" title="Act as a fresh client wallet">client</button>
-          <button class="caller-switch" id="actValidator" title="Act as a fresh validator">validator</button>
-        </span>
-      </div>
+      <button class="product-tab console-tab is-active" data-action="view" data-view="marketplace"><span class="pt-glyph"></span>marketplace<span class="pt-shape">buy · rate</span></button>
+      <button class="product-tab console-tab" data-action="view" data-view="manage"><span class="pt-glyph"></span>manage<span class="pt-shape">your agents</span></button>
+      <button class="product-tab console-tab" data-action="view" data-view="methods"><span class="pt-glyph"></span>methods<span class="pt-shape">advanced</span></button>
+      <div class="surface-meta"><span class="role-hint" id="roleHint">browsing</span></div>
     </nav>
 
     <main class="main">
-
-      <!-- left · agents + register -->
-      <aside class="rail-left">
-        <div class="rail-header"><span>Agents</span><span class="rh-meta" id="agentsMeta">·</span></div>
-        <div class="reg-agent-new">
-          <input id="newAgentName" class="rb-input" placeholder="agent name" />
-          <input id="newAgentURI" class="rb-input" placeholder="agentURI (ipfs:// · https:// · data:)" />
-          <button id="registerBtn" class="dispo-btn is-primary">＋ Register agent</button>
-        </div>
-        <div class="rail-search"><input id="agentSearch" class="rb-input" placeholder="search agents · name / #id / owner" /></div>
-        <div class="rail-subhead"><span>Registry</span><span class="rs-meta" id="leaderMeta">by reputation</span></div>
-        <div id="agentsList" aria-live="polite"></div>
-      </aside>
-
-      <!-- center -->
-      <section class="slate-area">
-        <div class="classification" id="classification" role="status" aria-live="polite">ARC-8004 · IDENTITY / REPUTATION / VALIDATION</div>
-
-        <!-- AGENT DRILL-IN -->
-        <div class="view view-agent" id="viewAgent">
-          <div id="agentDetail">
-            <div class="slate-empty"><div class="se-glyph">◇</div><div class="se-eyebrow">Registry hub</div>
-              <h2 class="se-headline">Select an agent to drill into its identity and the transactions behind its reputation.</h2>
-              <p class="se-helper">Register a new agent on the left, or click one in the registry. Switch "acting as" to give feedback, request validation, or manage as the owner.</p></div>
-          </div>
-        </div>
-
-        <!-- HUB · DISCOVERY -->
-        <div class="view view-hub" id="viewHub" hidden>
-          <div id="hubPanel"></div>
-        </div>
-
-        <!-- ALL METHODS EXPLORER -->
-        <div class="view view-methods" id="viewMethods" hidden>
-          <div id="methodsPanel"></div>
-        </div>
-      </section>
-
-      <!-- right · transaction log -->
-      <aside class="rail-right">
-        <div class="rail-right-header">
-          <span class="agency-label" title="ARC-28 event log — every registry write, anchored hash-only on Algorand.">◇ TRANSACTIONS · ARC-28 LOG</span>
-          <span class="live-indicator">live</span>
-        </div>
-        <div class="evt-filter" id="evtFilter">
-          <button class="ef-chip is-active" data-f="all">all</button>
-          <button class="ef-chip" data-f="identity">identity</button>
-          <button class="ef-chip" data-f="reputation">reputation</button>
-          <button class="ef-chip" data-f="validation">validation</button>
-          <button class="ef-chip" data-f="agent" title="only the selected agent's transactions">◦ selected</button>
-        </div>
-        <div class="rail-search"><input id="eventSearch" class="rb-input" placeholder="search transactions…" /></div>
-        <div class="event-log" id="eventLog" aria-live="polite"></div>
-      </aside>
+      <aside class="rail-left" id="railLeft"></aside>
+      <section class="slate-area" id="center"></section>
+      <aside class="rail-right" id="railRight"></aside>
     </main>
 
     <div class="frame-receipt" id="frameReceipt"></div>
@@ -116,11 +59,10 @@
 <button class="present-toggle" id="presentToggle" title="Present mode (P)">present</button>
 <div class="toast" id="toast"><span class="t-glyph">◇</span><span id="toast-msg">·</span></div>
 
-<!-- detail modal -->
-<div class="ledger-modal" id="detailModal" role="dialog" aria-modal="true" aria-label="Transaction detail">
+<div class="ledger-modal" id="detailModal" role="dialog" aria-modal="true" aria-label="Detail">
   <div class="lm-card">
     <header class="lm-head">
-      <span class="lm-eyebrow" id="detailEyebrow">ARC-8004 · anchored record</span>
+      <span class="lm-eyebrow" id="detailEyebrow">detail</span>
       <h3 class="lm-title" id="detailTitle">Detail</h3>
       <button class="lm-close" id="detailModalClose" aria-label="Close">×</button>
     </header>
