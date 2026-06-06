@@ -30,6 +30,10 @@ POST /api/pay       { route_id, option_id } → { payment_id, txids, quoted_amou
 GET  /api/ledger    → { anchors: [{ txid, schema, ref_id, hash, round, network }] }
 ```
 
+**TEMP stub for Reza (delete when `makeProviderRoutes` serves `/api/route`):**
+- `router-server.ts` serves `POST /api/route { task, register } → { route_id, options[], excluded[] }` — ranks seeded providers via frozen `TRUST_WEIGHTS`, writes `ctx.routeStore`, reads `ctx.repState.getReputation` (reroute-ready). Registered *after* `makeProviderRoutes(ctx)`, so Reza's real handler overrides it on arrival.
+- Unblocks live `route → pay`: the `route_id` now resolves in `/api/pay` (verified — bogus id → 400, real id → settle). Live settlement still needs LocalNet up.
+
 ---
 
 ## Reza — Identity Registry + Discovery + Ranking
