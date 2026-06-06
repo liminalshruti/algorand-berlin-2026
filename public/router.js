@@ -340,7 +340,8 @@ async function renderLedger() {
 }
 
 function renderReceipt() {
-  $("frameReceipt").innerHTML = `
+  const r = $("frameReceipt"); if (!r) return;   // never let a missing chrome element blank the screen
+  r.innerHTML = `
     <span class="fr-glyph">◇</span>
     <span class="fr-strong">route · ${ui.route ? ui.route.route_id : "—"}</span>
     <span class="fr-sep">·</span><span>${ui.route ? ui.route.options.length : 0} providers</span>
