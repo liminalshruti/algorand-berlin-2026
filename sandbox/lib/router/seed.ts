@@ -54,6 +54,15 @@ export function seedProviders(ctx: Ctx): void {
   }
 }
 
+// Fund each provider with 0.5 ALGO so they meet Algorand's min balance requirement.
+// Must be called before any payments are made.
+export async function fundProviders(ctx: Ctx): Promise<void> {
+  for (const provider of ctx.providers.values()) {
+    await ctx.deps.settle(provider.register, 0.5, { schema: 'fund', provider_id: provider.id });
+    console.log(`  funded ${provider.name}: ${provider.register}`);
+  }
+}
+
 // Seeds a single test route so /api/pay works before Reza's /api/route is live.
 // Shruti can use this route_id + option_ids to mock the full flow.
 export function seedTestRoute(ctx: Ctx): { route_id: string } {

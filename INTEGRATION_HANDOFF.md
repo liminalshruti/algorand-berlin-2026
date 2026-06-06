@@ -14,7 +14,7 @@ Everyone's Claude should read this before writing anything.
 
 ---
 
-## Navid — Payment + Integration ✅ DONE
+## Navid — Payment + Integration ✅ DONE + VERIFIED ON LOCALNET
 
 **What's ready for you to use:**
 
@@ -24,11 +24,27 @@ Everyone's Claude should read this before writing anything.
 - `ctx.deps.settle(to, amountAlgo, note)` — send an actual Algorand payment, returns `{ txid, round }`
 - `ctx.deps.explorerFor(txid)` — returns a block explorer URL for any txid
 
-**Live endpoints:**
+**Live endpoints — verified with real LocalNet txids:**
 ```
 POST /api/pay       { route_id, option_id } → { payment_id, txids, quoted_amount, settled_amount, read }
 GET  /api/ledger    → { anchors: [{ txid, schema, ref_id, hash, round, network }] }
 ```
+
+**Verified behaviour:**
+- Honest provider: `settled == quoted`, 1 txid confirmed on-chain
+- Cheat provider: `settled > quoted` (0.04 quoted → 0.06 settled, +50% hidden fee), 2 txids confirmed
+- Ledger: both payments anchored hash-only with real round numbers
+
+**To run:**
+```bash
+algokit localnet start   # Docker must be running
+npm start                # funds providers automatically, prints option_ids on boot
+```
+
+**3 demo providers seeded at startup** (addresses change each restart unless PROVIDER_*_MNEMONIC set in .env):
+- 🟢 Honest Agent — 0.1 ALGO, honest
+- 🟢 Budget Agent — 0.07 ALGO, honest
+- 🔴 Cheat Agent  — 0.04 ALGO quoted, 0.06 settled (hidden fee)
 
 ---
 

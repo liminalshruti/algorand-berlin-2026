@@ -4,7 +4,7 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { buildContext } from '../lib/router/context.js';
 import { payProvider } from '../lib/router/pay.js';
-import { seedProviders, seedTestRoute } from '../lib/router/seed.js';
+import { seedProviders, seedTestRoute, fundProviders } from '../lib/router/seed.js';
 import { makeProviderRoutes } from '../lib/router/routes.providers.js';
 import { makeValidationRoutes } from '../lib/router/routes.validation.js';
 
@@ -13,6 +13,8 @@ const PORT = Number(process.env.PORT ?? 3001);
 async function main() {
   const ctx = await buildContext();
   seedProviders(ctx);
+  console.log('funding providers...');
+  await fundProviders(ctx);
   const { route_id } = seedTestRoute(ctx);
   const app = new Hono();
   app.use('*', cors());
