@@ -51,7 +51,7 @@ function renderChrome() {
   const [role, hint] = roleMap[state.view] || roleMap.marketplace;
   if ($('roleHint')) $('roleHint').textContent = hint;
   if (!$('identityChip')) return;
-  $('identityChip').innerHTML = `<span class="idc-role">${role}</span> <code ${cp(A.caller)}>${short(A.caller)}</code> <button class="idc-switch" data-action="new-identity" title="act as a different wallet">switch ↺</button>`;
+  $('identityChip').innerHTML = `<span class="idc-role">${role}</span> <code ${cp(A.caller)}>${short(A.caller)}</code> <span class="idc-fixed" title="One consistent wallet — no impersonation">🔒 connected</span>`;
   $('frameReceipt').innerHTML = `<span class="fr-glyph">◇</span><span class="fr-strong">${A.state.agents.size} agents</span><span class="fr-sep">·</span><span>${A.state.events.length} on-chain events</span><span class="fr-right">click a score / row to drill in · P present</span>`;
 }
 
@@ -161,9 +161,8 @@ function renderManage() {
     <div class="rail-header"><span>Owner</span><span class="rh-meta">${owned.length} agents</span></div>
     <div class="pane-pad">
       <div class="owner-card ${isMe ? 'is-me' : ''}">
-        <span class="oc-label">${isMe ? 'managing as you' : 'viewing owner'}</span>
+        <span class="oc-label">${isMe ? 'managing as you' : 'viewing owner · read-only'}</span>
         <code ${cp(focusOwner)}>${short(focusOwner)}</code>
-        ${isMe ? '' : `<button class="mini-btn" data-action="act-as-owner" data-addr="${focusOwner}">act as this owner</button>`}
       </div>
       <label class="flabel">View another owner</label>
       <select class="rb-select" id="ownerSel" data-action="pick-owner">${owners.map((o) => `<option value="${o}" ${o === focusOwner ? 'selected' : ''}>${short(o)} · ${A.id.agentsOf(o).length} agents${o === A.caller ? ' · you' : ''}</option>`).join('')}</select>
@@ -204,7 +203,7 @@ function manageCard(id) {
       <div><span class="reg-badge ${regClass(reg)}">${esc(reg)}</span><h2 class="mc-name">${esc(nameOf(id))}</h2></div>
       <span class="mc-id">#${id}</span>
     </div>
-    ${!isOwner ? `<div class="owner-gate">You don't own this agent. <button class="mini-btn" data-action="act-owner" data-id="${id}">Act as owner to edit</button></div>` : ''}
+    ${!isOwner ? `<div class="owner-gate">You don't own this agent — read-only. Only its owner (${short(a.owner)}) can edit.</div>` : ''}
 
     <div class="mc-section">
       <div class="mc-row"><span class="mc-k">owner</span><code ${cp(a.owner)}>${short(a.owner)}</code></div>
@@ -314,13 +313,11 @@ const valById = (id) => ($(id) ? $(id).value.trim() : '');
 
 const ACTIONS = {
   view: (el) => { state.view = el.dataset.view; state.sel = null; render(); },
-  'new-identity': () => { A.setCaller(A.newAddr()); toast('acting as a new wallet'); render(); },
   search: () => {}, // handled by input listener
   'filter-reg': (el) => { state.reg = el.dataset.reg; render(); },
   'open-agent': (el) => { state.sel = +el.dataset.id; render(); },
   back: () => { state.sel = null; render(); },
   'focus-agent': (el) => focusAgent(+el.dataset.id),
-  'act-owner': (el) => { const id = +el.dataset.id; A.setCaller(A.state.agents.get(id).owner); state.sel = id; toast(`acting as owner of #${id}`); render(); },
   'open-score': (el) => openScore(+el.dataset.id),
   'open-validation': (el) => openValidation(el.dataset.h),
   register: () => { const name = valById('regName') || `Agent ${A.state.nextId}`; const r = A.id.register(valById('regURI') || 'ipfs://card', [['name', name], ['register', $('regRegister').value]]); toast(`registered #${r.agentId} — you are the owner`); state.ownerView = A.caller; state.sel = r.agentId; render(); },
@@ -330,7 +327,6 @@ const ACTIONS = {
   'simulate-pay': (el) => { const p = A.proof.pay(+el.dataset.id); toast(`paid · proof ${short(p.txid)}`); render(); },
   'give-feedback': (el) => { const id = +el.dataset.id; if (state.sat == null) return toast('choose satisfied or not', true); const tx = valById('proofTx'); if (!tx) return toast('paste your proof-of-payment hash', true); const r = guard(() => A.rep.giveFeedback({ agentId: id, satisfied: state.sat === 1, paymentTxid: tx })); if (r) { toast('review verified & recorded'); state.sat = null; render(); } },
   'pick-owner': (el) => { state.ownerView = el.value; state.sel = null; render(); },
-  'act-as-owner': (el) => { A.setCaller(el.dataset.addr); state.ownerView = el.dataset.addr; toast(`acting as ${short(el.dataset.addr)}`); render(); },
   'admin-filter': (el) => { state.adminFilter = el.dataset.f; renderAdmin(); },
   'open-event': (el) => openEvent(+el.dataset.i),
   'set-uri': (el) => { const id = +el.dataset.id; guard(() => A.id.setAgentURI(id, valById(`uri-${id}`))); render(); },

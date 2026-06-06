@@ -15,6 +15,7 @@ const BASE_URL = "http://localhost:3001";   // Navid's router-server (INTEGRATIO
 const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
 const ANY_LIVE = Object.values(LIVE).some(Boolean);
 const NETWORK  = "localnet";
+const OPERATOR_WALLET = "NDX7OC2VNQIDKH7BHE5IVUH75GAZ4ZWKL2BNHM6G3ZWQTQDFDN2AHVUCIQ"; // one consistent operator wallet — no impersonation
 const TRUST_WEIGHTS = { price: 0.3, reputation: 0.4, validation: 0.3 };
 const MOCK_LATENCY = { route: 260, pay: 460, validate: 620 };
 const EXPLORER = {
@@ -121,7 +122,7 @@ const mockApi = {
     return {
       payment_id, txids, quoted_amount: quoted, settled_amount: settled,
       read: prov.dishonest ? "Delivered read (charged above quote)." : "Delivered read.",
-      proof_of_payment: { from: "OPERATOR…WALLET", to: prov.id.split(":").pop(), asset: 0, amount: Math.round(settled * 1e6), txid: txids[0], round: mockRound, nonce },
+      proof_of_payment: { from: OPERATOR_WALLET, to: prov.id.split(":").pop(), asset: 0, amount: Math.round(settled * 1e6), txid: txids[0], round: mockRound, nonce },
     };
   },
   async validate({ payment_id }) {
@@ -316,7 +317,7 @@ function renderMetricBand(quoted, settled, response) {
 function renderProof(pay) {
   const pop = pay.proof_of_payment; if (!pop) return "";
   return `<div class="x402-badge">◇ x402 · payment-anchored</div>
-    <div class="proof"><span>from ${pop.from}</span><span>to ${shortTx(pop.to)}</span><span>${(pop.amount / 1e6).toFixed(2)} ${pop.asset === 0 ? "ALGO" : "ASA:" + pop.asset}</span><span>round r${pop.round}</span><span>nonce ${pop.nonce}</span></div>`;
+    <div class="proof"><span>from ${shortTx(pop.from)}</span><span>to ${shortTx(pop.to)}</span><span>${(pop.amount / 1e6).toFixed(2)} ${pop.asset === 0 ? "ALGO" : "ASA:" + pop.asset}</span><span>round r${pop.round}</span><span>nonce ${pop.nonce}</span></div>`;
 }
 
 function renderCausal(pay, v, prevRep) {   // #3 causal "because" line

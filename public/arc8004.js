@@ -16,6 +16,8 @@
   const genHash = (n = 64) => { const a = "0123456789abcdef"; let s = ""; for (let i = 0; i < n; i++) s += a[(Math.random() * 16) | 0]; return s; };
   const genTxid = () => { let s = ""; for (let i = 0; i < 52; i++) s += B32[(Math.random() * 32) | 0]; return s; };
   const NET = "localnet";
+  // One consistent operator wallet — no impersonation. Every call runs as this address.
+  const FIXED_WALLET = "NDX7OC2VNQIDKH7BHE5IVUH75GAZ4ZWKL2BNHM6G3ZWQTQDFDN2AHVUCIQ";
   // Genesis-hash prefix per network (CAIP-2). Swap NET → the right one when deployed.
   const GENESIS = { localnet: "localnet-v1", testnet: "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe", mainnet: "wGHE2Pwdvd7S12BL5FaOP20EGYesN73k" };
   // Deployed app ids (the contracts you're interacting with). Mock placeholders until deploy.
@@ -24,7 +26,7 @@
 
   const state = {
     nextId: 1,
-    caller: genAddr(),
+    caller: FIXED_WALLET,
     agents: new Map(),                 // agentId → { owner, agentURI, metadata:Map, agentWallet, approved, operators:Set }
     feedback: new Map(),               // agentId → Map(client → rows[])  (1-indexed)
     proofs: new Map(),                 // txid → { txid, from(payer), to(agent wallet), agentId, amount, used:bool }
@@ -177,7 +179,10 @@
     id, rep, val, proof,
     state, subscribe,
     get caller() { return state.caller; },
-    setCaller(addr) { state.caller = addr || genAddr(); return state.caller; },
+    // No impersonation: the operator wallet is fixed. setCaller is a guarded no-op
+    // (seed() sets distinct owners/reviewers via direct state assignment, not this).
+    setCaller() { state.caller = FIXED_WALLET; return state.caller; },
+    FIXED_WALLET,
     newAddr: genAddr, newHash: genHash, newTxid: genTxid, agentRef, APP, NET, GENESIS, seed,
   };
 })(typeof window !== "undefined" ? window : globalThis);
