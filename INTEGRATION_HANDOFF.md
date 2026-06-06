@@ -14,7 +14,7 @@ Everyone's Claude should read this before writing anything.
 
 ---
 
-## Navid — Payment + Integration ✅ DONE + VERIFIED ON LOCALNET
+## Navid — Payment + Integration ✅ DONE + VERIFIED ON TESTNET
 
 **What's ready for you to use:**
 
@@ -69,7 +69,7 @@ npm start                # funds providers automatically, prints option_ids on b
 
 ---
 
-## Reza — Identity Registry + Discovery + Ranking
+## Reza — Identity Registry + Discovery + Ranking ✅ DONE
 
 **Chain identity registry:**
 
