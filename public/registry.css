@@ -260,3 +260,18 @@ body.present .ac-name, body.present .mc-name { font-size: var(--fs-2xl); }
 .pera-btn .pera-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); transition: background 180ms, box-shadow 180ms; }
 .pera-btn.is-connected { color: var(--text); border-color: #ffd400; }
 .pera-btn.is-connected .pera-dot { background: #ffd400; box-shadow: 0 0 8px rgba(255, 212, 0, 0.6); }
+
+/* ── admin / observability ──────────────────────────────────────────── */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--card-border); border-radius: var(--radius-4); background: var(--frame-bg-2); padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
+.kpi-n { font-family: var(--display); font-size: var(--fs-2xl); color: var(--text); }
+.kpi-l { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); }
+.evt-tr { cursor: pointer; }
+.evt-tr:hover td { background: var(--frame-bg-3); }
+.evt-args-cell { color: var(--text-dim); }
+
+/* ── contracts · deployed app rail ──────────────────────────────────── */
+.contract-app { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid var(--card-border); border-left: 3px solid var(--rh); border-radius: var(--radius-3); background: var(--frame-bg-2); }
+.contract-app .ca-name { font-family: var(--serif); font-size: var(--fs-sm); color: var(--text); }
+.contract-app code { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--rh); }
+.contract-app .ca-kind { margin-left: auto; font-family: var(--mono); font-size: 8px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); }

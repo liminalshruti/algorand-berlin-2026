@@ -46,10 +46,11 @@ const registers = () => ['all', ...new Set(allAgents().map(regOf).filter((r) => 
 
 /* ── chrome ─────────────────────────────────────────────────────────── */
 function renderChrome() {
-  document.body.dataset.view = state.view;
   [...document.querySelectorAll('.console-tab')].forEach((t) => t.classList.toggle('is-active', t.dataset.view === state.view));
-  const role = state.view === 'manage' ? 'managing as' : state.view === 'methods' ? 'caller' : 'browsing as';
-  $('roleHint').textContent = state.view === 'manage' ? 'owner' : state.view === 'methods' ? 'developer' : 'client';
+  const roleMap = { manage: ['managing as', 'owner'], methods: ['caller', 'developer'], admin: ['observing as', 'admin'], marketplace: ['browsing as', 'client'] };
+  const [role, hint] = roleMap[state.view] || roleMap.marketplace;
+  if ($('roleHint')) $('roleHint').textContent = hint;
+  if (!$('identityChip')) return;
   $('identityChip').innerHTML = `<span class="idc-role">${role}</span> <code ${cp(A.caller)}>${short(A.caller)}</code> <button class="idc-switch" data-action="new-identity" title="act as a different wallet">switch ↺</button>`;
   $('frameReceipt').innerHTML = `<span class="fr-glyph">◇</span><span class="fr-strong">${A.state.agents.size} agents</span><span class="fr-sep">·</span><span>${A.state.events.length} on-chain events</span><span class="fr-right">click a score / row to drill in · P present</span>`;
 }
@@ -274,10 +275,15 @@ const METHODS = [
   { ns: 'val', sig: 'getAgentValidations(agentId)', read: 1, f: ['agentId'], call: (v) => A.val.getAgentValidations(+v[0]) },
 ];
 const NSL = { id: 'Identity', rep: 'Reputation', val: 'Validation' };
-function renderMethods() {
-  $('railLeft').innerHTML = `<div class="rail-header"><span>Advanced</span></div><div class="pane-pad legend"><p>Raw ARC-8004 ABI — every method with the spec guards. Calls run as <code ${cp(A.caller)}>${short(A.caller)}</code>.</p></div>`;
+const APPOF = { id: 'identity', rep: 'reputation', val: 'validation' };
+function renderContracts() {
+  $('railLeft').innerHTML = `<div class="rail-header"><span>Deployed contracts</span></div><div class="pane-pad">
+    <div class="contract-app reg-diligence"><span class="ca-name">Identity</span><code ${cp(String(A.APP.identity))}>app ${A.APP.identity}</code><span class="ca-kind">ARC-72</span></div>
+    <div class="contract-app reg-judgment"><span class="ca-name">Reputation</span><code ${cp(String(A.APP.reputation))}>app ${A.APP.reputation}</code><span class="ca-kind">ARC-28</span></div>
+    <div class="contract-app reg-outreach"><span class="ca-name">Validation</span><code ${cp(String(A.APP.validation))}>app ${A.APP.validation}</code><span class="ca-kind">ARC-28</span></div>
+    <p class="hint">Calls run as <code ${cp(A.caller)}>${short(A.caller)}</code> · <span class="cc-mode">mock</span> ids until deployed.</p></div>`;
   $('railRight').innerHTML = '';
-  $('center').innerHTML = `<div class="view-head"><h1 class="big-title">Methods</h1><p class="big-sub">Full Identity · Reputation · Validation surface.</p></div>` +
+  $('center').innerHTML = `<div class="view-head"><h1 class="big-title">Contracts</h1><p class="big-sub">The ARC-8004 on-chain surface — call every method with the spec guards.</p></div>` +
     ['id', 'rep', 'val'].map((g) => `<section class="card"><div class="card-eyebrow">${NSL[g]} Registry</div>${METHODS.map((m) => METHODS.indexOf(m)).filter((mi) => METHODS[mi].ns === g).map((mi) => { const m = METHODS[mi]; return `
       <div class="method"><div class="m-sig"><code>${esc(m.sig)}</code><span class="${m.read ? 'm-read' : 'm-write'}">${m.read ? 'read' : 'write'}</span></div>
         <div class="m-fields">${m.f.map((ph, j) => `<input class="rb-input m-in" data-mi="${mi}" data-j="${j}" placeholder="${esc(ph)}" />`).join('')}<button class="mini-btn ${m.read ? '' : 'primary'}" data-action="call-method" data-mi="${mi}">call</button></div>
@@ -325,6 +331,8 @@ const ACTIONS = {
   'give-feedback': (el) => { const id = +el.dataset.id; if (state.sat == null) return toast('choose satisfied or not', true); const tx = valById('proofTx'); if (!tx) return toast('paste your proof-of-payment hash', true); const r = guard(() => A.rep.giveFeedback({ agentId: id, satisfied: state.sat === 1, paymentTxid: tx })); if (r) { toast('review verified & recorded'); state.sat = null; render(); } },
   'pick-owner': (el) => { state.ownerView = el.value; state.sel = null; render(); },
   'act-as-owner': (el) => { A.setCaller(el.dataset.addr); state.ownerView = el.dataset.addr; toast(`acting as ${short(el.dataset.addr)}`); render(); },
+  'admin-filter': (el) => { state.adminFilter = el.dataset.f; renderAdmin(); },
+  'open-event': (el) => openEvent(+el.dataset.i),
   'set-uri': (el) => { const id = +el.dataset.id; guard(() => A.id.setAgentURI(id, valById(`uri-${id}`))); render(); },
   'set-wallet': (el) => { const id = +el.dataset.id; guard(() => A.id.setAgentWallet(id, valById(`wal-${id}`) || A.newAddr(), Date.now() + 3e5, 'sig')); toast('wallet set'); render(); },
   transfer: (el) => { const id = +el.dataset.id; guard(() => A.id.transferFrom(A.state.agents.get(id).owner, valById(`to-${id}`) || A.newAddr(), id)); toast('transferred'); render(); },
@@ -335,10 +343,65 @@ const ACTIONS = {
   'call-method': (el) => { const mi = +el.dataset.mi, m = METHODS[mi]; const vals = m.f.map((_, j) => { const x = document.querySelector(`.m-in[data-mi="${mi}"][data-j="${j}"]`); return x ? x.value.trim() : ''; }); try { const r = m.call(vals); $(`mout-${mi}`).textContent = JSON.stringify(r, null, 2); $(`mout-${mi}`).classList.remove('err'); } catch (e) { $(`mout-${mi}`).textContent = '✕ ' + e.message; $(`mout-${mi}`).classList.add('err'); } },
 };
 
-function render() { renderChrome(); if (state.view === 'marketplace') renderMarketplace(); else if (state.view === 'manage') renderManage(); else renderMethods(); }
+function render() {
+  renderChrome();
+  if (state.view === 'marketplace') renderMarketplace();
+  else if (state.view === 'manage') renderManage();
+  else if (state.view === 'admin') renderAdmin();
+  else renderContracts();
+}
+
+/* ── ADMIN / observability ──────────────────────────────────────────── */
+function renderAdmin() {
+  const ag = [...A.state.agents.keys()];
+  let reviews = 0, satisfied = 0; ag.forEach((id) => { const t = A.rep.trust(id); reviews += t.total; satisfied += t.satisfied; });
+  const vals = [...A.state.validations.entries()];
+  const unrated = ag.filter((id) => A.rep.trust(id).score == null).length;
+  const overall = reviews ? Math.round((100 * satisfied) / reviews) : 0;
+  const f = state.adminFilter || 'all', q = (state.adminQ || '').toLowerCase();
+  const evs = A.state.events.filter((e) => (f === 'all' || e.registry === f) && (!q || `${e.registry}.${e.name} ${JSON.stringify(e.args)} ${e.txid}`.toLowerCase().includes(q)));
+
+  $('railLeft').innerHTML = `
+    <div class="rail-header"><span>Filter</span><span class="rh-meta">${evs.length}</span></div>
+    <div class="pane-pad">
+      <input class="rb-input" id="adminQ" placeholder="search transactions…" value="${esc(state.adminQ || '')}" />
+      <div class="chip-row">${['all', 'identity', 'reputation', 'validation', 'payment'].map((x) => `<button class="reg-chip ${f === x ? 'is-active' : ''}" data-action="admin-filter" data-f="${x}">${x}</button>`).join('')}</div>
+    </div>`;
+  $('center').innerHTML = `
+    <div class="view-head"><h1 class="big-title">Admin</h1><p class="big-sub">Registry observability — every agent, transaction, and validation.</p></div>
+    <div class="kpi-row">
+      <div class="kpi"><span class="kpi-n">${ag.length}</span><span class="kpi-l">agents</span></div>
+      <div class="kpi"><span class="kpi-n ${scoreClass(reviews ? overall : null)}">${reviews ? overall + '%' : '—'}</span><span class="kpi-l">overall satisfied</span></div>
+      <div class="kpi"><span class="kpi-n">${reviews}</span><span class="kpi-l">verified reviews</span></div>
+      <div class="kpi"><span class="kpi-n">${vals.length}</span><span class="kpi-l">validations</span></div>
+      <div class="kpi"><span class="kpi-n">${unrated}</span><span class="kpi-l">unrated</span></div>
+    </div>
+    <section class="card"><div class="card-eyebrow">Transactions · ARC-28 <span class="mc-count">${evs.length}</span></div>
+      <table class="lm-table"><tr><th>event</th><th>args</th><th>txid</th><th>round</th></tr>
+      ${evs.slice(0, 50).map((e) => `<tr class="evt-tr" data-action="open-event" data-i="${A.state.events.indexOf(e)}"><td>${e.registry}.${e.name}</td><td class="evt-args-cell">${esc(JSON.stringify(e.args)).slice(0, 90)}</td><td>${short(e.txid)}</td><td>r${e.round}</td></tr>`).join('') || '<tr><td colspan="4" class="empty-note tight">no transactions</td></tr>'}</table>
+    </section>
+    <section class="card"><div class="card-eyebrow">Validations queue <span class="mc-count">${vals.length}</span></div>
+      ${vals.length ? vals.map(([h, v]) => `<div class="val-row" data-action="open-validation" data-h="${esc(h)}"><span class="vr-resp ${v.response == null ? 'pending' : v.response >= 50 ? 'ok' : 'bad'}">${v.response == null ? 'pending' : v.response + '/100'}</span><span class="vr-validator">agent #${v.agentId} · ${short(v.validator)}</span></div>`).join('') : '<div class="empty-note tight">none</div>'}
+    </section>`;
+  $('railRight').innerHTML = `
+    <div class="rail-right-header"><span class="agency-label">◇ SYSTEM HEALTH</span></div>
+    <div class="pane-pad legend">
+      <div class="legend-row"><span class="dot score-hi"></span>network · ${A.NET}</div>
+      <div class="legend-row">Identity <code ${cp(String(A.APP.identity))}>app ${A.APP.identity}</code></div>
+      <div class="legend-row">Reputation <code ${cp(String(A.APP.reputation))}>app ${A.APP.reputation}</code></div>
+      <div class="legend-row">Validation <code ${cp(String(A.APP.validation))}>app ${A.APP.validation}</code></div>
+      <div class="legend-row">${A.state.events.length} on-chain events</div>
+      <div class="legend-row">mode · mock</div>
+    </div>`;
+}
+function openEvent(i) {
+  const e = A.state.events[i]; if (!e) return;
+  modal(`${e.registry} · ${e.name}`, 'ARC-28 event', kvRows({ ...e.args }) + `<div class="lm-kv"><span>txid</span><code ${cp(e.txid)}>${e.txid}</code></div><div class="lm-kv"><span>round</span><code>r${e.round} · ${A.NET}</code></div>`);
+}
 
 function boot() {
   A.seed();
+  state.view = document.body.dataset.view || 'marketplace';   // the page selects its surface
   document.addEventListener('click', (e) => {
     const copyEl = e.target.closest('[data-copy]'); if (copyEl) { e.preventDefault(); return copy(copyEl.dataset.copy); }
     const tog = e.target.closest('[data-toggle]'); if (tog) { const t = $(tog.dataset.toggle); if (t) { t.hidden = !t.hidden; tog.classList.toggle('is-open', !t.hidden); } return; }
@@ -346,7 +409,10 @@ function boot() {
     if (e.target.id === 'presentToggle') return document.body.classList.toggle('present');
     const act = e.target.closest('[data-action]'); if (act && ACTIONS[act.dataset.action]) ACTIONS[act.dataset.action](act);
   });
-  document.addEventListener('input', (e) => { if (e.target.id === 'q') { state.q = e.target.value; const g = document.querySelector('.market-grid'); if (g) g.innerHTML = marketGridHTML(); } });
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'q') { state.q = e.target.value; const g = document.querySelector('.market-grid'); if (g) g.innerHTML = marketGridHTML(); }
+    else if (e.target.id === 'adminQ') { state.adminQ = e.target.value; const q = e.target.value.toLowerCase(); document.querySelectorAll('.evt-tr').forEach((tr) => { tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none'; }); }
+  });
   document.addEventListener('change', (e) => {
     if (e.target.id === 'sort') { state.sort = e.target.value; render(); }
     else if (e.target.id === 'ownerSel') { state.ownerView = e.target.value; state.sel = null; render(); }
