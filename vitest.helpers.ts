@@ -24,3 +24,10 @@ export function extToHex(v: unknown): string {
   if (Array.isArray(v)) return v.map((b) => Number(b).toString(16).padStart(2, '0')).join('')
   return [...new Uint8Array(v as ArrayBuffer)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+/** Hex string -> Uint8Array. Kept outside smart_contracts/ so the Puya test transformer ignores it. */
+export function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.replace(/^0x/i, '')
+  if (clean.length % 2 !== 0) throw new Error('hex string must have an even length')
+  return Uint8Array.from(clean.match(/../g)?.map((byte) => Number.parseInt(byte, 16)) ?? [])
+}

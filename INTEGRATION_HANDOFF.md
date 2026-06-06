@@ -57,6 +57,17 @@ npm start                # funds providers automatically, prints option_ids on b
 
 ## Reza — Identity Registry + Discovery + Ranking
 
+**Chain identity registry:**
+
+- `smart_contracts/identity_registry/contract.algo.ts` → `IdentityRegistry`
+- Canonical identity: `{ agentRegistry: algorand:{genesisHashPrefix}:{identityAppId}, agentId:uint64 }`
+- `register(agentURI, metadata)` → `agentId`; owner=`Txn.sender`; `agentWallet=Txn.sender`
+- ARC-72 reads/writes: `arc72_ownerOf`, `arc72_transferFrom`, `arc72_tokenURI`, `arc72_approve`, `arc72_setApprovalForAll`, `arc72_getApproved`, `arc72_isApprovedForAll`, `arc72_balanceOf`, `arc72_totalSupply`, `arc72_tokenByIndex`
+- ERC-8004 reads/writes: `getAgentURI`, `setAgentURI`, `getMetadata`, `setMetadata`, `getAgentWallet`, `setAgentWallet`, `unsetAgentWallet`
+- ARC-73: `supportsInterface` for ARC-73 + ARC-72 core/metadata/transfer/enumeration
+- Deploy: `smart_contracts/identity_registry/deploy-config.ts`; client/artifacts in `smart_contracts/artifacts/identity_registry/`
+- Router identity remains compatibility alias: `providerId(net,address)` → `algorand:{net}:{address}`
+
 **Live endpoints:**
 
 ```

@@ -1,0 +1,1663 @@
+#pragma version 11
+#pragma typetrack false
+
+// @algorandfoundation/algorand-typescript/arc4/index.d.ts::Contract.approvalProgram() -> uint64:
+main:
+    intcblock 1 32 0 2 256
+    bytecblock 0x151f7c75 "supply" "own" "wal" "apr" "uri" "opr" "nextId" "bal" 0x0000000000000000 0x00 0xc3c1fc00 0x4e22a3ba "idx" 0xd808d4f4 0x002a 0x546b5dcf "md"
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/identity_registry/contract.algo.ts:41
+    // nextId = GlobalState<uint64>({ key: 'nextId', initialValue: 1 })
+    bytec 7 // "nextId"
+    intc_0 // 1
+    app_global_put
+    // smart_contracts/identity_registry/contract.algo.ts:43
+    // supply = GlobalState<uint64>({ key: 'supply', initialValue: 0 })
+    bytec_1 // "supply"
+    intc_2 // 0
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/identity_registry/contract.algo.ts:39
+    // export class IdentityRegistry extends arc4.Contract {
+    txn NumAppArgs
+    bz main___algots__.defaultCreate@28
+    txn OnCompletion
+    !
+    assert // OnCompletion must be NoOp
+    txn ApplicationID
+    assert
+    pushbytess 0x28cb53d6 0x4dc4a11d 0x264a434e 0x9da881f1 0xded90d6d 0x79096a14 0xf2f194a0 0xb4edba4e 0x7134395f // method "register(string,(string,byte[])[])uint64", method "setAgentURI(uint256,string)void", method "setMetadata(uint256,string,byte[])void", method "setAgentWallet(uint256,address)void", method "unsetAgentWallet(uint256)void", method "arc72_ownerOf(uint256)address", method "arc72_transferFrom(address,address,uint256)void", method "arc72_approve(address,uint256)void", method "arc72_setApprovalForAll(address,bool)void"
+    bytec 11 // method "arc72_tokenURI(uint256)byte[256]"
+    pushbytess 0x26895252 0x3755397b 0x3f795561 0x948aa4f1 0x217adc3d 0xac319124 0x64d72a7a 0x6d9bfd27 // method "getAgentURI(uint256)string", method "getMetadata(uint256,string)byte[]", method "getAgentWallet(uint256)address", method "arc72_getApproved(uint256)address", method "arc72_isApprovedForAll(address,address)bool", method "arc72_balanceOf(address)uint256", method "arc72_totalSupply()uint256", method "arc72_tokenByIndex(uint256)uint256"
+    bytec 12 // method "supportsInterface(byte[4])bool"
+    txna ApplicationArgs 0
+    match register setAgentURI setMetadata setAgentWallet unsetAgentWallet arc72_ownerOf arc72_transferFrom arc72_approve arc72_setApprovalForAll arc72_tokenURI getAgentURI getMetadata getAgentWallet arc72_getApproved arc72_isApprovedForAll arc72_balanceOf arc72_totalSupply arc72_tokenByIndex supportsInterface
+    err
+
+main___algots__.defaultCreate@28:
+    // smart_contracts/identity_registry/contract.algo.ts:39
+    // export class IdentityRegistry extends arc4.Contract {
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    assert // OnCompletion must be NoOp && can only call when creating
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.register[routing]() -> void:
+register:
+    intc_2 // 0
+    dupn 2
+    pushbytes ""
+    dup
+    // smart_contracts/identity_registry/contract.algo.ts:65
+    // register(agentURI: arc4.Str, metadata: arc4.DynamicArray<MetadataEntry>): arc4.Uint64 {
+    txna ApplicationArgs 1
+    dupn 2
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_3 // 2
+    +
+    swap
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 2
+    dup
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    dup
+    cover 2
+    intc_3 // 2
+    *
+    swap
+    dup
+    len
+    swap
+    extract 2 0
+    intc_2 // 0
+
+register_for_header@1:
+    // smart_contracts/identity_registry/contract.algo.ts:65
+    // register(agentURI: arc4.Str, metadata: arc4.DynamicArray<MetadataEntry>): arc4.Uint64 {
+    dup
+    dig 5
+    <
+    bz register_after_for@4
+    dupn 2
+    intc_3 // 2
+    *
+    dig 3
+    dup
+    uncover 2
+    extract_uint16 // on error: invalid array encoding
+    dup
+    dig 7
+    dup
+    cover 4
+    ==
+    assert // invalid tail pointer for (len+((len+utf8[]),(len+uint8[]))[])
+    dig 1
+    len
+    substring3
+    dup
+    len
+    dig 1
+    intc_2 // 0
+    extract_uint16 // on error: invalid tuple encoding
+    dup
+    pushint 4 // 4
+    ==
+    assert // invalid tail pointer at index 0 of ((len+utf8[]),(len+uint8[]))
+    dig 2
+    swap
+    dig 2
+    substring3
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    pushint 6 // 6
+    +
+    dig 2
+    intc_3 // 2
+    extract_uint16 // on error: invalid tuple encoding
+    dup
+    dig 2
+    ==
+    assert // invalid tail pointer at index 1 of ((len+utf8[]),(len+uint8[]))
+    uncover 3
+    swap
+    uncover 3
+    substring3
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_3 // 2
+    +
+    +
+    +
+    bury 5
+    intc_0 // 1
+    +
+    bury 1
+    b register_for_header@1
+
+register_after_for@4:
+    // smart_contracts/identity_registry/contract.algo.ts:65
+    // register(agentURI: arc4.Str, metadata: arc4.DynamicArray<MetadataEntry>): arc4.Uint64 {
+    dig 3
+    intc_3 // 2
+    +
+    dig 3
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<MetadataEntry>
+    // smart_contracts/identity_registry/contract.algo.ts:66
+    // const agentId = this.nextId.value
+    intc_2 // 0
+    // smart_contracts/identity_registry/contract.algo.ts:41
+    // nextId = GlobalState<uint64>({ key: 'nextId', initialValue: 1 })
+    bytec 7 // "nextId"
+    // smart_contracts/identity_registry/contract.algo.ts:66
+    // const agentId = this.nextId.value
+    app_global_get_ex
+    swap
+    dup
+    cover 2
+    bury 10
+    assert // check GlobalState exists
+    // smart_contracts/identity_registry/contract.algo.ts:67
+    // this.nextId.value = agentId + 1
+    dup
+    intc_0 // 1
+    +
+    // smart_contracts/identity_registry/contract.algo.ts:41
+    // nextId = GlobalState<uint64>({ key: 'nextId', initialValue: 1 })
+    bytec 7 // "nextId"
+    // smart_contracts/identity_registry/contract.algo.ts:67
+    // this.nextId.value = agentId + 1
+    swap
+    app_global_put
+    // smart_contracts/identity_registry/contract.algo.ts:297
+    // return new arc4.Uint256(agentId)
+    itob
+    dup
+    bury 12
+    intc_1 // 32
+    bzero
+    dig 1
+    b|
+    bury 10
+    // smart_contracts/identity_registry/contract.algo.ts:70
+    // const owner = new arc4.Address(Txn.sender)
+    txn Sender
+    dup
+    bury 12
+    // smart_contracts/identity_registry/contract.algo.ts:46
+    // owners = BoxMap<uint64, arc4.Address>({ keyPrefix: 'own' })
+    bytec_2 // "own"
+    dig 2
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:72
+    // this.owners(agentId).value = clone(owner)
+    dig 1
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:48
+    // uris = BoxMap<uint64, arc4.Str>({ keyPrefix: 'uri' })
+    bytec 5 // "uri"
+    dig 2
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:73
+    // this.uris(agentId).value = clone(agentURI)
+    dup
+    box_del
+    pop
+    dig 8
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:58
+    // agentWallets = BoxMap<uint64, arc4.Address>({ keyPrefix: 'wal' })
+    bytec_3 // "wal"
+    dig 2
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:74
+    // this.agentWallets(agentId).value = clone(owner)
+    swap
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:76
+    // const index = this.supply.value
+    intc_2 // 0
+    // smart_contracts/identity_registry/contract.algo.ts:43
+    // supply = GlobalState<uint64>({ key: 'supply', initialValue: 0 })
+    bytec_1 // "supply"
+    // smart_contracts/identity_registry/contract.algo.ts:76
+    // const index = this.supply.value
+    app_global_get_ex
+    assert // check GlobalState exists
+    // smart_contracts/identity_registry/contract.algo.ts:77
+    // this.agentAtIndex(index).value = new arc4.Uint64(agentId)
+    dup
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:60
+    // agentAtIndex = BoxMap<uint64, arc4.Uint64>({ keyPrefix: 'idx' })
+    bytec 13 // "idx"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:77
+    // this.agentAtIndex(index).value = new arc4.Uint64(agentId)
+    uncover 2
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:78
+    // this.supply.value = index + 1
+    intc_0 // 1
+    +
+    // smart_contracts/identity_registry/contract.algo.ts:43
+    // supply = GlobalState<uint64>({ key: 'supply', initialValue: 0 })
+    bytec_1 // "supply"
+    // smart_contracts/identity_registry/contract.algo.ts:78
+    // this.supply.value = index + 1
+    swap
+    app_global_put
+    // smart_contracts/identity_registry/contract.algo.ts:79
+    // this.incrementBalance(Txn.sender)
+    txn Sender
+    callsub incrementBalance
+    intc_2 // 0
+    bury 7
+
+register_for_header@6:
+    // smart_contracts/identity_registry/contract.algo.ts:81
+    // for (const entry of clone(metadata)) {
+    dig 6
+    dig 5
+    <
+    bz register_after_for@9
+    // smart_contracts/identity_registry/contract.algo.ts:81-82
+    // for (const entry of clone(metadata)) {
+    //   this.setMetadataInternal(agentId, entry.key, entry.value)
+    dig 6
+    dup
+    intc_3 // 2
+    *
+    dig 3
+    dup
+    cover 3
+    swap
+    extract_uint16
+    swap
+    intc_0 // 1
+    +
+    dig 7
+    dig 1
+    - // on error: index access is out of bounds
+    dig 3
+    len
+    dig 2
+    intc_3 // 2
+    *
+    dig 5
+    swap
+    extract_uint16
+    uncover 2
+    select
+    uncover 3
+    uncover 3
+    uncover 2
+    substring3
+    dup
+    intc_2 // 0
+    extract_uint16
+    dig 1
+    intc_3 // 2
+    extract_uint16
+    dig 2
+    uncover 2
+    dig 2
+    substring3
+    dig 2
+    len
+    uncover 3
+    uncover 3
+    uncover 2
+    substring3
+    // smart_contracts/identity_registry/contract.algo.ts:82
+    // this.setMetadataInternal(agentId, entry.key, entry.value)
+    dig 10
+    cover 2
+    callsub setMetadataInternal
+    bury 7
+    b register_for_header@6
+
+register_after_for@9:
+    // smart_contracts/identity_registry/contract.algo.ts:325
+    // return new arc4.Address(Global.zeroAddress)
+    global ZeroAddress
+    // smart_contracts/identity_registry/contract.algo.ts:85
+    // emit(new arc72_Transfer({ from: this.zeroAddress(), to: clone(owner), tokenId }))
+    dig 10
+    dup
+    cover 2
+    concat
+    dig 10
+    concat
+    bytec 14 // method "arc72_Transfer(address,address,uint256)"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:86
+    // emit(new Registered({ agentId: new arc4.Uint64(agentId), agentURI, owner }))
+    dig 11
+    dup
+    cover 2
+    bytec 15 // 0x002a
+    concat
+    swap
+    concat
+    dig 7
+    concat
+    pushbytes 0x0290143c // method "Registered(uint64,string,address)"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:65
+    // register(agentURI: arc4.Str, metadata: arc4.DynamicArray<MetadataEntry>): arc4.Uint64 {
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.setAgentURI[routing]() -> void:
+setAgentURI:
+    // smart_contracts/identity_registry/contract.algo.ts:92
+    // setAgentURI(tokenId: arc4.Uint256, agentURI: arc4.Str): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    txna ApplicationArgs 2
+    dup
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_3 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/identity_registry/contract.algo.ts:93
+    // const agentId = this.existingAgentId(tokenId)
+    swap
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:94
+    // this.requireOwnerOrOperator(agentId)
+    dup
+    callsub requireOwnerOrOperator
+    // smart_contracts/identity_registry/contract.algo.ts:95
+    // this.uris(agentId).value = clone(agentURI)
+    dup
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:48
+    // uris = BoxMap<uint64, arc4.Str>({ keyPrefix: 'uri' })
+    bytec 5 // "uri"
+    dig 1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:95
+    // this.uris(agentId).value = clone(agentURI)
+    dup
+    box_del
+    pop
+    dig 3
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:96
+    // emit(new URIUpdated({ agentId: new arc4.Uint64(agentId), agentURI, owner: this.ownerOfExisting(agentId) }))
+    swap
+    callsub ownerOfExisting
+    swap
+    bytec 15 // 0x002a
+    concat
+    swap
+    concat
+    swap
+    concat
+    pushbytes 0xbb1847dd // method "URIUpdated(uint64,string,address)"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:92
+    // setAgentURI(tokenId: arc4.Uint256, agentURI: arc4.Str): void {
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.setMetadata[routing]() -> void:
+setMetadata:
+    // smart_contracts/identity_registry/contract.algo.ts:100
+    // setMetadata(tokenId: arc4.Uint256, key: arc4.Str, value: arc4.DynamicBytes): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    txna ApplicationArgs 2
+    dup
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_3 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 3
+    dup
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_3 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/identity_registry/contract.algo.ts:101
+    // const agentId = this.existingAgentId(tokenId)
+    uncover 2
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:102
+    // this.requireOwnerOrOperator(agentId)
+    dup
+    callsub requireOwnerOrOperator
+    // smart_contracts/identity_registry/contract.algo.ts:103
+    // this.setMetadataInternal(agentId, key, value)
+    cover 2
+    callsub setMetadataInternal
+    // smart_contracts/identity_registry/contract.algo.ts:100
+    // setMetadata(tokenId: arc4.Uint256, key: arc4.Str, value: arc4.DynamicBytes): void {
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.setAgentWallet[routing]() -> void:
+setAgentWallet:
+    // smart_contracts/identity_registry/contract.algo.ts:107
+    // setAgentWallet(tokenId: arc4.Uint256, wallet: arc4.Address): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    txna ApplicationArgs 2
+    dup
+    len
+    dup
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/identity_registry/contract.algo.ts:108
+    // const agentId = this.existingAgentId(tokenId)
+    uncover 2
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:109
+    // this.requireOwnerOrOperator(agentId)
+    dup
+    callsub requireOwnerOrOperator
+    // smart_contracts/identity_registry/contract.algo.ts:110
+    // assert(wallet.native !== Global.zeroAddress, 'agentWallet cannot be zero')
+    dig 2
+    global ZeroAddress
+    !=
+    assert // agentWallet cannot be zero
+    // smart_contracts/identity_registry/contract.algo.ts:111
+    // this.agentWallets(agentId).value = clone(wallet)
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:58
+    // agentWallets = BoxMap<uint64, arc4.Address>({ keyPrefix: 'wal' })
+    bytec_3 // "wal"
+    dig 1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:111
+    // this.agentWallets(agentId).value = clone(wallet)
+    dig 3
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:116
+    // value: new arc4.DynamicBytes(wallet.bytes),
+    swap
+    itob
+    extract 6 2
+    uncover 2
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:113-117
+    // new MetadataSet({
+    //   agentId: new arc4.Uint64(agentId),
+    //   key: new arc4.Str('agentWallet'),
+    //   value: new arc4.DynamicBytes(wallet.bytes),
+    // }),
+    swap
+    pushbytes 0x000c0019000b6167656e7457616c6c6574
+    concat
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:112-118
+    // emit(
+    //   new MetadataSet({
+    //     agentId: new arc4.Uint64(agentId),
+    //     key: new arc4.Str('agentWallet'),
+    //     value: new arc4.DynamicBytes(wallet.bytes),
+    //   }),
+    // )
+    bytec 16 // method "MetadataSet(uint64,string,byte[])"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:107
+    // setAgentWallet(tokenId: arc4.Uint256, wallet: arc4.Address): void {
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.unsetAgentWallet[routing]() -> void:
+unsetAgentWallet:
+    // smart_contracts/identity_registry/contract.algo.ts:122
+    // unsetAgentWallet(tokenId: arc4.Uint256): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:123
+    // const agentId = this.existingAgentId(tokenId)
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:124
+    // this.requireOwnerOrOperator(agentId)
+    dup
+    callsub requireOwnerOrOperator
+    // smart_contracts/identity_registry/contract.algo.ts:125
+    // this.agentWallets(agentId).delete()
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:58
+    // agentWallets = BoxMap<uint64, arc4.Address>({ keyPrefix: 'wal' })
+    bytec_3 // "wal"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:125
+    // this.agentWallets(agentId).delete()
+    box_del
+    pop
+    // smart_contracts/identity_registry/contract.algo.ts:122
+    // unsetAgentWallet(tokenId: arc4.Uint256): void {
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_ownerOf[routing]() -> void:
+arc72_ownerOf:
+    // smart_contracts/identity_registry/contract.algo.ts:131
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    dup
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:134
+    // return this.owners(tokenId.asUint64()).get({ default: this.zeroAddress() })
+    dig 1
+    bitlen
+    pushint 64 // 64
+    <=
+    assert // overflow
+    pushint 8 // 8
+    -
+    pushint 8 // 8
+    extract3
+    // smart_contracts/identity_registry/contract.algo.ts:46
+    // owners = BoxMap<uint64, arc4.Address>({ keyPrefix: 'own' })
+    bytec_2 // "own"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:325
+    // return new arc4.Address(Global.zeroAddress)
+    global ZeroAddress
+    // smart_contracts/identity_registry/contract.algo.ts:134
+    // return this.owners(tokenId.asUint64()).get({ default: this.zeroAddress() })
+    swap
+    box_get
+    select
+    // smart_contracts/identity_registry/contract.algo.ts:131
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_transferFrom[routing]() -> void:
+arc72_transferFrom:
+    intc_2 // 0
+    // smart_contracts/identity_registry/contract.algo.ts:138
+    // arc72_transferFrom(from: arc4.Address, to: arc4.Address, tokenId: arc4.Uint256): void {
+    txna ApplicationArgs 1
+    dupn 2
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 2
+    dup
+    cover 2
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 3
+    dup
+    cover 3
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:139
+    // const agentId = this.existingAgentId(tokenId)
+    callsub existingAgentId
+    dup
+    cover 3
+    // smart_contracts/identity_registry/contract.algo.ts:140
+    // const owner = this.ownerOfExisting(agentId)
+    dup
+    callsub ownerOfExisting
+    // smart_contracts/identity_registry/contract.algo.ts:141
+    // assert(from.native === owner.native, 'from is not owner')
+    uncover 3
+    ==
+    assert // from is not owner
+    // smart_contracts/identity_registry/contract.algo.ts:142
+    // assert(to.native !== Global.zeroAddress, 'to cannot be zero')
+    global ZeroAddress
+    uncover 2
+    !=
+    assert // to cannot be zero
+    // smart_contracts/identity_registry/contract.algo.ts:143
+    // assert(this.isApprovedOrOwner(Txn.sender, agentId), 'not owner or approved')
+    txn Sender
+    dup
+    cover 2
+    // smart_contracts/identity_registry/contract.algo.ts:271
+    // const owner = this.ownerOfExisting(agentId)
+    swap
+    callsub ownerOfExisting
+    dup
+    cover 2
+    // smart_contracts/identity_registry/contract.algo.ts:272
+    // if (spender === owner.native) return true
+    ==
+    bz arc72_transferFrom_after_if_else@3
+    intc_0 // 1
+
+arc72_transferFrom_after_inlined_smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.isApprovedOrOwner@7:
+    // smart_contracts/identity_registry/contract.algo.ts:143
+    // assert(this.isApprovedOrOwner(Txn.sender, agentId), 'not owner or approved')
+    assert // not owner or approved
+    // smart_contracts/identity_registry/contract.algo.ts:145
+    // this.approvals(agentId).delete()
+    dig 2
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:50
+    // approvals = BoxMap<uint64, arc4.Address>({ keyPrefix: 'apr' })
+    bytec 4 // "apr"
+    dig 1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:145
+    // this.approvals(agentId).delete()
+    box_del
+    pop
+    // smart_contracts/identity_registry/contract.algo.ts:58
+    // agentWallets = BoxMap<uint64, arc4.Address>({ keyPrefix: 'wal' })
+    bytec_3 // "wal"
+    dig 1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:146
+    // this.agentWallets(agentId).delete()
+    box_del
+    pop
+    // smart_contracts/identity_registry/contract.algo.ts:46
+    // owners = BoxMap<uint64, arc4.Address>({ keyPrefix: 'own' })
+    bytec_2 // "own"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:147
+    // this.owners(agentId).value = clone(to)
+    dig 5
+    dup
+    cover 2
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:54
+    // balances = BoxMap<bytes, arc4.Uint64>({ keyPrefix: 'bal' })
+    bytec 8 // "bal"
+    dig 7
+    dup
+    cover 2
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:311
+    // const prev = this.balances(owner.bytes).get({ default: new arc4.Uint64(0) }).asUint64()
+    dup
+    box_get
+    bytec 9 // 0x0000000000000000
+    cover 2
+    select
+    btoi
+    // smart_contracts/identity_registry/contract.algo.ts:312
+    // assert(prev > 0, 'balance underflow')
+    dup
+    assert // balance underflow
+    // smart_contracts/identity_registry/contract.algo.ts:313
+    // this.balances(owner.bytes).value = new arc4.Uint64(prev - 1)
+    intc_0 // 1
+    -
+    itob
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:149
+    // this.incrementBalance(to.native)
+    dig 1
+    callsub incrementBalance
+    // smart_contracts/identity_registry/contract.algo.ts:151
+    // emit(new arc72_Transfer({ from, to, tokenId }))
+    swap
+    concat
+    dig 4
+    concat
+    bytec 14 // method "arc72_Transfer(address,address,uint256)"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:138
+    // arc72_transferFrom(from: arc4.Address, to: arc4.Address, tokenId: arc4.Uint256): void {
+    intc_0 // 1
+    return
+
+arc72_transferFrom_after_if_else@3:
+    // smart_contracts/identity_registry/contract.algo.ts:273
+    // if (this.approvals(agentId).exists && this.approvals(agentId).value.native === spender) return true
+    dig 2
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:50
+    // approvals = BoxMap<uint64, arc4.Address>({ keyPrefix: 'apr' })
+    bytec 4 // "apr"
+    swap
+    concat
+    dup
+    bury 8
+    // smart_contracts/identity_registry/contract.algo.ts:273
+    // if (this.approvals(agentId).exists && this.approvals(agentId).value.native === spender) return true
+    box_len
+    bury 1
+    bz arc72_transferFrom_after_if_else@6
+    dig 6
+    box_get
+    assert // Box must have value
+    dig 2
+    ==
+    bz arc72_transferFrom_after_if_else@6
+    intc_0 // 1
+    // smart_contracts/identity_registry/contract.algo.ts:143
+    // assert(this.isApprovedOrOwner(Txn.sender, agentId), 'not owner or approved')
+    b arc72_transferFrom_after_inlined_smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.isApprovedOrOwner@7
+
+arc72_transferFrom_after_if_else@6:
+    // smart_contracts/identity_registry/contract.algo.ts:274
+    // return this.operatorApproved(owner.native, spender)
+    dup
+    dig 2
+    callsub operatorApproved
+    // smart_contracts/identity_registry/contract.algo.ts:143
+    // assert(this.isApprovedOrOwner(Txn.sender, agentId), 'not owner or approved')
+    b arc72_transferFrom_after_inlined_smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.isApprovedOrOwner@7
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_approve[routing]() -> void:
+arc72_approve:
+    // smart_contracts/identity_registry/contract.algo.ts:155
+    // arc72_approve(approved: arc4.Address, tokenId: arc4.Uint256): void {
+    txna ApplicationArgs 1
+    dupn 2
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 2
+    dup
+    cover 2
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:156
+    // const agentId = this.existingAgentId(tokenId)
+    callsub existingAgentId
+    dup
+    cover 2
+    // smart_contracts/identity_registry/contract.algo.ts:157
+    // this.requireOwnerOrOperator(agentId)
+    callsub requireOwnerOrOperator
+    // smart_contracts/identity_registry/contract.algo.ts:158
+    // if (approved.native === Global.zeroAddress) {
+    global ZeroAddress
+    ==
+    bz arc72_approve_else_body@3
+    // smart_contracts/identity_registry/contract.algo.ts:159
+    // this.approvals(agentId).delete()
+    dup
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:50
+    // approvals = BoxMap<uint64, arc4.Address>({ keyPrefix: 'apr' })
+    bytec 4 // "apr"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:159
+    // this.approvals(agentId).delete()
+    box_del
+    pop
+
+arc72_approve_after_if_else@4:
+    // smart_contracts/identity_registry/contract.algo.ts:163
+    // emit(new arc72_Approval({ owner: this.ownerOfExisting(agentId), approved, tokenId }))
+    dup
+    callsub ownerOfExisting
+    dig 3
+    concat
+    dig 2
+    concat
+    pushbytes 0x85a2e6e0 // method "arc72_Approval(address,address,uint256)"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:155
+    // arc72_approve(approved: arc4.Address, tokenId: arc4.Uint256): void {
+    intc_0 // 1
+    return
+
+arc72_approve_else_body@3:
+    // smart_contracts/identity_registry/contract.algo.ts:161
+    // this.approvals(agentId).value = clone(approved)
+    dup
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:50
+    // approvals = BoxMap<uint64, arc4.Address>({ keyPrefix: 'apr' })
+    bytec 4 // "apr"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:161
+    // this.approvals(agentId).value = clone(approved)
+    dig 3
+    box_put
+    b arc72_approve_after_if_else@4
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_setApprovalForAll[routing]() -> void:
+arc72_setApprovalForAll:
+    // smart_contracts/identity_registry/contract.algo.ts:167
+    // arc72_setApprovalForAll(operator: arc4.Address, approved: arc4.Bool): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 2
+    dup
+    cover 2
+    dup
+    len
+    intc_0 // 1
+    ==
+    assert // invalid number of bytes for arc4.bool
+    // smart_contracts/identity_registry/contract.algo.ts:168
+    // const owner = new arc4.Address(Txn.sender)
+    txn Sender
+    // smart_contracts/identity_registry/contract.algo.ts:321
+    // return owner.concat(operator)
+    uncover 2
+    concat
+    swap
+    // smart_contracts/identity_registry/contract.algo.ts:170
+    // if (approved.native) {
+    intc_2 // 0
+    getbit
+    bz arc72_setApprovalForAll_else_body@3
+    // smart_contracts/identity_registry/contract.algo.ts:52
+    // operatorApprovals = BoxMap<bytes, arc4.Bool>({ keyPrefix: 'opr' })
+    bytec 6 // "opr"
+    dig 1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:171
+    // this.operatorApprovals(key).value = clone(approved)
+    dig 2
+    box_put
+
+arc72_setApprovalForAll_after_if_else@4:
+    // smart_contracts/identity_registry/contract.algo.ts:175
+    // emit(new arc72_ApprovalForAll({ owner, operator, approved }))
+    dup
+    dig 2
+    concat
+    pushbytes 0x4c4debab // method "arc72_ApprovalForAll(address,address,bool)"
+    swap
+    concat
+    log
+    // smart_contracts/identity_registry/contract.algo.ts:167
+    // arc72_setApprovalForAll(operator: arc4.Address, approved: arc4.Bool): void {
+    intc_0 // 1
+    return
+
+arc72_setApprovalForAll_else_body@3:
+    // smart_contracts/identity_registry/contract.algo.ts:52
+    // operatorApprovals = BoxMap<bytes, arc4.Bool>({ keyPrefix: 'opr' })
+    bytec 6 // "opr"
+    dig 1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:173
+    // this.operatorApprovals(key).delete()
+    box_del
+    pop
+    b arc72_setApprovalForAll_after_if_else@4
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_tokenURI[routing]() -> void:
+arc72_tokenURI:
+    // smart_contracts/identity_registry/contract.algo.ts:181
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:183
+    // const agentId = this.existingAgentId(tokenId)
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:184
+    // const uri = this.uris(agentId).value.bytes
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:48
+    // uris = BoxMap<uint64, arc4.Str>({ keyPrefix: 'uri' })
+    bytec 5 // "uri"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:184
+    // const uri = this.uris(agentId).value.bytes
+    box_get
+    assert // Box must have value
+    // smart_contracts/identity_registry/contract.algo.ts:185
+    // assert(uri.length <= 256, 'agentURI exceeds ARC-72 metadata length')
+    dup
+    len
+    intc 4 // 256
+    <=
+    assert // agentURI exceeds ARC-72 metadata length
+    // smart_contracts/identity_registry/contract.algo.ts:186
+    // const padded = op.replace(op.bzero(256), 0, uri)
+    intc 4 // 256
+    bzero
+    swap
+    replace2 0
+    // smart_contracts/identity_registry/contract.algo.ts:187
+    // return new arc4.StaticBytes<256>(padded.toFixed({ length: 256 }))
+    dup
+    len
+    intc 4 // 256
+    ==
+    assert // Length must be 256
+    // smart_contracts/identity_registry/contract.algo.ts:181
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.getAgentURI[routing]() -> void:
+getAgentURI:
+    // smart_contracts/identity_registry/contract.algo.ts:191
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:193
+    // return clone(this.uris(this.existingAgentId(tokenId)).value)
+    callsub existingAgentId
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:48
+    // uris = BoxMap<uint64, arc4.Str>({ keyPrefix: 'uri' })
+    bytec 5 // "uri"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:193
+    // return clone(this.uris(this.existingAgentId(tokenId)).value)
+    box_get
+    assert // Box must have value
+    // smart_contracts/identity_registry/contract.algo.ts:191
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.getMetadata[routing]() -> void:
+getMetadata:
+    // smart_contracts/identity_registry/contract.algo.ts:197
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    txna ApplicationArgs 2
+    dup
+    intc_2 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_3 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/identity_registry/contract.algo.ts:199
+    // const agentId = this.existingAgentId(tokenId)
+    swap
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:317
+    // return new arc4.Uint64(agentId).bytes.concat(key)
+    itob
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:56
+    // metadata = BoxMap<bytes, arc4.DynamicBytes>({ keyPrefix: 'md' })
+    bytec 17 // "md"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:200
+    // return clone(this.metadata(this.metadataKey(agentId, key.bytes)).value)
+    box_get
+    assert // Box must have value
+    // smart_contracts/identity_registry/contract.algo.ts:197
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.getAgentWallet[routing]() -> void:
+getAgentWallet:
+    // smart_contracts/identity_registry/contract.algo.ts:204
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:206
+    // return this.agentWallets(this.existingAgentId(tokenId)).get({ default: this.zeroAddress() })
+    callsub existingAgentId
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:58
+    // agentWallets = BoxMap<uint64, arc4.Address>({ keyPrefix: 'wal' })
+    bytec_3 // "wal"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:325
+    // return new arc4.Address(Global.zeroAddress)
+    global ZeroAddress
+    // smart_contracts/identity_registry/contract.algo.ts:206
+    // return this.agentWallets(this.existingAgentId(tokenId)).get({ default: this.zeroAddress() })
+    swap
+    box_get
+    select
+    // smart_contracts/identity_registry/contract.algo.ts:204
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_getApproved[routing]() -> void:
+arc72_getApproved:
+    // smart_contracts/identity_registry/contract.algo.ts:210
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:212
+    // const agentId = this.existingAgentId(tokenId)
+    callsub existingAgentId
+    // smart_contracts/identity_registry/contract.algo.ts:213
+    // return this.approvals(agentId).get({ default: this.zeroAddress() })
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:50
+    // approvals = BoxMap<uint64, arc4.Address>({ keyPrefix: 'apr' })
+    bytec 4 // "apr"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:325
+    // return new arc4.Address(Global.zeroAddress)
+    global ZeroAddress
+    // smart_contracts/identity_registry/contract.algo.ts:213
+    // return this.approvals(agentId).get({ default: this.zeroAddress() })
+    swap
+    box_get
+    select
+    // smart_contracts/identity_registry/contract.algo.ts:210
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_isApprovedForAll[routing]() -> void:
+arc72_isApprovedForAll:
+    // smart_contracts/identity_registry/contract.algo.ts:217
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/identity_registry/contract.algo.ts:321
+    // return owner.concat(operator)
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:52
+    // operatorApprovals = BoxMap<bytes, arc4.Bool>({ keyPrefix: 'opr' })
+    bytec 6 // "opr"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:219
+    // return this.operatorApprovals(this.operatorKey(owner.bytes, operator.bytes)).get({ default: new arc4.Bool(false) })
+    box_get
+    bytec 10 // 0x00
+    cover 2
+    select
+    // smart_contracts/identity_registry/contract.algo.ts:217
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_balanceOf[routing]() -> void:
+arc72_balanceOf:
+    // smart_contracts/identity_registry/contract.algo.ts:223
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/identity_registry/contract.algo.ts:54
+    // balances = BoxMap<bytes, arc4.Uint64>({ keyPrefix: 'bal' })
+    bytec 8 // "bal"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:225
+    // const balance = this.balances(owner.bytes).get({ default: new arc4.Uint64(0) }).asUint64()
+    box_get
+    bytec 9 // 0x0000000000000000
+    cover 2
+    select
+    btoi
+    // smart_contracts/identity_registry/contract.algo.ts:297
+    // return new arc4.Uint256(agentId)
+    itob
+    intc_1 // 32
+    bzero
+    b|
+    // smart_contracts/identity_registry/contract.algo.ts:223
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_totalSupply[routing]() -> void:
+arc72_totalSupply:
+    // smart_contracts/identity_registry/contract.algo.ts:232
+    // return this.agentIdToTokenId(this.supply.value)
+    intc_2 // 0
+    // smart_contracts/identity_registry/contract.algo.ts:43
+    // supply = GlobalState<uint64>({ key: 'supply', initialValue: 0 })
+    bytec_1 // "supply"
+    // smart_contracts/identity_registry/contract.algo.ts:232
+    // return this.agentIdToTokenId(this.supply.value)
+    app_global_get_ex
+    assert // check GlobalState exists
+    // smart_contracts/identity_registry/contract.algo.ts:297
+    // return new arc4.Uint256(agentId)
+    itob
+    intc_1 // 32
+    bzero
+    b|
+    // smart_contracts/identity_registry/contract.algo.ts:230
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.arc72_tokenByIndex[routing]() -> void:
+arc72_tokenByIndex:
+    // smart_contracts/identity_registry/contract.algo.ts:236
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 32
+    ==
+    assert // invalid number of bytes for arc4.uint256
+    // smart_contracts/identity_registry/contract.algo.ts:238
+    // const i = this.tokenIdToUint64(index)
+    callsub tokenIdToUint64
+    // smart_contracts/identity_registry/contract.algo.ts:239
+    // assert(i < this.supply.value, 'index out of bounds')
+    intc_2 // 0
+    // smart_contracts/identity_registry/contract.algo.ts:43
+    // supply = GlobalState<uint64>({ key: 'supply', initialValue: 0 })
+    bytec_1 // "supply"
+    // smart_contracts/identity_registry/contract.algo.ts:239
+    // assert(i < this.supply.value, 'index out of bounds')
+    app_global_get_ex
+    assert // check GlobalState exists
+    dig 1
+    >
+    assert // index out of bounds
+    // smart_contracts/identity_registry/contract.algo.ts:240
+    // return this.agentIdToTokenId(this.agentAtIndex(i).value.asUint64())
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:60
+    // agentAtIndex = BoxMap<uint64, arc4.Uint64>({ keyPrefix: 'idx' })
+    bytec 13 // "idx"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:240
+    // return this.agentIdToTokenId(this.agentAtIndex(i).value.asUint64())
+    box_get
+    assert // Box must have value
+    btoi
+    // smart_contracts/identity_registry/contract.algo.ts:297
+    // return new arc4.Uint256(agentId)
+    itob
+    intc_1 // 32
+    bzero
+    b|
+    // smart_contracts/identity_registry/contract.algo.ts:236
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.supportsInterface[routing]() -> void:
+supportsInterface:
+    // smart_contracts/identity_registry/contract.algo.ts:244
+    // @arc4.abimethod({ readonly: true })
+    txna ApplicationArgs 1
+    dupn 2
+    len
+    pushint 4 // 4
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 4>
+    // smart_contracts/identity_registry/contract.algo.ts:248
+    // !id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('ffffffff')).bytes) &&
+    pushbytes 0xffffffff
+    ==
+    bnz supportsInterface_bool_false@8
+    // smart_contracts/identity_registry/contract.algo.ts:249
+    // (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    dup
+    bytec 12 // 0x4e22a3ba
+    ==
+    // smart_contracts/identity_registry/contract.algo.ts:249-250
+    // (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    bnz supportsInterface_bool_true@7
+    // smart_contracts/identity_registry/contract.algo.ts:250
+    // id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    dup
+    pushbytes 0x53f02a40
+    ==
+    // smart_contracts/identity_registry/contract.algo.ts:249-250
+    // (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    bnz supportsInterface_bool_true@7
+    // smart_contracts/identity_registry/contract.algo.ts:251
+    // id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('c3c1fc00')).bytes) ||
+    dup
+    bytec 11 // 0xc3c1fc00
+    ==
+    // smart_contracts/identity_registry/contract.algo.ts:249-251
+    // (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('c3c1fc00')).bytes) ||
+    bnz supportsInterface_bool_true@7
+    // smart_contracts/identity_registry/contract.algo.ts:252
+    // id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('b9c6f696')).bytes) ||
+    dup
+    pushbytes 0xb9c6f696
+    ==
+    // smart_contracts/identity_registry/contract.algo.ts:249-252
+    // (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('c3c1fc00')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('b9c6f696')).bytes) ||
+    bnz supportsInterface_bool_true@7
+    // smart_contracts/identity_registry/contract.algo.ts:253
+    // id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('a57d4679')).bytes)),
+    dup
+    pushbytes 0xa57d4679
+    ==
+    // smart_contracts/identity_registry/contract.algo.ts:249-253
+    // (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('c3c1fc00')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('b9c6f696')).bytes) ||
+    //   id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('a57d4679')).bytes)),
+    bz supportsInterface_bool_false@8
+
+supportsInterface_bool_true@7:
+    intc_0 // 1
+
+supportsInterface_bool_merge@9:
+    // smart_contracts/identity_registry/contract.algo.ts:247-254
+    // return new arc4.Bool(
+    //   !id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('ffffffff')).bytes) &&
+    //     (id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('4e22a3ba')).bytes) ||
+    //       id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('53f02a40')).bytes) ||
+    //       id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('c3c1fc00')).bytes) ||
+    //       id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('b9c6f696')).bytes) ||
+    //       id.equals(new arc4.StaticBytes<4>(Bytes.fromHex('a57d4679')).bytes)),
+    // )
+    bytec 10 // 0x00
+    intc_2 // 0
+    uncover 2
+    setbit
+    // smart_contracts/identity_registry/contract.algo.ts:244
+    // @arc4.abimethod({ readonly: true })
+    bytec_0 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+supportsInterface_bool_false@8:
+    intc_2 // 0
+    b supportsInterface_bool_merge@9
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.setMetadataInternal(agentId: uint64, key: bytes, value: bytes) -> void:
+setMetadataInternal:
+    // smart_contracts/identity_registry/contract.algo.ts:259
+    // private setMetadataInternal(agentId: uint64, key: arc4.Str, value: arc4.DynamicBytes): void {
+    proto 3 0
+    // smart_contracts/identity_registry/contract.algo.ts:260
+    // assert(key.native !== 'agentWallet', 'agentWallet metadata is reserved')
+    frame_dig -2
+    extract 2 0
+    pushbytes "agentWallet"
+    !=
+    assert // agentWallet metadata is reserved
+    // smart_contracts/identity_registry/contract.algo.ts:317
+    // return new arc4.Uint64(agentId).bytes.concat(key)
+    frame_dig -3
+    itob
+    dup
+    frame_dig -2
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:56
+    // metadata = BoxMap<bytes, arc4.DynamicBytes>({ keyPrefix: 'md' })
+    bytec 17 // "md"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:261
+    // this.metadata(this.metadataKey(agentId, key.bytes)).value = clone(value)
+    dup
+    box_del
+    pop
+    frame_dig -1
+    box_put
+    // smart_contracts/identity_registry/contract.algo.ts:262
+    // emit(new MetadataSet({ agentId: new arc4.Uint64(agentId), key, value }))
+    pushbytes 0x000c
+    concat
+    frame_dig -2
+    len
+    pushint 12 // 12
+    +
+    itob
+    extract 6 2
+    concat
+    frame_dig -2
+    concat
+    frame_dig -1
+    concat
+    bytec 16 // method "MetadataSet(uint64,string,byte[])"
+    swap
+    concat
+    log
+    retsub
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.requireOwnerOrOperator(agentId: uint64) -> void:
+requireOwnerOrOperator:
+    // smart_contracts/identity_registry/contract.algo.ts:265
+    // private requireOwnerOrOperator(agentId: uint64): void {
+    proto 1 0
+    // smart_contracts/identity_registry/contract.algo.ts:266
+    // const owner = this.ownerOfExisting(agentId)
+    frame_dig -1
+    callsub ownerOfExisting
+    dup
+    // smart_contracts/identity_registry/contract.algo.ts:267
+    // assert(Txn.sender === owner.native || this.operatorApproved(owner.native, Txn.sender), 'not owner or operator')
+    txn Sender
+    ==
+    bnz requireOwnerOrOperator_bool_true@2
+    frame_dig 0
+    txn Sender
+    callsub operatorApproved
+    bz requireOwnerOrOperator_bool_false@3
+
+requireOwnerOrOperator_bool_true@2:
+    intc_0 // 1
+
+requireOwnerOrOperator_bool_merge@4:
+    // smart_contracts/identity_registry/contract.algo.ts:267
+    // assert(Txn.sender === owner.native || this.operatorApproved(owner.native, Txn.sender), 'not owner or operator')
+    assert // not owner or operator
+    retsub
+
+requireOwnerOrOperator_bool_false@3:
+    intc_2 // 0
+    b requireOwnerOrOperator_bool_merge@4
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.operatorApproved(owner: bytes, operator: bytes) -> uint64:
+operatorApproved:
+    // smart_contracts/identity_registry/contract.algo.ts:277
+    // private operatorApproved(owner: Account, operator: Account): boolean {
+    proto 2 1
+    // smart_contracts/identity_registry/contract.algo.ts:321
+    // return owner.concat(operator)
+    frame_dig -2
+    frame_dig -1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:52
+    // operatorApprovals = BoxMap<bytes, arc4.Bool>({ keyPrefix: 'opr' })
+    bytec 6 // "opr"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:278
+    // return this.operatorApprovals(this.operatorKey(owner.bytes, operator.bytes)).get({ default: new arc4.Bool(false) }).native
+    box_get
+    bytec 10 // 0x00
+    cover 2
+    select
+    intc_2 // 0
+    getbit
+    retsub
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.existingAgentId(tokenId: bytes) -> uint64:
+existingAgentId:
+    // smart_contracts/identity_registry/contract.algo.ts:281
+    // private existingAgentId(tokenId: arc4.Uint256): uint64 {
+    proto 1 1
+    // smart_contracts/identity_registry/contract.algo.ts:282
+    // const agentId = this.tokenIdToUint64(tokenId)
+    frame_dig -1
+    callsub tokenIdToUint64
+    // smart_contracts/identity_registry/contract.algo.ts:283
+    // assert(this.owners(agentId).exists, 'invalid tokenId')
+    dup
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:46
+    // owners = BoxMap<uint64, arc4.Address>({ keyPrefix: 'own' })
+    bytec_2 // "own"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:283
+    // assert(this.owners(agentId).exists, 'invalid tokenId')
+    box_len
+    bury 1
+    assert // invalid tokenId
+    // smart_contracts/identity_registry/contract.algo.ts:284
+    // return agentId
+    retsub
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.tokenIdToUint64(tokenId: bytes) -> uint64:
+tokenIdToUint64:
+    // smart_contracts/identity_registry/contract.algo.ts:287
+    // private tokenIdToUint64(tokenId: arc4.Uint256): uint64 {
+    proto 1 1
+    // smart_contracts/identity_registry/contract.algo.ts:289
+    // return tokenId.asUint64()
+    frame_dig -1
+    bitlen
+    pushint 64 // 64
+    <=
+    assert // overflow
+    frame_dig -1
+    len
+    pushint 8 // 8
+    -
+    frame_dig -1
+    swap
+    extract_uint64
+    retsub
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.ownerOfExisting(agentId: uint64) -> bytes:
+ownerOfExisting:
+    // smart_contracts/identity_registry/contract.algo.ts:300
+    // private ownerOfExisting(agentId: uint64): arc4.Address {
+    proto 1 1
+    // smart_contracts/identity_registry/contract.algo.ts:301
+    // assert(this.owners(agentId).exists, 'invalid tokenId')
+    frame_dig -1
+    itob
+    // smart_contracts/identity_registry/contract.algo.ts:46
+    // owners = BoxMap<uint64, arc4.Address>({ keyPrefix: 'own' })
+    bytec_2 // "own"
+    swap
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:301
+    // assert(this.owners(agentId).exists, 'invalid tokenId')
+    dup
+    box_len
+    bury 1
+    assert // invalid tokenId
+    // smart_contracts/identity_registry/contract.algo.ts:302
+    // return clone(this.owners(agentId).value)
+    box_get
+    pop
+    retsub
+
+
+// smart_contracts/identity_registry/contract.algo.ts::IdentityRegistry.incrementBalance(owner: bytes) -> void:
+incrementBalance:
+    // smart_contracts/identity_registry/contract.algo.ts:305
+    // private incrementBalance(owner: Account): void {
+    proto 1 0
+    // smart_contracts/identity_registry/contract.algo.ts:54
+    // balances = BoxMap<bytes, arc4.Uint64>({ keyPrefix: 'bal' })
+    bytec 8 // "bal"
+    frame_dig -1
+    concat
+    // smart_contracts/identity_registry/contract.algo.ts:306
+    // const prev = this.balances(owner.bytes).get({ default: new arc4.Uint64(0) }).asUint64()
+    dup
+    box_get
+    bytec 9 // 0x0000000000000000
+    cover 2
+    select
+    btoi
+    // smart_contracts/identity_registry/contract.algo.ts:307
+    // this.balances(owner.bytes).value = new arc4.Uint64(prev + 1)
+    intc_0 // 1
+    +
+    itob
+    box_put
+    retsub
