@@ -1,8 +1,10 @@
 import 'dotenv/config';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { buildContext } from '../lib/router/context.js';
 import { payProvider } from '../lib/router/pay.js';
+import { seedProviders, seedTestRoute } from '../lib/router/seed.js';
 import { makeProviderRoutes } from '../lib/router/routes.providers.js';
 import { makeValidationRoutes } from '../lib/router/routes.validation.js';
 
@@ -10,7 +12,10 @@ const PORT = Number(process.env.PORT ?? 3001);
 
 async function main() {
   const ctx = await buildContext();
+  seedProviders(ctx);
+  const { route_id } = seedTestRoute(ctx);
   const app = new Hono();
+  app.use('*', cors());
 
   // --- Navid: payment + ledger ---
 
@@ -48,15 +53,24 @@ async function main() {
   app.route('/', makeValidationRoutes(ctx));
 
   serve({ fetch: app.fetch, port: PORT }, () => {
-    console.log(`router-server :${PORT}  network=${ctx.net}`);
-    console.log(`payer: ${ctx.session.payer.addr}`);
-    console.log('routes:', [
-      'POST /api/pay',
-      'GET  /api/ledger',
-      'POST /api/route  (Reza)',
-      'POST /api/validate  (Shayaun)',
-      'GET  /api/reputation  (Shayaun)',
-    ].join('\n       '));
+    console.log(`\nrouter-server :${PORT}  network=${ctx.net}`);
+    console.log(`payer:   ${ctx.session.payer.addr}\n`);
+
+    console.log('--- seeded providers ---');
+    for (const p of ctx.providers.values()) {
+      console.log(`  ${p.dishonest ? '🔴 CHEAT' : '🟢 honest'}  ${p.name.padEnd(14)} ${p.quote} ALGO  id=${p.id}`);
+    }
+
+    const route = ctx.routeStore.get(route_id)!;
+    console.log(`\n--- test route (use before Reza lands /api/route) ---`);
+    console.log(`  route_id: ${route_id}`);
+    for (const o of route.options) {
+      console.log(`  option_id: ${o.option_id}  →  ${o.name}`);
+    }
+
+    console.log('\n--- endpoints ---');
+    console.log('  POST /api/pay   { route_id, option_id }');
+    console.log('  GET  /api/ledger');
   });
 }
 

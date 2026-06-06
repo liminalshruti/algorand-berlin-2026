@@ -44,7 +44,7 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     const signed = txn.signTxn(from.sk);
     const { txid } = await algodClient.sendRawTransaction(signed).do();
     const confirmed = await algosdk.waitForConfirmation(algodClient, txid, 4);
-    return { txid, round: Number(confirmed['confirmed-round']) };
+    return { txid, round: Number(confirmed.confirmedRound) };
   }
 
   async function anchorNote(
