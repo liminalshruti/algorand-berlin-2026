@@ -3,6 +3,7 @@
         "algokit",
         "algorandfoundation",
         "algosdk",
+        "localnet",
         "puya"
     ]
 }

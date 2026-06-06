@@ -24,12 +24,69 @@ Ensure the following pre-requisites are installed and properly configured:
 - **Docker**: Required for running a local Algorand network.
 - **AlgoKit CLI**: Essential for project setup and operations. Verify installation with `algokit --version`, expecting `2.6.0` or later.
 
-#### 3. Bootstrap Your Local Environment
-Run the following commands within the project folder:
+#### 3. Bootstrap Dependencies
 
-- **Setup Project**: Execute `algokit project bootstrap all` to install dependencies and setup npm dependencies.
-- **Configure environment**: Execute `algokit generate env-file -a target_network localnet` to create a `.env.localnet` file with default configuration for `localnet`.
-- **Start LocalNet**: Use `algokit localnet start` to initiate a local Algorand network.
+Run this once after cloning:
+
+```sh
+npm install
+```
+
+#### 4. Phase 1: LocalNet With Repo Docker Compose
+
+This repo includes a checked-in Algorand LocalNet stack at `docker-compose.localnet.yml`, so collaborators do not need Reza's machine-local AlgoKit sandbox files.
+
+Start LocalNet:
+
+```sh
+npm run localnet:start
+```
+
+Check status:
+
+```sh
+npm run localnet:status
+```
+
+Deploy and call the mock `hello_world` smart contract:
+
+```sh
+npm run deploy:localnet
+```
+
+Expected successful call output includes:
+
+```txt
+Called hello on HelloWorld (...) with name = world, received: Hello, world
+```
+
+Useful LocalNet commands:
+
+```sh
+npm run localnet:logs
+npm run localnet:stop
+npm run localnet:reset
+```
+
+LocalNet endpoints:
+
+| Service | URL / port | Token |
+|---|---|---|
+| algod | `http://localhost:4001` | `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` |
+| kmd | `http://localhost:4002` | `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` |
+| indexer | `http://localhost:8980` | none |
+
+The repeated `a` value is a deterministic dummy LocalNet API token used by `docker-compose.localnet.yml`, Conduit, and the local SDK fallback; it is not a wallet secret and should not be reused for exposed networks.
+
+If you already have AlgoKit's global LocalNet running, stop it first because it uses the same ports:
+
+```sh
+algokit localnet stop
+```
+
+#### 5. Phase 2: TestNet
+
+TestNet deployment is intentionally a separate phase. It will use the same deployer code, but requires a funded TestNet deployer account and a private `DEPLOYER_MNEMONIC` environment variable. Do not commit mnemonics or `.env` files.
 
 ### Development Workflow
 
@@ -102,6 +159,4 @@ This project makes use of Algorand TypeScript to build Algorand smart contracts.
 
 
 It has also been configured to have a productive dev experience out of the box in [VS Code](https://code.visualstudio.com/), see the [.vscode](./.vscode) folder.
-
-
 

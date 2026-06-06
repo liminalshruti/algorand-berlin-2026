@@ -20,8 +20,14 @@ const baseDir = path.resolve(__dirname)
 // function to validate and dynamically import a module
 async function importDeployerIfExists(dir: string) {
   const deployerPath = path.resolve(dir, 'deploy-config')
-  if (fs.existsSync(deployerPath + '.ts') || fs.existsSync(deployerPath + '.js')) {
-    const deployer = await import(deployerPath)
+  const deployerFile = fs.existsSync(deployerPath + '.ts')
+    ? deployerPath + '.ts'
+    : fs.existsSync(deployerPath + '.js')
+      ? deployerPath + '.js'
+      : null
+
+  if (deployerFile) {
+    const deployer = await import(deployerFile)
     return { ...deployer, name: path.basename(dir) }
   }
   return null
