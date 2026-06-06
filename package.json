@@ -8,7 +8,7 @@
     "compile:deploy": "tsc -p tsconfig.deploy.json",
     "deploy": "npm run deploy:ci",
     "deploy:ci": "npm run compile:deploy && node dist/index.js",
-    "deploy:localnet": "npm run deploy:ci -- hello_world",
+    "deploy:localnet": "npm run deploy:ci",
     "localnet:start": "docker compose -f docker-compose.localnet.yml up -d",
     "localnet:stop": "docker compose -f docker-compose.localnet.yml down",
     "localnet:reset": "docker compose -f docker-compose.localnet.yml down -v && docker compose -f docker-compose.localnet.yml up -d",
@@ -17,7 +17,7 @@
     "check-types": "tsc --noEmit",
     "start": "tsx sandbox/bin/router-server.ts",
     "dev": "tsx watch sandbox/bin/router-server.ts",
-    "test": "tsx --test sandbox/lib/router/pay.test.ts",
+    "test": "tsx --test sandbox/lib/router/*.test.ts",
     "test:contracts": "vitest run"
   },
   "engines": {

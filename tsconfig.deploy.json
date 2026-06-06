@@ -9,7 +9,7 @@
   },
   "include": [
     "smart_contracts/index.ts",
-    "smart_contracts/hello_world/**/*.ts",
+    "smart_contracts/*/deploy-config.ts",
     "smart_contracts/artifacts/**/*.ts"
   ],
   "exclude": ["node_modules", "dist", "coverage"]
