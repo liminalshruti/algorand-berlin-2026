@@ -1,0 +1,22 @@
+{
+  "name": "algorand-berlin-2026",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "tsx sandbox/bin/router-server.ts",
+    "dev": "tsx watch sandbox/bin/router-server.ts",
+    "test": "tsx --test sandbox/lib/router/pay.test.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.8.0",
+    "algosdk": "^2.9.0",
+    "dotenv": "^16.4.0",
+    "hono": "^4.2.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
