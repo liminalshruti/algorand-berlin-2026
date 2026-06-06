@@ -199,3 +199,49 @@ body.present .big-title { font-size: var(--fs-display); }
 body.present .ac-name, body.present .mc-name { font-size: var(--fs-2xl); }
 .toast.is-bad { border-left: 3px solid var(--red); }
 .toast.is-bad .t-glyph { color: var(--red); }
+
+/* ── chain context badge (bottom-right) ─────────────────────────────── */
+.chain-ctx { position: fixed; bottom: 16px; right: 16px; z-index: 500; background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-3); padding: 8px 11px; box-shadow: var(--shadow-card); min-width: 168px; }
+.cc-net { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-mid); margin-bottom: 7px; }
+.cc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--watch); }
+.cc-testnet .cc-dot { background: var(--depth-500, #197EEB); }
+.cc-mainnet .cc-dot { background: var(--good); }
+.cc-mode { margin-left: auto; color: var(--watch); border: 1px solid var(--amber-orn-edge); border-radius: var(--radius-1); padding: 0 5px; font-size: 8px; }
+.cc-apps { display: flex; flex-direction: column; gap: 3px; }
+.cc-app { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 9px; }
+.cc-app span { color: var(--text-faint); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
+.cc-app code { color: var(--p-accent); }
+
+/* ── trust note + score tooltip cue ─────────────────────────────────── */
+.trust-note { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-dim); background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-2); padding: 8px 11px; line-height: 1.5; }
+.trust-note strong { color: var(--p-accent); }
+.ac-score[title] { cursor: help; }
+
+/* ── review: sentiment, receipts, proofs ────────────────────────────── */
+.sentiment { display: flex; gap: 8px; }
+.sent-btn { flex: 1; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-mid); background: var(--frame-bg-3); border: 1px solid var(--card-border); border-radius: var(--radius-2); padding: 9px; cursor: pointer; transition: all var(--tx-base) var(--ease); }
+.sent-btn:hover { border-color: var(--p-accent-edge); }
+.sent-btn.is-on.yes { color: var(--good); border-color: var(--connection-edge); background: var(--connection-bg); }
+.sent-btn.is-on.no { color: var(--red); border-color: var(--stability-edge); background: var(--stability-bg); }
+.receipts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 10px; }
+.rc-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: var(--ls-mono-sm); color: var(--text-faint); }
+.rc-label.muted { opacity: 0.7; }
+.receipt-chip { font-family: var(--mono); font-size: 9px; color: var(--p-accent); background: var(--p-accent-bg); border: 1px solid var(--p-accent-edge); border-radius: 999px; padding: 3px 9px; cursor: pointer; }
+.receipt-chip:hover { background: var(--p-accent-soft); color: var(--bg); }
+.sat { font-family: var(--mono); font-size: var(--fs-mono-xs); }
+.sat.yes { color: var(--good); } .sat.no { color: var(--red); }
+.fb-proof { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); cursor: copy; }
+.fb-proof:hover { color: var(--p-accent); }
+
+/* ── owner card (Manage) ────────────────────────────────────────────── */
+.owner-card { display: flex; flex-direction: column; gap: 5px; padding: 12px; border: 1px solid var(--card-border); border-left: 3px solid var(--p-accent); border-radius: var(--radius-3); background: var(--frame-bg); }
+.owner-card.is-me { border-left-color: var(--good); }
+.owner-card .oc-label { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); }
+.owner-card code { font-family: var(--mono); font-size: var(--fs-mono); color: var(--text); }
+.me-tx { font-family: var(--mono); font-size: 9px; color: var(--text-faint); margin-left: auto; }
+.mini-evt { display: flex; align-items: baseline; gap: 8px; }
+
+/* ── uri links ──────────────────────────────────────────────────────── */
+.uri-link { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--p-accent); text-decoration: none; border-bottom: 1px dotted var(--p-accent-edge); word-break: break-all; }
+.uri-link:hover { color: var(--text); }
+.mc-uri, .kv-uri { font-family: var(--mono); font-size: var(--fs-mono-xs); }

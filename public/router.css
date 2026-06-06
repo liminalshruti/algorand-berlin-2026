@@ -279,3 +279,14 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 /* server health indicator */
 .sm-src { cursor: pointer; }
 .sm-src.is-up { color: var(--good); }
+
+/* chain context badge (bottom-right) */
+.chain-ctx { position: fixed; bottom: 16px; right: 16px; z-index: 500; background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-3); padding: 8px 11px; box-shadow: var(--shadow-card); min-width: 184px; }
+.cc-net { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-mid); margin-bottom: 7px; }
+.cc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--watch); }
+.cc-testnet .cc-dot { background: var(--cerulean-500, #197EEB); } .cc-mainnet .cc-dot { background: var(--good); }
+.cc-mode { margin-left: auto; color: var(--watch); border: 1px solid var(--amber-orn-edge); border-radius: var(--radius-1); padding: 0 5px; font-size: 8px; text-transform: uppercase; }
+.cc-apps { display: flex; flex-direction: column; gap: 3px; }
+.cc-app { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 9px; }
+.cc-app span { color: var(--text-faint); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
+.cc-app code { color: var(--p-accent); }

@@ -584,7 +584,18 @@ function boot() {
   probe();   // health check on boot; gates live calls + updates the indicator
   requestAnimationFrame(() => document.body.classList.add("ready"));
 }
-function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${!ANY_LIVE ? "MOCK" : serverUp ? "LIVE :3001" : "SERVER OFFLINE"}`; }
+function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${!ANY_LIVE ? "MOCK" : serverUp ? "LIVE :3001" : "SERVER OFFLINE"}`; renderChainCtx(); }
+function renderChainCtx() {
+  const el = $("chainCtx"); if (!el) return;
+  const mode = !ANY_LIVE ? "mock" : serverUp ? "live :3001" : "offline";
+  el.innerHTML = `
+    <div class="cc-net cc-${NETWORK}"><span class="cc-dot"></span>ALGORAND · ${NETWORK.toUpperCase()} <span class="cc-mode">${mode}</span></div>
+    <div class="cc-apps">
+      <div class="cc-app"><span>settlement</span><code>x402 · note anchor</code></div>
+      <div class="cc-app"><span>server</span><code ${ANY_LIVE ? `class="copyable" data-copy="${BASE_URL}"` : ""}>${ANY_LIVE ? BASE_URL.replace(/^https?:\/\//, "") : "—"}</code></div>
+      <div class="cc-app"><span>explorer</span><code>lora · ${NETWORK}</code></div>
+    </div>`;
+}
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();

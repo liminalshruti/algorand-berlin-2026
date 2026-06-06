@@ -12,10 +12,12 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const short = (s) => (s ? `${s.slice(0, 6)}…${s.slice(-4)}` : '—');
 const explorer = (tx) => `https://lora.algokit.io/${A.NET}/transaction/${tx}`;
 const cp = (v) => `class="copyable" data-copy="${esc(v)}" title="click to copy"`;
+const uriLink = (u) => { if (!u) return '—'; if (!/^(https?:|ipfs:)/i.test(u)) return esc(u); const href = u.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${u.slice(7)}` : u; return `<a class="uri-link" href="${esc(href)}" target="_blank" rel="noopener">${esc(u)} ↗</a>`; };
 const regClass = (r) => `reg-${String(r || 'default').toLowerCase()}`;
 const scoreClass = (s) => (s == null ? 'score-na' : s >= 75 ? 'score-hi' : s >= 50 ? 'score-mid' : 'score-lo');
 
-const state = { view: 'marketplace', sel: null, q: '', reg: 'all', sort: 'rep' };
+const state = { view: 'marketplace', sel: null, q: '', reg: 'all', sort: 'rep', sat: null, ownerView: null };
+const trustTip = (t) => t.total ? `Trust = % of verified buyers satisfied · ${t.satisfied}/${t.total} satisfied · one review per proof-of-payment` : 'No verified reviews yet';
 let toastTimer = null;
 function toast(msg, bad) { const t = $('toast'), m = $('toast-msg'); m.textContent = msg; t.classList.toggle('is-bad', !!bad); t.classList.add('is-shown'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('is-shown'), 3200); }
 function copy(text) { try { navigator.clipboard.writeText(text); toast('copied'); } catch (_) { toast('copy failed', true); } }
@@ -25,11 +27,19 @@ function guard(fn) { try { return fn(); } catch (e) { toast(e.message, true); re
 const nameOf = (id) => (A.state.agents.get(id)?.metadata.get('name')) || `agent #${id}`;
 const regOf = (id) => (A.state.agents.get(id)?.metadata.get('register')) || '—';
 function repOf(id) {
-  const clients = A.rep.getClients(id).clients;
-  const summary = clients.length ? A.rep.getSummary(id, clients) : { count: 0, summaryValue: 0 };
+  const t = A.rep.trust(id);                 // score = % of verified buyers satisfied
   const valAvg = A.val.getSummary(id, []).averageResponse;
-  const score = summary.count ? summary.summaryValue : null;
-  return { clients, count: summary.count, score, valAvg };
+  return { count: t.total, satisfied: t.satisfied, score: t.score, valAvg, tip: trustTip(t) };
+}
+function renderChainCtx() {
+  const net = (A.NET || 'localnet');
+  $('chainCtx').innerHTML = `
+    <div class="cc-net cc-${net}"><span class="cc-dot"></span>ALGORAND · ${net.toUpperCase()} <span class="cc-mode">mock</span></div>
+    <div class="cc-apps">
+      <div class="cc-app"><span>Identity</span><code ${cp(String(A.APP.identity))}>app ${A.APP.identity}</code></div>
+      <div class="cc-app"><span>Reputation</span><code ${cp(String(A.APP.reputation))}>app ${A.APP.reputation}</code></div>
+      <div class="cc-app"><span>Validation</span><code ${cp(String(A.APP.validation))}>app ${A.APP.validation}</code></div>
+    </div>`;
 }
 const allAgents = () => [...A.state.agents.keys()];
 const registers = () => ['all', ...new Set(allAgents().map(regOf).filter((r) => r && r !== '—'))];
@@ -72,107 +82,113 @@ function renderMarketplace() {
   if (state.sel != null) { renderClientDetail(state.sel); }
   else {
     $('center').innerHTML = `
-      <div class="view-head"><h1 class="big-title">Marketplace</h1><p class="big-sub">Pick an agent by <em>earned</em> trust — every score is built from paid, validated reviews.</p></div>
+      <div class="view-head"><h1 class="big-title">Marketplace</h1><p class="big-sub">Pick an agent by <em>earned</em> trust — every review is tied to a proof-of-payment.</p></div>
+      <p class="trust-note" title="Trust = % of verified buyers satisfied · one review per x402 proof-of-payment · hover any score for the breakdown.">ⓘ <strong>Trust</strong> = % of verified buyers satisfied · one review per x402 proof-of-payment · hover a score for its breakdown.</p>
       <div class="market-grid">${marketGridHTML()}</div>`;
   }
 
-  // right — how trust works + recent activity
+  // right — recent on-chain activity
   $('railRight').innerHTML = `
-    <div class="rail-right-header"><span class="agency-label">◇ HOW TRUST WORKS</span></div>
-    <div class="pane-pad legend">
-      <p>Reputation = <em>(reads − corrections) / reads</em>, from reviews each tied to an x402 payment.</p>
-      <div class="legend-row"><span class="dot score-hi"></span>75–100 trusted</div>
-      <div class="legend-row"><span class="dot score-mid"></span>50–74 mixed</div>
-      <div class="legend-row"><span class="dot score-lo"></span>0–49 caught / weak</div>
-      <div class="legend-row"><span class="dot score-na"></span>unrated · no history</div>
-    </div>
-    <div class="rail-subhead">Recent activity</div>
-    <div class="mini-log">${A.state.events.slice(0, 6).map((e) => `<div class="mini-evt"><span class="${regClass('')} me-name">${e.registry}.${e.name}</span></div>`).join('') || '<div class="empty-note">—</div>'}</div>`;
+    <div class="rail-right-header"><span class="agency-label">◇ RECENT ACTIVITY</span><span class="live-indicator">live</span></div>
+    <div class="mini-log">${A.state.events.slice(0, 10).map((e) => `<div class="mini-evt"><span class="me-name">${e.registry}.${e.name}</span><span class="me-tx">${short(e.txid)}</span></div>`).join('') || '<div class="empty-note">—</div>'}</div>`;
 }
 
 function marketCard(r) {
   return `<button class="agent-card ${regClass(r.reg)}" data-action="open-agent" data-id="${r.id}">
-    <div class="ac-top"><span class="reg-badge ${regClass(r.reg)}">${esc(r.reg)}</span>${r.count ? `<span class="ac-verified">✓ ${r.count} paid</span>` : '<span class="ac-new">new</span>'}</div>
+    <div class="ac-top"><span class="reg-badge ${regClass(r.reg)}">${esc(r.reg)}</span>${r.count ? `<span class="ac-verified">✓ ${r.count} verified</span>` : '<span class="ac-new">new</span>'}</div>
     <div class="ac-name">${esc(r.name)}</div>
-    <div class="ac-scorewrap"><span class="ac-score ${scoreClass(r.score)}">${r.score ?? '—'}</span><span class="ac-scorelbl">trust${r.valAvg ? ` · ${r.valAvg} val` : ''}</span></div>
+    <div class="ac-scorewrap"><span class="ac-score ${scoreClass(r.score)}" title="${esc(r.tip)}">${r.score == null ? '—' : r.score + '%'}</span><span class="ac-scorelbl">satisfied</span></div>
     <div class="ac-bar"><i class="${scoreClass(r.score)}" style="width:${r.score ?? 0}%"></i></div>
   </button>`;
 }
 
 function renderClientDetail(id) {
   const a = A.state.agents.get(id); if (!a) { state.sel = null; return renderMarketplace(); }
-  const { clients, count, score, valAvg } = repOf(id);
+  const r0 = repOf(id);
+  const clients = A.rep.getClients(id).clients;
   const fb = A.rep.readAllFeedback(id, clients, '', '', false).feedback;
   const reg = regOf(id);
   const isOwner = a.owner === A.caller;
+  const receipts = A.proof.receipts(id, A.caller);
   $('center').innerHTML = `
     <button class="back-link" data-action="back">← Marketplace</button>
     <div class="detail-hero ${regClass(reg)}">
       <span class="reg-badge ${regClass(reg)}">${esc(reg)}</span>
       <h1 class="big-title">${esc(nameOf(id))}</h1>
-      <div class="hero-score"><span class="ac-score ${scoreClass(score)}">${score ?? '—'}</span><span class="ac-scorelbl">trust score · ${count} paid reviews${valAvg ? ` · ${valAvg}/100 validation` : ''}</span>
+      <div class="hero-score"><span class="ac-score ${scoreClass(r0.score)}" title="${esc(r0.tip)}">${r0.score == null ? '—' : r0.score + '%'}</span><span class="ac-scorelbl">of ${r0.count} verified buyers satisfied</span>
         <button class="link-btn" data-action="open-score" data-id="${id}">see the transactions ▸</button></div>
     </div>
 
     <section class="card soft">
       <div class="card-eyebrow">Identity</div>
-      <div class="kv"><span>address</span><code ${cp(a.owner)}>${short(a.owner)}</code></div>
-      <div class="kv"><span>agentURI</span><code>${esc(a.agentURI) || '—'}</code></div>
+      <div class="kv"><span>owner</span><code ${cp(a.owner)}>${short(a.owner)}</code></div>
+      <div class="kv"><span>agentURI</span><span class="kv-uri">${uriLink(a.agentURI)}</span></div>
       <div class="kv"><span>registry</span><code ${cp(A.agentRef(id))}>${short(A.agentRef(id))}</code></div>
     </section>
 
     <section class="card soft">
-      <div class="card-eyebrow">Recent reviews</div>
-      <div class="fb-list">${fb.slice(0, 6).map((r) => `<div class="fb-row"><span class="fb-val">${r.value}</span><span class="fb-tags">${esc(r.tag1) || '—'}</span><span class="fb-client">${short(r.client)}</span></div>`).join('') || '<div class="empty-note">No reviews yet.</div>'}</div>
+      <div class="card-eyebrow">Verified reviews</div>
+      <div class="fb-list">${fb.slice(0, 8).map((r) => `<div class="fb-row">
+        <span class="sat ${r.satisfied ? 'yes' : 'no'}">${r.satisfied ? '👍 satisfied' : '👎 not'}</span>
+        <span class="fb-client">${short(r.client)}</span>
+        <span class="fb-proof" ${cp(r.paymentTxid)} title="proof-of-payment ${esc(r.paymentTxid)}">⛓ ${short(r.paymentTxid)}</span>
+      </div>`).join('') || '<div class="empty-note">No reviews yet.</div>'}</div>
     </section>
 
     <section class="card accent">
-      <div class="card-eyebrow">Your review</div>
+      <div class="card-eyebrow">Leave a review</div>
       ${isOwner
-        ? `<p class="empty-note">You own this agent — you can't review your own (self-feedback is blocked on-chain).</p>`
-        : `<button class="disc-btn primary" data-toggle="rateForm">★ Rate this agent</button>
+        ? `<p class="empty-note">You own this agent — you can't review your own (self-review is blocked).</p>`
+        : `<p class="hint">A review needs a <strong>proof-of-payment</strong> — an x402 job you paid this agent for. We verify the hash on submit: it must be a payment <em>to this agent</em> sent <em>by you</em>, and each proof can be used once.</p>
+           <div class="receipts">${receipts.length ? `<span class="rc-label">your receipts:</span>${receipts.map((p) => `<button class="receipt-chip" data-action="use-receipt" data-tx="${p.txid}">⛓ ${short(p.txid)}</button>`).join('')}` : '<span class="rc-label muted">no receipts yet —</span>'}<button class="mini-btn" data-action="simulate-pay" data-id="${id}">＋ pay for a job (x402)</button></div>
+           <button class="disc-btn primary" data-toggle="rateForm">★ Write a review</button>
            <div id="rateForm" class="disc-panel" hidden>
-             <p class="hint">Reviews are payment-anchored (x402) — only meaningful from a buyer who paid.</p>
-             <div class="form-row"><input class="rb-input" id="rateVal" type="number" min="0" max="100" placeholder="score 0–100" /><input class="rb-input" id="rateTag" placeholder="tag (e.g. x402)" /></div>
-             <button class="mini-btn primary" data-action="give-feedback" data-id="${id}">Submit review</button>
+             <div class="sentiment"><button class="sent-btn ${state.sat === 1 ? 'is-on yes' : ''}" data-action="set-sat" data-v="1">👍 Satisfied</button><button class="sent-btn ${state.sat === 0 ? 'is-on no' : ''}" data-action="set-sat" data-v="0">👎 Not satisfied</button></div>
+             <input class="rb-input" id="proofTx" placeholder="proof-of-payment transaction hash" />
+             <button class="mini-btn primary" data-action="give-feedback" data-id="${id}">Submit verified review</button>
            </div>`}
     </section>`;
 }
 
 /* ── MANAGE (owner) ─────────────────────────────────────────────────── */
 function renderManage() {
-  const owned = allAgents().filter((id) => A.state.agents.get(id).owner === A.caller);
+  const owners = [...new Set(allAgents().map((id) => A.state.agents.get(id).owner))];
+  const focusOwner = state.ownerView && owners.includes(state.ownerView) ? state.ownerView : A.caller;
+  const isMe = focusOwner === A.caller;
+  const owned = A.id.agentsOf(focusOwner);                 // fetch this owner's agents
   $('railLeft').innerHTML = `
-    <div class="rail-header"><span>Your agents</span><span class="rh-meta">${owned.length}</span></div>
+    <div class="rail-header"><span>Owner</span><span class="rh-meta">${owned.length} agents</span></div>
     <div class="pane-pad">
-      <button class="disc-btn primary block" data-toggle="registerForm">＋ Register an agent</button>
+      <div class="owner-card ${isMe ? 'is-me' : ''}">
+        <span class="oc-label">${isMe ? 'managing as you' : 'viewing owner'}</span>
+        <code ${cp(focusOwner)}>${short(focusOwner)}</code>
+        ${isMe ? '' : `<button class="mini-btn" data-action="act-as-owner" data-addr="${focusOwner}">act as this owner</button>`}
+      </div>
+      <label class="flabel">View another owner</label>
+      <select class="rb-select" id="ownerSel" data-action="pick-owner">${owners.map((o) => `<option value="${o}" ${o === focusOwner ? 'selected' : ''}>${short(o)} · ${A.id.agentsOf(o).length} agents${o === A.caller ? ' · you' : ''}</option>`).join('')}</select>
+      <button class="disc-btn primary block" data-toggle="registerForm">＋ Register a new agent</button>
       <div id="registerForm" class="disc-panel" hidden>
         <input class="rb-input" id="regName" placeholder="agent name" />
         <input class="rb-input" id="regURI" placeholder="agentURI (ipfs:// · https://)" />
         <select class="rb-select" id="regRegister">${['Diligence', 'Outreach', 'Judgment', 'Operations'].map((r) => `<option>${r}</option>`).join('')}</select>
-        <button class="mini-btn primary" data-action="register">Register</button>
+        <button class="mini-btn primary" data-action="register">Register (you become owner)</button>
       </div>
     </div>
-    <div class="rail-subhead">Owned by you</div>
-    <div class="owned-list">${owned.map((id) => `<button class="owned-link ${regClass(regOf(id))}" data-action="focus-agent" data-id="${id}">${esc(nameOf(id))} <span class="ol-id">#${id}</span></button>`).join('') || '<div class="empty-note">None yet — register one above, or pick an agent to manage on the right.</div>'}</div>`;
+    <div class="rail-subhead">This owner's agents</div>
+    <div class="owned-list">${owned.map((id) => `<button class="owned-link ${regClass(regOf(id))}" data-action="focus-agent" data-id="${id}">${esc(nameOf(id))} <span class="ol-id">#${id}</span></button>`).join('') || '<div class="empty-note">none</div>'}</div>`;
 
-  // center — management cards (owned first; others manageable via act-as)
-  const focus = state.sel != null && A.state.agents.has(state.sel) ? [state.sel] : owned;
-  const list = focus.length ? focus : allAgents().slice(0, 1);
+  const list = state.sel != null && owned.includes(state.sel) ? [state.sel] : owned;
   $('center').innerHTML = `
-    <div class="view-head"><h1 class="big-title">Manage</h1><p class="big-sub">Run your agents — identity, metadata, and the reviews you've received.</p></div>
-    ${list.map(manageCard).join('') || '<div class="empty-note">No agents. Register one on the left.</div>'}`;
+    <div class="view-head"><h1 class="big-title">Manage</h1><p class="big-sub">Agents owned by <em>${short(focusOwner)}</em>${isMe ? ' (you)' : ''} — identity, metadata, and reviews received.</p></div>
+    ${list.length ? list.map(manageCard).join('') : `<div class="empty-note">This owner has no agents. Register one on the left, or pick another owner.</div>`}`;
 
-  // right — owner stats
   const recvd = owned.reduce((n, id) => n + repOf(id).count, 0);
   $('railRight').innerHTML = `
-    <div class="rail-right-header"><span class="agency-label">◇ YOUR STANDING</span></div>
+    <div class="rail-right-header"><span class="agency-label">◇ OWNER STANDING</span></div>
     <div class="pane-pad stat-block">
       <div class="stat"><span class="stat-n">${owned.length}</span><span class="stat-l">agents owned</span></div>
       <div class="stat"><span class="stat-n">${recvd}</span><span class="stat-l">reviews received</span></div>
-    </div>
-    <div class="rail-subhead">Other agents</div>
-    <div class="owned-list">${allAgents().filter((id) => !owned.includes(id)).map((id) => `<button class="owned-link ${regClass(regOf(id))}" data-action="act-owner" data-id="${id}">${esc(nameOf(id))} <span class="ol-id">act as owner ↺</span></button>`).join('') || '<div class="empty-note">—</div>'}</div>`;
+    </div>`;
 }
 
 function manageCard(id) {
@@ -192,7 +208,7 @@ function manageCard(id) {
     <div class="mc-section">
       <div class="mc-row"><span class="mc-k">owner</span><code ${cp(a.owner)}>${short(a.owner)}</code></div>
       <div class="mc-row"><span class="mc-k">wallet</span><code ${a.agentWallet ? cp(a.agentWallet) : ''}>${a.agentWallet ? short(a.agentWallet) : '— cleared'}</code></div>
-      <div class="mc-row"><span class="mc-k">agentURI</span><code>${esc(a.agentURI) || '—'}</code></div>
+      <div class="mc-row"><span class="mc-k">agentURI</span><span class="mc-uri">${uriLink(a.agentURI)}</span></div>
       ${isOwner ? `
         <button class="disc-btn" data-toggle="edit-${id}">✎ Edit identity</button>
         <div id="edit-${id}" class="disc-panel" hidden>
@@ -215,7 +231,7 @@ function manageCard(id) {
     <div class="mc-section">
       <div class="mc-eyebrow">Reviews received <span class="mc-count">${fb.length}</span></div>
       <div class="fb-list">${fb.slice(0, 5).map((r) => `<div class="fb-row ${r.isRevoked ? 'is-revoked' : ''}">
-        <span class="fb-val">${r.value}</span><span class="fb-tags">${esc(r.tag1) || '—'}</span><span class="fb-client">${short(r.client)} #${r.feedbackIndex}</span>
+        <span class="sat ${r.satisfied ? 'yes' : 'no'}">${r.satisfied ? '👍' : '👎'}</span><span class="fb-client">${short(r.client)} #${r.feedbackIndex}</span><span class="fb-proof" ${cp(r.paymentTxid)} title="proof ${esc(r.paymentTxid)}">⛓ ${short(r.paymentTxid)}</span>
         ${isOwner ? `<button class="row-btn" data-toggle="resp-${id}-${r.feedbackIndex}">reply</button>` : ''}
         </div>${isOwner ? `<div id="resp-${id}-${r.feedbackIndex}" class="disc-panel inline" hidden><div class="form-row"><input class="rb-input" id="ru-${id}-${r.feedbackIndex}" placeholder="response note" /><button class="mini-btn" data-action="respond" data-id="${id}" data-client="${esc(r.client)}" data-idx="${r.feedbackIndex}">post reply</button></div></div>` : ''}`).join('') || '<div class="empty-note tight">no reviews yet</div>'}</div>
     </div>
@@ -273,12 +289,12 @@ function modal(eyebrow, title, html) { $('detailEyebrow').textContent = eyebrow;
 function closeModal() { $('detailModal').classList.remove('is-open'); }
 function kvRows(o) { return Object.entries(o).map(([k, v]) => { const val = typeof v === 'object' ? JSON.stringify(v) : v; return `<div class="lm-kv"><span>${esc(k)}</span><code ${cp(val)}>${esc(val)}</code></div>`; }).join(''); }
 function openScore(id) {
-  const { clients } = repOf(id);
+  const clients = A.rep.getClients(id).clients;
   const fb = A.rep.readAllFeedback(id, clients, '', '', true).feedback;
-  const txns = fb.map((r) => { const row = A.state.feedback.get(id).get(r.client)[r.feedbackIndex - 1]; return { client: short(r.client), value: r.value, tag: r.tag1, paymentTxid: short(row.paymentTxid), nonce: row.nonce, revoked: r.isRevoked }; });
-  modal('Reputation provenance', `Transactions behind ${nameOf(id)}`, `
-    <p class="lm-mean">Every review is anchored to an x402 payment (paymentTxid + nonce). Earned, not self-reported.</p>
-    ${txns.length ? `<table class="lm-table"><tr><th>client</th><th>value</th><th>tag</th><th>paymentTxid</th><th>nonce</th></tr>${txns.map((t) => `<tr class="${t.revoked ? 'is-rev' : ''}"><td>${t.client}</td><td>${t.value}</td><td>${esc(t.tag)}</td><td>${t.paymentTxid}</td><td>${t.nonce}</td></tr>`).join('')}</table>` : '<p class="empty-note">no reviews yet</p>'}`);
+  const t = A.rep.trust(id);
+  modal('Reputation provenance', `How ${nameOf(id)}'s trust is built`, `
+    <p class="lm-mean">Trust = <b>${t.score == null ? '—' : t.score + '%'}</b> — ${t.satisfied} of ${t.total} verified buyers satisfied. Each review is tied to an x402 proof-of-payment; one review per transaction.</p>
+    ${fb.length ? `<table class="lm-table"><tr><th>buyer</th><th>verdict</th><th>proof-of-payment</th></tr>${fb.map((r) => `<tr class="${r.isRevoked ? 'is-rev' : ''}"><td>${short(r.client)}</td><td>${r.satisfied ? '👍 satisfied' : '👎 not'}</td><td>${short(r.paymentTxid)}</td></tr>`).join('')}</table>` : '<p class="empty-note">no reviews yet</p>'}`);
 }
 function openValidation(h) {
   const v = A.val.getValidationStatus(h);
@@ -301,8 +317,14 @@ const ACTIONS = {
   'act-owner': (el) => { const id = +el.dataset.id; A.setCaller(A.state.agents.get(id).owner); state.sel = id; toast(`acting as owner of #${id}`); render(); },
   'open-score': (el) => openScore(+el.dataset.id),
   'open-validation': (el) => openValidation(el.dataset.h),
-  register: () => { const name = valById('regName') || `Agent ${A.state.nextId}`; A.setCaller(A.newAddr()); const r = A.id.register(valById('regURI') || 'ipfs://card', [['name', name], ['register', $('regRegister').value]]); toast(`registered #${r.agentId}`); state.sel = r.agentId; render(); },
-  'give-feedback': (el) => { const id = +el.dataset.id; const v = valById('rateVal'); if (v === '') return toast('enter a score', true); const r = guard(() => A.rep.giveFeedback({ agentId: id, value: Number(v), tag1: valById('rateTag') || 'x402', paymentTxid: A.newHash(), nonce: (Math.random() * 1e6) | 0 })); if (r) { toast('review submitted'); render(); } },
+  register: () => { const name = valById('regName') || `Agent ${A.state.nextId}`; const r = A.id.register(valById('regURI') || 'ipfs://card', [['name', name], ['register', $('regRegister').value]]); toast(`registered #${r.agentId} — you are the owner`); state.ownerView = A.caller; state.sel = r.agentId; render(); },
+  // verified review: requires satisfied + a proof-of-payment txid (checked in giveFeedback)
+  'set-sat': (el) => { state.sat = +el.dataset.v; [...document.querySelectorAll('.sent-btn')].forEach((b) => { const on = +b.dataset.v === state.sat; b.classList.toggle('is-on', on); b.classList.toggle(b.dataset.v === '1' ? 'yes' : 'no', on); }); },
+  'use-receipt': (el) => { const f = $('proofTx'); if (f) { f.value = el.dataset.tx; toast('proof filled'); } },
+  'simulate-pay': (el) => { const p = A.proof.pay(+el.dataset.id); toast(`paid · proof ${short(p.txid)}`); render(); },
+  'give-feedback': (el) => { const id = +el.dataset.id; if (state.sat == null) return toast('choose satisfied or not', true); const tx = valById('proofTx'); if (!tx) return toast('paste your proof-of-payment hash', true); const r = guard(() => A.rep.giveFeedback({ agentId: id, satisfied: state.sat === 1, paymentTxid: tx })); if (r) { toast('review verified & recorded'); state.sat = null; render(); } },
+  'pick-owner': (el) => { state.ownerView = el.value; state.sel = null; render(); },
+  'act-as-owner': (el) => { A.setCaller(el.dataset.addr); state.ownerView = el.dataset.addr; toast(`acting as ${short(el.dataset.addr)}`); render(); },
   'set-uri': (el) => { const id = +el.dataset.id; guard(() => A.id.setAgentURI(id, valById(`uri-${id}`))); render(); },
   'set-wallet': (el) => { const id = +el.dataset.id; guard(() => A.id.setAgentWallet(id, valById(`wal-${id}`) || A.newAddr(), Date.now() + 3e5, 'sig')); toast('wallet set'); render(); },
   transfer: (el) => { const id = +el.dataset.id; guard(() => A.id.transferFrom(A.state.agents.get(id).owner, valById(`to-${id}`) || A.newAddr(), id)); toast('transferred'); render(); },
@@ -325,10 +347,14 @@ function boot() {
     const act = e.target.closest('[data-action]'); if (act && ACTIONS[act.dataset.action]) ACTIONS[act.dataset.action](act);
   });
   document.addEventListener('input', (e) => { if (e.target.id === 'q') { state.q = e.target.value; const g = document.querySelector('.market-grid'); if (g) g.innerHTML = marketGridHTML(); } });
-  document.addEventListener('change', (e) => { if (e.target.id === 'sort') { state.sort = e.target.value; render(); } });
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'sort') { state.sort = e.target.value; render(); }
+    else if (e.target.id === 'ownerSel') { state.ownerView = e.target.value; state.sel = null; render(); }
+  });
   document.addEventListener('keydown', (e) => { if (e.target.matches('input,textarea,select')) return; if (e.key === 'Escape') closeModal(); else if (e.key === 'p' || e.key === 'P') document.body.classList.toggle('present'); });
   A.subscribe(() => { if (state.view !== 'methods') render(); });
   render();
+  renderChainCtx();
   requestAnimationFrame(() => document.body.classList.add('ready'));
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
