@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { payProvider } from './pay';
-import type { Ctx, Provider, RouteOption } from './contract';
+import { payProvider } from './pay.js';
+import type { Ctx, Provider, RouteOption } from './contract.js';
 
 // ---- helpers ----
 

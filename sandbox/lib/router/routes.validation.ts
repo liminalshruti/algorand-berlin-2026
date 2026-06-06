@@ -1,6 +1,6 @@
 // Shayaun's lane — owns this file. Stub so server boots at H0.
 import { Hono } from 'hono';
-import type { Ctx } from './contract';
+import type { Ctx } from './contract.js';
 
 export function makeValidationRoutes(_ctx: Ctx): Hono {
   const router = new Hono();

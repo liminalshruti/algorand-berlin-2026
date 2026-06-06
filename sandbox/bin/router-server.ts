@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { buildContext } from '../lib/router/context';
-import { payProvider } from '../lib/router/pay';
-import { makeProviderRoutes } from '../lib/router/routes.providers';
-import { makeValidationRoutes } from '../lib/router/routes.validation';
+import { buildContext } from '../lib/router/context.js';
+import { payProvider } from '../lib/router/pay.js';
+import { makeProviderRoutes } from '../lib/router/routes.providers.js';
+import { makeValidationRoutes } from '../lib/router/routes.validation.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 

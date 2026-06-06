@@ -1,0 +1,111 @@
+/*
+ * trust-router.css · per-cut overrides ONLY · consumes canon tokens + cut-shell.css
+ * ════════════════════════════════════════════════════════════════════
+ * The x402 trust router rendered as a flow inside the Liminal desktop app.
+ * No token redefinition. Layout/affordances specific to the router map onto
+ * the slate-tray shell: left rail = route + providers, center slate-area =
+ * selected provider → brief → signed packet → ledger, right rail = registry.
+ */
+
+/* fade-in to match slate-tray boot */
+body { opacity: 0; transition: opacity 240ms ease-out; }
+body.ready { opacity: 1; }
+
+/* ── product-row repurposed as register lanes ──────────────────────── */
+.reg-tab.is-active { color: var(--p-accent); box-shadow: inset 0 -2px 0 0 var(--p-accent); background: transparent; }
+.reg-tab.is-active .pt-glyph { background: var(--p-accent); }
+
+/* ── left rail · route box + provider list ─────────────────────────── */
+.route-box { padding: 12px 18px 14px; border-bottom: 1px solid var(--frame-border); display: flex; flex-direction: column; gap: 10px; }
+.route-box .rb-label { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); }
+.route-box .rb-input {
+  width: 100%; background: var(--frame-bg-2); border: 1px solid var(--card-border);
+  border-radius: var(--radius-3); padding: 9px 11px; color: var(--text);
+  font-family: var(--sans); font-size: var(--fs-sm); line-height: 1.4; resize: none;
+  transition: border-color var(--tx-base) var(--ease), background var(--tx-base) var(--ease);
+}
+.route-box .rb-input:focus { outline: none; border-color: var(--p-accent); background: var(--p-accent-bg); }
+
+.rail-subhead {
+  font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono);
+  text-transform: uppercase; color: var(--text-faint);
+  padding: 12px 18px 8px; display: flex; justify-content: space-between; align-items: baseline;
+}
+.rail-subhead .rs-meta { color: var(--p-accent); }
+
+/* provider as case-item */
+.case-item.provider { position: relative; padding: 11px 18px; }
+.prov-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.prov-name { font-family: var(--serif); font-size: var(--fs-md); color: var(--text); }
+.prov-rank { margin-left: auto; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
+.case-item.provider.is-active .prov-rank { color: var(--p-accent); }
+.prov-flag { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; }
+.prov-flag.caught { color: var(--red); background: var(--stability-bg); border: 1px solid var(--stability-edge); }
+.prov-stats { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-dim); }
+.prov-stats b { color: var(--text-mid); font-weight: 500; }
+.prov-trust { margin-top: 8px; height: 3px; border-radius: 2px; background: var(--card-border); overflow: hidden; }
+.prov-trust > i { display: block; height: 100%; background: var(--p-accent); border-radius: 2px; transition: width var(--tx-long) var(--ease); }
+.case-item.provider.is-dropped { opacity: 0.6; }
+.case-item.provider.is-dropped .prov-trust > i { background: var(--text-dim); }
+
+/* ── center · slate-area ordering ───────────────────────────────────── */
+.slate-area { display: flex; flex-direction: column; }
+.slate-area > .classification   { order: 1; }
+.slate-area > .slate-header     { order: 2; }
+.slate-area > .metric-band      { order: 3; }
+.slate-area > .slate-canvas     { order: 4; }
+.slate-area > .brief-area       { order: 5; }
+.slate-area > .dispo-artifact   { order: 6; }
+.slate-area > .audit-ribbon     { order: 7; }
+
+/* metric band (ported idiom from slate-tray) */
+.metric-band { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--frame-border); background: var(--frame-bg); }
+.metric-band[hidden] { display: none; }
+.metric-cell { padding: 12px 24px 14px; border-right: 1px solid var(--frame-border); }
+.metric-cell:last-child { border-right: none; }
+.metric-label { font-family: var(--mono); font-size: 9px; color: var(--text-faint); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 5px; }
+.metric-number { font-family: var(--display); font-size: 24px; color: var(--text); font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; }
+.metric-number.bad { color: var(--red); }
+.metric-number.good { color: var(--good); }
+.metric-caption { font-family: var(--serif); font-size: 11px; color: var(--text-mid); font-style: italic; margin-top: 2px; }
+.metric-caption.bad { color: var(--red); font-style: normal; }
+
+/* quote card in the canvas (the "composed" object) */
+.quote-card { border: 1px solid var(--card-border); border-radius: var(--radius-4); background: var(--frame-bg-2); padding: 16px 18px; }
+.quote-card .qc-eyebrow { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
+.quote-card .qc-row { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--frame-border); }
+.quote-card .qc-row:last-child { border-bottom: none; }
+.quote-card .qc-k { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); }
+.quote-card .qc-v { font-family: var(--mono); font-size: var(--fs-mono); color: var(--text); }
+.quote-card .qc-v.accent { color: var(--p-accent); }
+
+/* ── brief disposition (approve/deny) ───────────────────────────────── */
+.brief-body .gap-flag { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: var(--fs-mono); color: var(--red); background: var(--stability-bg); border: 1px solid var(--stability-edge); border-radius: var(--radius-2); padding: 5px 9px; margin-top: 8px; }
+.txid-link { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--p-accent); text-decoration: none; border-bottom: 1px dotted var(--p-accent-edge); }
+.txid-link:hover { color: var(--text); }
+
+/* ── signed packet · reputation delta inside dispo-artifact ─────────── */
+.rep-line { display: flex; align-items: center; gap: 8px; }
+.rep-line .rep-from { color: rgba(42,40,32,0.55); }
+.rep-line .rep-to { font-weight: 600; }
+.rep-line .rep-to.down { color: #9d2727; }
+.rep-line .rep-to.up { color: #2f6b4a; }
+
+/* ── right rail · trust registry ────────────────────────────────────── */
+.registry-list { padding: 4px 0; }
+.reg-row { padding: 12px 18px; border-bottom: 1px solid var(--frame-border); }
+.reg-row .rr-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 7px; }
+.reg-row .rr-name { font-family: var(--serif); font-size: var(--fs-sm); color: var(--text-mid); }
+.reg-row .rr-score { font-family: var(--mono); font-size: var(--fs-md); color: var(--text); }
+.reg-row .rr-score.down { color: var(--red); }
+.reg-row .rr-bar { height: 4px; border-radius: 2px; background: var(--card-border); overflow: hidden; }
+.reg-row .rr-bar > i { display: block; height: 100%; border-radius: 2px; background: var(--good); transition: width var(--tx-long) var(--ease), background var(--tx-base) var(--ease); }
+.reg-row.is-caught .rr-bar > i { background: var(--red); }
+.reg-row .rr-delta { font-family: var(--mono); font-size: var(--fs-mono-xs); margin-left: 6px; }
+.reg-row .rr-delta.down { color: var(--red); }
+.registry-note { padding: 14px 18px; font-family: var(--serif); font-size: var(--fs-xs); font-style: italic; color: var(--text-faint); line-height: 1.5; }
+
+/* ── tray tiles (context dropped into the app) ──────────────────────── */
+.tr-tile { border: 1px solid var(--card-border); border-radius: var(--radius-3); background: var(--frame-bg-3); padding: 10px 12px; margin-bottom: 8px; }
+.tr-tile .tt-app { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px; }
+.tr-tile .tt-text { font-size: var(--fs-xs); color: var(--text-dim); line-height: 1.4; }

@@ -1,0 +1,1089 @@
+/*
+ * design-tokens.css · Liminal canon · single source of truth
+ * ════════════════════════════════════════════════════════════
+ *
+ * HOW TO CONSUME THIS FILE
+ * ────────────────────────
+ * This is the only token file you need to import. Every product surface
+ * (this prototype, the marketing site, the Tauri desktop client, future
+ * mobile, etc.) imports this file — and ONLY this file — to receive the
+ * canonical Liminal color · type · spacing · motion system.
+ *
+ *   <link rel="stylesheet" href="design-tokens.css">  ← that's it
+ *
+ * Each consuming surface adds its own *typography overrides* and *layout*,
+ * but never redefines the tokens here. This is the contract: change a
+ * value in this file → every surface that imports it picks up the change
+ * on next page load. No local copies. No per-surface forks.
+ *
+ * AUTHOR / EDITS
+ * ──────────────
+ * Author    : Liminal · Shruti Rajagopal
+ * Generated : 2026-04-07 (12-wheel canon lock)
+ * Last edit : 2026-04-28 (generative base · 120 hue stops + 42 UI bindings)
+ *           : 2026-04-28 (surface layer · --frame-bg-3 + shadow tokens + scrim layer)
+ * Reference : liminal-creative/color-lab/src/lib/palettes/liminal-12-wheel.ts
+ *
+ * STRUCTURE
+ * ─────────
+ *   1. Surface           (bg, frame, rail, card, hover)
+ *   2. 12-wheel          (7 factors + 5 ornaments × 10-stop tonal scales)
+ *      ├── per-hue scales (--{hue}-50 through -900)
+ *      ├── Liminal aliases (-faint, -bg, -tint, -soft, -edge, -glow, -strong)
+ *      ├── pigment-aware extras (-glow-soft, -glow-strong, -wash, -wash-deep)
+ *      ├── register aliases (12 register-words → 12 hue scales)
+ *      ├── semantic states (good/amber/red migrated to wheel registers)
+ *      ├── functional UI bindings (--ui-action-* / --ui-state-* / etc.)
+ *      └── gradient grammar (adjacent-hue + brand spectrum)
+ *   3. Substrate         (cream + ink · light theme · 10-stop scale)
+ *   4. Ink               (5 text tiers)
+ *   5. Type families     (display · serif · sans · mono · hand)
+ *   6. Type scale        (18 sizes)
+ *   7. Line-height       (5 leadings)
+ *   8. Letter-spacing    (6 trackings)
+ *   9. Spacing           (10 steps · 4px base)
+ *  10. Shape             (5 radii)
+ *  11. Motion            (7 durations · intent-named)
+ *  12. Shadow + dash     (overlay alphas)
+ *  13. Legacy aliases    (--accent, --pink — backward-compat with v0.2)
+ *
+ * NAMING CONVENTIONS
+ * ──────────────────
+ *   --{hue}-{stop}        canonical · numeric · 50-900
+ *   --{hue}-{semantic}    Liminal alias · -faint, -bg, -tint, -soft, -edge, -glow, -strong
+ *   --{register}-*        register-word vocabulary · same shape as hue
+ *   --ui-{purpose}-*      functional binding · what a UI surface uses
+ *   --blend-{a}-to-{b}    constrained gradient · adjacent-hue only
+ *
+ * VERIFICATION
+ * ────────────
+ *   Open design-system.html · Section 07 (Accessibility) for WCAG AA
+ *   contrast ratios on every text/background pair. Body text minimum
+ *   4.5:1 · UI components 3:1 · large text 3:1.
+ *
+ * TROUBLESHOOTING
+ * ───────────────
+ *   - "Colors look wrong / fall back to defaults"
+ *     → Check that this file is in the same directory as the consuming
+ *       HTML, or that the <link> path is correct.
+ *   - "Token resolution fails in Safari < 17"
+ *     → Some var() chains via legacy aliases may not resolve on older
+ *       Safari. Use the canonical name (--clarity-500) instead of the
+ *       alias (--diligence-500) for cross-browser safety.
+ *   - "I want to add a new hue"
+ *     → Don't. The 12-wheel is canon · locked 2026-04-15. New colors
+ *       only via the wheel (interpolating between adjacent hues) and
+ *       only with a brand-canon update.
+ *   - "I want to override a token for a single surface"
+ *     → Use a body[data-theme="..."] scope · don't edit this file.
+ *
+ * MIT-licensed. Liminal · 2026.
+ */
+
+:root {
+  /* ─── 1 · surface ──────────────────────────────────────────── */
+  --bg:           #0A0A0B;
+  --frame-bg:     #0E0E11;
+  --frame-bg-2:   #0C0C0F;
+  --frame-bg-3:   #15161A;    /* lifted dark surface · hover states */
+  --frame-border: #1F1F23;
+  --rail-bg:      #08080A;
+  --card-border:  #232327;
+  --card-border-2:#2A2A2F;
+  --hover:        rgba(255,255,255,0.04);
+
+  /* ════════════════════════════════════════════════════════════
+     2 · LIMINAL 12-WHEEL · canonical color canon · GENERATIVE BASE
+     ════════════════════════════════════════════════════════════
+     Source of truth: liminal-creative/color-lab/src/lib/palettes/liminal-12-wheel.ts
+     Locked 2026-04-07 · Expression hue updated 2026-04-15
+     Pigment-first slate retune 2026-04-15
+     Generative tonal scales added 2026-04-28
+
+     12 hues at 30° intervals around the wheel.
+     7 are factor-anchored (semantic load in product UI).
+     5 are ornamental (variety library only).
+
+     EVERY non-neutral color in the desktop app + brand system
+     derives from one of these 12 hues. Neutrals (bg/frame/text/ink)
+     are warm-grey on a black-to-cream axis · everything else routes
+     through the wheel.
+
+     STRUCTURE per hue:
+       --{hue}-50    extreme low · paper-tinted background (alpha-on-dark)
+       --{hue}-100   ambient surface · barely-tinted
+       --{hue}-200   wash · soft fill background
+       --{hue}-300   tint · fill background · focus ring backing
+       --{hue}-400   border · edge · emphasis stroke
+       --{hue}-500   = the canonical hex (the wheel value)
+       --{hue}-600   pressed · active state shift
+       --{hue}-700   text-on-light · emphasis label
+       --{hue}-800   deep · text-on-cream
+       --{hue}-900   ink-tinted text · maximum legibility
+
+     PIGMENT-AWARE:
+       opaque hues      — standard linear scale
+       luminous hues    — mid-stops keep saturation (the glow);
+                          plus explicit -glow-soft / -glow-strong
+       translucent hues — wash variants richer; mid-stops softer
+
+     BRAND 3 (locked 2026-04-15):
+       primary   = --clarity (Ultramarine Violet · #8e66fb)
+       secondary = --wholeness (Liminal Pink · #e90095)
+       accent    = --vitality (Cadmium Orange · #ff9549)
+
+     LIMINAL ALIASES per hue (point at specific stops · ergonomic for component CSS):
+       -faint  → -50      -bg     → -100
+       -tint   → -200     -soft   → -300
+       -edge   → -400     -glow   → -500 (alpha)
+       -mid    → -500     -strong → -600
+  */
+
+  /* ─── factor 1 · Stability · 0° · root · OPAQUE · Cadmium Red ─── */
+  --stability-50:  rgba(237,33,79,0.04);
+  --stability-100: rgba(237,33,79,0.08);
+  --stability-200: rgba(237,33,79,0.14);
+  --stability-300: rgba(237,33,79,0.24);
+  --stability-400: rgba(237,33,79,0.40);
+  --stability-500: #ED214F;
+  --stability-600: #C81842;
+  --stability-700: #A41336;
+  --stability-800: #7B0E29;
+  --stability-900: #4F0919;
+  --stability:        var(--stability-500);
+  --stability-faint:  var(--stability-50);
+  --stability-bg:     var(--stability-100);
+  --stability-tint:   var(--stability-200);
+  --stability-soft:   var(--stability-300);
+  --stability-edge:   var(--stability-400);
+  --stability-glow:   rgba(237,33,79,0.18);
+  --stability-strong: var(--stability-600);
+
+  /* ─── factor 2 · Vitality · 60° · sacral · OPAQUE · BRAND ACCENT · Cadmium Orange ─── */
+  --vitality-50:  rgba(255,149,73,0.04);
+  --vitality-100: rgba(255,149,73,0.08);
+  --vitality-200: rgba(255,149,73,0.14);
+  --vitality-300: rgba(255,149,73,0.24);
+  --vitality-400: rgba(255,149,73,0.40);
+  --vitality-500: #FF9549;
+  --vitality-600: #DD7A33;
+  --vitality-700: #B25E22;
+  --vitality-800: #8A4516;
+  --vitality-900: #5A2C0B;
+  --vitality:        var(--vitality-500);
+  --vitality-faint:  var(--vitality-50);
+  --vitality-bg:     var(--vitality-100);
+  --vitality-tint:   var(--vitality-200);
+  --vitality-soft:   var(--vitality-300);
+  --vitality-edge:   var(--vitality-400);
+  --vitality-glow:   rgba(255,149,73,0.18);
+  --vitality-strong: var(--vitality-600);
+
+  /* ─── factor 3 · Agency · 120° · solar plexus · OPAQUE · Cadmium Lemon ─── */
+  --agency-50:  rgba(254,240,89,0.04);
+  --agency-100: rgba(254,240,89,0.08);
+  --agency-200: rgba(254,240,89,0.14);
+  --agency-300: rgba(254,240,89,0.24);
+  --agency-400: rgba(254,240,89,0.40);
+  --agency-500: #FEF059;
+  --agency-600: #DCC93C;
+  --agency-700: #A8993B;
+  --agency-800: #7C7029;
+  --agency-900: #4D451A;
+  --agency:        var(--agency-500);
+  --agency-faint:  var(--agency-50);
+  --agency-bg:     var(--agency-100);
+  --agency-tint:   var(--agency-200);
+  --agency-soft:   var(--agency-300);
+  --agency-edge:   var(--agency-400);
+  --agency-glow:   rgba(254,240,89,0.18);
+  --agency-strong: var(--agency-600);
+
+  /* ─── factor 4 · Connection · 180° · heart · LUMINOUS · Emerald Green ─── */
+  --connection-50:  rgba(49,230,130,0.04);
+  --connection-100: rgba(49,230,130,0.08);
+  --connection-200: rgba(49,230,130,0.14);
+  --connection-300: rgba(49,230,130,0.26);
+  --connection-400: rgba(49,230,130,0.42);
+  --connection-500: #31E682;
+  --connection-600: #1FBA67;
+  --connection-700: #189250;
+  --connection-800: #126D3C;
+  --connection-900: #0B4625;
+  --connection:        var(--connection-500);
+  --connection-faint:  var(--connection-50);
+  --connection-bg:     var(--connection-100);
+  --connection-tint:   var(--connection-200);
+  --connection-soft:   var(--connection-300);
+  --connection-edge:   var(--connection-400);
+  --connection-glow:        rgba(49,230,130,0.20);
+  --connection-glow-soft:   rgba(49,230,130,0.10);
+  --connection-glow-strong: rgba(49,230,130,0.36);
+  --connection-strong: var(--connection-600);
+
+  /* ─── factor 5 · Expression · 210° · throat · TRANSLUCENT · Prussian Teal ─── */
+  --expression-50:  rgba(30,150,146,0.05);
+  --expression-100: rgba(30,150,146,0.10);
+  --expression-200: rgba(30,150,146,0.18);
+  --expression-300: rgba(30,150,146,0.28);
+  --expression-400: rgba(30,150,146,0.42);
+  --expression-500: #1E9692;
+  --expression-600: #197A77;
+  --expression-700: #135E5C;
+  --expression-800: #0E4543;
+  --expression-900: #082B2A;
+  --expression:        var(--expression-500);
+  --expression-faint:  var(--expression-50);
+  --expression-bg:     var(--expression-100);
+  --expression-tint:   var(--expression-200);
+  --expression-soft:   var(--expression-300);
+  --expression-edge:   var(--expression-400);
+  --expression-glow:        rgba(30,150,146,0.16);
+  --expression-wash:        rgba(30,150,146,0.08);
+  --expression-wash-deep:   rgba(30,150,146,0.20);
+  --expression-strong: var(--expression-600);
+
+  /* ─── factor 6 · Clarity · 270° · third eye · LUMINOUS · BRAND PRIMARY · Ultramarine Violet ─── */
+  --clarity-50:  rgba(142,102,251,0.04);
+  --clarity-100: rgba(142,102,251,0.08);
+  --clarity-200: rgba(142,102,251,0.14);
+  --clarity-300: rgba(142,102,251,0.26);
+  --clarity-400: rgba(142,102,251,0.42);
+  --clarity-500: #8E66FB;
+  --clarity-600: #6F4DDA;
+  --clarity-700: #553AB1;
+  --clarity-800: #3E2A85;
+  --clarity-900: #271B57;
+  --clarity:        var(--clarity-500);
+  --clarity-faint:  var(--clarity-50);
+  --clarity-bg:     var(--clarity-100);
+  --clarity-tint:   var(--clarity-200);
+  --clarity-soft:   var(--clarity-300);
+  --clarity-edge:   var(--clarity-400);
+  --clarity-glow:        rgba(142,102,251,0.20);
+  --clarity-glow-soft:   rgba(142,102,251,0.10);
+  --clarity-glow-strong: rgba(142,102,251,0.45);
+  --clarity-mid:    var(--clarity-300);
+  --clarity-strong: var(--clarity-glow-strong);
+
+  /* ─── factor 7 · Wholeness · 330° · crown · LUMINOUS · BRAND SECONDARY · Liminal Pink ─── */
+  --wholeness-50:  rgba(233,0,149,0.05);
+  --wholeness-100: rgba(233,0,149,0.09);
+  --wholeness-200: rgba(233,0,149,0.16);
+  --wholeness-300: rgba(233,0,149,0.28);
+  --wholeness-400: rgba(233,0,149,0.42);
+  --wholeness-500: #E90095;
+  --wholeness-600: #BF0078;
+  --wholeness-700: #94005C;
+  --wholeness-800: #6E0044;
+  --wholeness-900: #45002A;
+  --wholeness:        var(--wholeness-500);
+  --wholeness-faint:  var(--wholeness-50);
+  --wholeness-bg:     var(--wholeness-100);
+  --wholeness-tint:   var(--wholeness-200);
+  --wholeness-soft:   var(--wholeness-300);
+  --wholeness-edge:   var(--wholeness-400);
+  --wholeness-glow:        rgba(233,0,149,0.20);
+  --wholeness-glow-soft:   rgba(233,0,149,0.10);
+  --wholeness-glow-strong: rgba(233,0,149,0.40);
+  --wholeness-strong: var(--wholeness-glow-strong);
+  --wholeness-due:    rgba(233,0,149,0.16);
+
+  /* ─── ornament · Coral · 30° · OPAQUE · Vermillion · poster ink ─── */
+  --coral-50:  rgba(250,85,43,0.04);
+  --coral-100: rgba(250,85,43,0.08);
+  --coral-200: rgba(250,85,43,0.14);
+  --coral-300: rgba(250,85,43,0.24);
+  --coral-400: rgba(250,85,43,0.40);
+  --coral-500: #FA552B;
+  --coral-600: #D2401D;
+  --coral-700: #A52F12;
+  --coral-800: #79210B;
+  --coral-900: #4A1306;
+  --coral:        var(--coral-500);
+  --coral-faint:  var(--coral-50);
+  --coral-bg:     var(--coral-100);
+  --coral-tint:   var(--coral-200);
+  --coral-soft:   var(--coral-300);
+  --coral-edge:   var(--coral-400);
+  --coral-glow:   rgba(250,85,43,0.18);
+  --coral-strong: var(--coral-600);
+
+  /* ─── ornament · Amber-orn · 90° · OPAQUE · Chrome Yellow · print gold ─── */
+  --amber-orn-50:  rgba(253,194,55,0.04);
+  --amber-orn-100: rgba(253,194,55,0.08);
+  --amber-orn-200: rgba(253,194,55,0.14);
+  --amber-orn-300: rgba(253,194,55,0.24);
+  --amber-orn-400: rgba(253,194,55,0.40);
+  --amber-orn-500: #FDC237;
+  --amber-orn-600: #DBA225;
+  --amber-orn-700: #A87B17;
+  --amber-orn-800: #7A580E;
+  --amber-orn-900: #4D3706;
+  --amber-orn:        var(--amber-orn-500);
+  --amber-orn-faint:  var(--amber-orn-50);
+  --amber-orn-bg:     var(--amber-orn-100);
+  --amber-orn-tint:   var(--amber-orn-200);
+  --amber-orn-soft:   var(--amber-orn-300);
+  --amber-orn-edge:   var(--amber-orn-400);
+  --amber-orn-glow:   rgba(253,194,55,0.18);
+  --amber-orn-strong: var(--amber-orn-600);
+
+  /* ─── ornament · Lime · 150° · LUMINOUS · Viridian Light · phosphor ─── */
+  --lime-50:  rgba(112,243,47,0.04);
+  --lime-100: rgba(112,243,47,0.08);
+  --lime-200: rgba(112,243,47,0.14);
+  --lime-300: rgba(112,243,47,0.26);
+  --lime-400: rgba(112,243,47,0.42);
+  --lime-500: #70F32F;
+  --lime-600: #57CC1E;
+  --lime-700: #429C16;
+  --lime-800: #2F710F;
+  --lime-900: #1B4408;
+  --lime:        var(--lime-500);
+  --lime-faint:  var(--lime-50);
+  --lime-bg:     var(--lime-100);
+  --lime-tint:   var(--lime-200);
+  --lime-soft:   var(--lime-300);
+  --lime-edge:   var(--lime-400);
+  --lime-glow:        rgba(112,243,47,0.20);
+  --lime-glow-strong: rgba(112,243,47,0.36);
+  --lime-strong: var(--lime-600);
+
+  /* ─── ornament · Cerulean · 240° · TRANSLUCENT · Ultramarine Light · sky wash ─── */
+  --cerulean-50:  rgba(25,126,235,0.05);
+  --cerulean-100: rgba(25,126,235,0.10);
+  --cerulean-200: rgba(25,126,235,0.18);
+  --cerulean-300: rgba(25,126,235,0.28);
+  --cerulean-400: rgba(25,126,235,0.42);
+  --cerulean-500: #197EEB;
+  --cerulean-600: #1466C0;
+  --cerulean-700: #0F4F95;
+  --cerulean-800: #0A3970;
+  --cerulean-900: #062347;
+  --cerulean:        var(--cerulean-500);
+  --cerulean-faint:  var(--cerulean-50);
+  --cerulean-bg:     var(--cerulean-100);
+  --cerulean-tint:   var(--cerulean-200);
+  --cerulean-soft:   var(--cerulean-300);
+  --cerulean-edge:   var(--cerulean-400);
+  --cerulean-glow:        rgba(25,126,235,0.16);
+  --cerulean-wash:        rgba(25,126,235,0.08);
+  --cerulean-wash-deep:   rgba(25,126,235,0.20);
+  --cerulean-strong: var(--cerulean-600);
+
+  /* ─── ornament · Orchid · 300° · LUMINOUS · Quinacridone Violet ─── */
+  --orchid-50:  rgba(204,36,245,0.04);
+  --orchid-100: rgba(204,36,245,0.08);
+  --orchid-200: rgba(204,36,245,0.16);
+  --orchid-300: rgba(204,36,245,0.28);
+  --orchid-400: rgba(204,36,245,0.42);
+  --orchid-500: #CC24F5;
+  --orchid-600: #A91DCC;
+  --orchid-700: #8217A1;
+  --orchid-800: #5E1175;
+  --orchid-900: #3A0A48;
+  --orchid:        var(--orchid-500);
+  --orchid-faint:  var(--orchid-50);
+  --orchid-bg:     var(--orchid-100);
+  --orchid-tint:   var(--orchid-200);
+  --orchid-soft:   var(--orchid-300);
+  --orchid-edge:   var(--orchid-400);
+  --orchid-glow:        rgba(204,36,245,0.20);
+  --orchid-glow-strong: rgba(204,36,245,0.36);
+  --orchid-strong: var(--orchid-600);
+
+  /* ─── substrate scale · cream/ink · LIGHT THEME (v1.0+ Tauri client) ─── */
+  --cream-50:   #FBFAF8;   /* paper highlight */
+  --cream-100:  #F3F1EF;   /* warm cream · default light bg */
+  --cream-200:  #EBE8E4;   /* deeper cream · card surface */
+  --cream-300:  #E0DCD4;   /* subtle border on cream */
+  --cream-400:  #C8C2B5;   /* divider on cream */
+  --cream-500:  #9C9587;   /* muted text on cream */
+  --cream-600:  #6E6857;   /* dim text on cream */
+  --cream-700:  #4A4538;   /* body text on cream */
+  --cream-800:  #2A2620;   /* heading text on cream */
+  --cream-900:  #14110D;   /* maximum contrast on cream */
+  --cream:      var(--cream-100);
+  --cream-deep: var(--cream-200);
+  --ink:        #0F0F10;
+
+  /* ─── REGISTER ALIASES · the 12-register vocabulary ─────────── */
+  /*
+   * Every wheel hue carries a register-word naming what it does in product UI.
+   * Component CSS can address by register name (semantic) OR by factor/
+   * ornament name (canonical). Both resolve to the same hue.
+   *
+   * The 4 originals (Diligence/Outreach/Judgment/Synthesis) are LOCKED ·
+   * v0.2 component CSS depends on them. The other 8 register words extend
+   * the vocabulary to cover desktop-app state space.
+   *
+   *  hue · factor/ornament       · register name        · what it does
+   *  ─────────────────────────────────────────────────────────────────────
+   *  Stability  ·  factor · 0°    · --alarm              · critical/error
+   *  Coral      ·  ornament · 30° · --surge              · high-energy attention
+   *  Vitality   ·  factor · 60°   · --vital              · brand accent · the move forward
+   *  Amber-orn  ·  ornament · 90° · --watch              · caution/monitoring (≠ --amber state)
+   *  Agency     ·  factor · 120°  · --synthesis [LOCKED] · pattern/will/attention
+   *  Lime       ·  ornament · 150°· --signal             · active streaming/live
+   *  Connection ·  factor · 180°  · --outreach  [LOCKED] · relational/positive
+   *  Expression ·  factor · 210°  · --ambient            · wash/atmospheric (translucent)
+   *  Cerulean   ·  ornament · 240°· --depth              · sky wash / calm mode
+   *  Clarity    ·  factor · 270°  · --diligence [LOCKED] · intelligence · BRAND PRIMARY
+   *  Orchid     ·  ornament · 300°· --liminal            · transition · in-between · glow
+   *  Wholeness  ·  factor · 330°  · --judgment  [LOCKED] · verdict · BRAND SECONDARY
+   */
+
+  /* Register aliases now point at scale stops (not raw alphas) so when
+   * a hue's tonal scale is retuned, every register variant retunes with it.
+   * Each register gets the full scale (-50/-100/.../-900) plus the
+   * Liminal-named aliases (-faint/-bg/-tint/-soft/-edge/-glow/-strong).
+   */
+
+  /* ─── 4 LOCKED v0.2 registers ─────────────────────────────── */
+  --diligence-50:   var(--clarity-50);
+  --diligence-100:  var(--clarity-100);
+  --diligence-200:  var(--clarity-200);
+  --diligence-300:  var(--clarity-300);
+  --diligence-400:  var(--clarity-400);
+  --diligence-500:  var(--clarity-500);
+  --diligence-600:  var(--clarity-600);
+  --diligence-700:  var(--clarity-700);
+  --diligence-800:  var(--clarity-800);
+  --diligence-900:  var(--clarity-900);
+  --diligence:      var(--clarity);
+  --diligence-faint:  var(--clarity-faint);
+  --diligence-bg:     var(--clarity-bg);
+  --diligence-tint:   var(--clarity-tint);
+  --diligence-soft:   var(--clarity-soft);
+  --diligence-edge:   var(--clarity-edge);
+  --diligence-glow:   var(--clarity-glow);
+  --diligence-mid:    var(--clarity-mid);
+  --diligence-strong: var(--clarity-strong);
+
+  --outreach-50:   var(--connection-50);
+  --outreach-100:  var(--connection-100);
+  --outreach-200:  var(--connection-200);
+  --outreach-300:  var(--connection-300);
+  --outreach-400:  var(--connection-400);
+  --outreach-500:  var(--connection-500);
+  --outreach-600:  var(--connection-600);
+  --outreach-700:  var(--connection-700);
+  --outreach-800:  var(--connection-800);
+  --outreach-900:  var(--connection-900);
+  --outreach:      var(--connection);
+  --outreach-faint:  var(--connection-faint);
+  --outreach-bg:     var(--connection-bg);
+  --outreach-tint:   var(--connection-tint);
+  --outreach-soft:   var(--connection-soft);
+  --outreach-edge:   var(--connection-edge);
+  --outreach-glow:   var(--connection-glow);
+  --outreach-strong: var(--connection-strong);
+
+  --judgment-50:   var(--wholeness-50);
+  --judgment-100:  var(--wholeness-100);
+  --judgment-200:  var(--wholeness-200);
+  --judgment-300:  var(--wholeness-300);
+  --judgment-400:  var(--wholeness-400);
+  --judgment-500:  var(--wholeness-500);
+  --judgment-600:  var(--wholeness-600);
+  --judgment-700:  var(--wholeness-700);
+  --judgment-800:  var(--wholeness-800);
+  --judgment-900:  var(--wholeness-900);
+  --judgment:      var(--wholeness);
+  --judgment-faint:  var(--wholeness-faint);
+  --judgment-bg:     var(--wholeness-bg);
+  --judgment-tint:   var(--wholeness-tint);
+  --judgment-soft:   var(--wholeness-soft);
+  --judgment-edge:   var(--wholeness-edge);
+  --judgment-glow:   var(--wholeness-glow);
+  --judgment-strong: var(--wholeness-strong);
+  --judgment-due:    var(--wholeness-due);
+
+  --synthesis-50:   var(--agency-50);
+  --synthesis-100:  var(--agency-100);
+  --synthesis-200:  var(--agency-200);
+  --synthesis-300:  var(--agency-300);
+  --synthesis-400:  var(--agency-400);
+  --synthesis-500:  var(--agency-500);
+  --synthesis-600:  var(--agency-600);
+  --synthesis-700:  var(--agency-700);
+  --synthesis-800:  var(--agency-800);
+  --synthesis-900:  var(--agency-900);
+  --synthesis:      var(--agency);
+  --synthesis-faint:  var(--agency-faint);
+  --synthesis-bg:     var(--agency-bg);
+  --synthesis-tint:   var(--agency-tint);
+  --synthesis-soft:   var(--agency-soft);
+  --synthesis-edge:   var(--agency-edge);
+  --synthesis-glow:   var(--agency-glow);
+  --synthesis-strong: var(--agency-strong);
+
+  /* ─── 8 NEW v0.3.7 registers (extend the vocabulary) ─────── */
+
+  /* --alarm · stability · root · errors, foundation breach, the critical edge */
+  --alarm-50:   var(--stability-50);
+  --alarm-100:  var(--stability-100);
+  --alarm-200:  var(--stability-200);
+  --alarm-300:  var(--stability-300);
+  --alarm-400:  var(--stability-400);
+  --alarm-500:  var(--stability-500);
+  --alarm-600:  var(--stability-600);
+  --alarm-700:  var(--stability-700);
+  --alarm-800:  var(--stability-800);
+  --alarm-900:  var(--stability-900);
+  --alarm:      var(--stability);
+  --alarm-faint:  var(--stability-faint);
+  --alarm-bg:     var(--stability-bg);
+  --alarm-tint:   var(--stability-tint);
+  --alarm-soft:   var(--stability-soft);
+  --alarm-edge:   var(--stability-edge);
+  --alarm-glow:   var(--stability-glow);
+  --alarm-strong: var(--stability-strong);
+
+  /* --surge · coral · ornament · high-energy attention, action moment */
+  --surge-50:   var(--coral-50);
+  --surge-100:  var(--coral-100);
+  --surge-200:  var(--coral-200);
+  --surge-300:  var(--coral-300);
+  --surge-400:  var(--coral-400);
+  --surge-500:  var(--coral-500);
+  --surge-600:  var(--coral-600);
+  --surge-700:  var(--coral-700);
+  --surge-800:  var(--coral-800);
+  --surge-900:  var(--coral-900);
+  --surge:      var(--coral);
+  --surge-faint:  var(--coral-faint);
+  --surge-bg:     var(--coral-bg);
+  --surge-tint:   var(--coral-tint);
+  --surge-soft:   var(--coral-soft);
+  --surge-edge:   var(--coral-edge);
+  --surge-glow:   var(--coral-glow);
+  --surge-strong: var(--coral-strong);
+
+  /* --vital · vitality · sacral · BRAND ACCENT · creativity, new, the move */
+  --vital-50:   var(--vitality-50);
+  --vital-100:  var(--vitality-100);
+  --vital-200:  var(--vitality-200);
+  --vital-300:  var(--vitality-300);
+  --vital-400:  var(--vitality-400);
+  --vital-500:  var(--vitality-500);
+  --vital-600:  var(--vitality-600);
+  --vital-700:  var(--vitality-700);
+  --vital-800:  var(--vitality-800);
+  --vital-900:  var(--vitality-900);
+  --vital:      var(--vitality);
+  --vital-faint:  var(--vitality-faint);
+  --vital-bg:     var(--vitality-bg);
+  --vital-tint:   var(--vitality-tint);
+  --vital-soft:   var(--vitality-soft);
+  --vital-edge:   var(--vitality-edge);
+  --vital-glow:   var(--vitality-glow);
+  --vital-strong: var(--vitality-strong);
+
+  /* --watch · amber-orn · ornament · caution, monitoring */
+  --watch-50:   var(--amber-orn-50);
+  --watch-100:  var(--amber-orn-100);
+  --watch-200:  var(--amber-orn-200);
+  --watch-300:  var(--amber-orn-300);
+  --watch-400:  var(--amber-orn-400);
+  --watch-500:  var(--amber-orn-500);
+  --watch-600:  var(--amber-orn-600);
+  --watch-700:  var(--amber-orn-700);
+  --watch-800:  var(--amber-orn-800);
+  --watch-900:  var(--amber-orn-900);
+  --watch:      var(--amber-orn);
+  --watch-faint:  var(--amber-orn-faint);
+  --watch-bg:     var(--amber-orn-bg);
+  --watch-tint:   var(--amber-orn-tint);
+  --watch-soft:   var(--amber-orn-soft);
+  --watch-edge:   var(--amber-orn-edge);
+  --watch-glow:   var(--amber-orn-glow);
+  --watch-strong: var(--amber-orn-strong);
+
+  /* --signal · lime · ornament · active streaming, live indicator */
+  --signal-50:   var(--lime-50);
+  --signal-100:  var(--lime-100);
+  --signal-200:  var(--lime-200);
+  --signal-300:  var(--lime-300);
+  --signal-400:  var(--lime-400);
+  --signal-500:  var(--lime-500);
+  --signal-600:  var(--lime-600);
+  --signal-700:  var(--lime-700);
+  --signal-800:  var(--lime-800);
+  --signal-900:  var(--lime-900);
+  --signal:      var(--lime);
+  --signal-faint:  var(--lime-faint);
+  --signal-bg:     var(--lime-bg);
+  --signal-tint:   var(--lime-tint);
+  --signal-soft:   var(--lime-soft);
+  --signal-edge:   var(--lime-edge);
+  --signal-glow:   var(--lime-glow);
+  --signal-strong: var(--lime-strong);
+
+  /* --ambient · expression · throat · translucent · the wash register */
+  --ambient-50:   var(--expression-50);
+  --ambient-100:  var(--expression-100);
+  --ambient-200:  var(--expression-200);
+  --ambient-300:  var(--expression-300);
+  --ambient-400:  var(--expression-400);
+  --ambient-500:  var(--expression-500);
+  --ambient-600:  var(--expression-600);
+  --ambient-700:  var(--expression-700);
+  --ambient-800:  var(--expression-800);
+  --ambient-900:  var(--expression-900);
+  --ambient:      var(--expression);
+  --ambient-faint:  var(--expression-faint);
+  --ambient-bg:     var(--expression-bg);
+  --ambient-tint:   var(--expression-tint);
+  --ambient-soft:   var(--expression-soft);
+  --ambient-edge:   var(--expression-edge);
+  --ambient-glow:   var(--expression-glow);
+  --ambient-wash:   var(--expression-wash);
+  --ambient-wash-deep: var(--expression-wash-deep);
+  --ambient-strong: var(--expression-strong);
+
+  /* --depth · cerulean · ornament · translucent · sky wash, calm-mode */
+  --depth-50:   var(--cerulean-50);
+  --depth-100:  var(--cerulean-100);
+  --depth-200:  var(--cerulean-200);
+  --depth-300:  var(--cerulean-300);
+  --depth-400:  var(--cerulean-400);
+  --depth-500:  var(--cerulean-500);
+  --depth-600:  var(--cerulean-600);
+  --depth-700:  var(--cerulean-700);
+  --depth-800:  var(--cerulean-800);
+  --depth-900:  var(--cerulean-900);
+  --depth:      var(--cerulean);
+  --depth-faint:  var(--cerulean-faint);
+  --depth-bg:     var(--cerulean-bg);
+  --depth-tint:   var(--cerulean-tint);
+  --depth-soft:   var(--cerulean-soft);
+  --depth-edge:   var(--cerulean-edge);
+  --depth-glow:   var(--cerulean-glow);
+  --depth-wash:   var(--cerulean-wash);
+  --depth-strong: var(--cerulean-strong);
+
+  /* --liminal · orchid · ornament · luminous · transition, in-between, glow */
+  --liminal-50:   var(--orchid-50);
+  --liminal-100:  var(--orchid-100);
+  --liminal-200:  var(--orchid-200);
+  --liminal-300:  var(--orchid-300);
+  --liminal-400:  var(--orchid-400);
+  --liminal-500:  var(--orchid-500);
+  --liminal-600:  var(--orchid-600);
+  --liminal-700:  var(--orchid-700);
+  --liminal-800:  var(--orchid-800);
+  --liminal-900:  var(--orchid-900);
+  --liminal:      var(--orchid);
+  --liminal-faint:  var(--orchid-faint);
+  --liminal-bg:     var(--orchid-bg);
+  --liminal-tint:   var(--orchid-tint);
+  --liminal-soft:   var(--orchid-soft);
+  --liminal-edge:   var(--orchid-edge);
+  --liminal-glow:   var(--orchid-glow);
+  --liminal-strong: var(--orchid-strong);
+
+  /* ════════════════════════════════════════════════════════════
+     3 · SEMANTIC STATES · migrated to wheel derivations (v0.3.7)
+     ════════════════════════════════════════════════════════════
+     Previously off-wheel hex values · now redirect to wheel registers.
+     Visible shift on Apr 28, 2026:
+       --good   #45C9A3 → #31E682  (Connection · jewel green, brighter)
+       --amber  #F5A524 → #FDC237  (Watch · chrome gold, warmer)
+       --red    #F04040 → #ED214F  (Alarm · cadmium red, slightly pinker)
+     The system now satisfies: every non-neutral color derives from
+     the 12-wheel base palette.
+  */
+  --good:   var(--connection);
+  --amber:  var(--watch);
+  --red:    var(--alarm);
+
+  /* ════════════════════════════════════════════════════════════
+     · FUNCTIONAL UI BINDINGS · what each wheel register is used for
+     ════════════════════════════════════════════════════════════
+     These name desktop-app surfaces semantically · not by hue.
+     A button's primary fill is --ui-action-primary, not --clarity-300.
+     Component CSS reads these · the design system rebinds them once
+     to retune every component at scale.
+  */
+
+  /* action · primary · brand 3 primary · Clarity violet */
+  --ui-action-primary:        var(--clarity-500);
+  --ui-action-primary-hover:  var(--clarity-200);
+  --ui-action-primary-active: var(--clarity-600);
+  --ui-action-primary-bg:     var(--clarity-100);
+  --ui-action-primary-border: var(--clarity-400);
+
+  /* action · secondary · neutral chrome */
+  --ui-action-secondary:        var(--text-mid);
+  --ui-action-secondary-hover:  var(--text);
+  --ui-action-secondary-bg:     var(--frame-bg-2);
+  --ui-action-secondary-border: var(--card-border);
+
+  /* action · destructive · alarm */
+  --ui-action-destructive:        var(--alarm-500);
+  --ui-action-destructive-hover:  var(--alarm-200);
+  --ui-action-destructive-bg:     var(--alarm-100);
+  --ui-action-destructive-border: var(--alarm-400);
+
+  /* state · error / success / warning / info */
+  --ui-state-error:    var(--alarm-500);
+  --ui-state-error-bg: var(--alarm-100);
+  --ui-state-error-border: var(--alarm-400);
+  --ui-state-success:    var(--connection-500);
+  --ui-state-success-bg: var(--connection-100);
+  --ui-state-success-border: var(--connection-400);
+  --ui-state-warning:    var(--watch-500);
+  --ui-state-warning-bg: var(--watch-100);
+  --ui-state-warning-border: var(--watch-400);
+  --ui-state-info:    var(--depth-500);
+  --ui-state-info-bg: var(--depth-100);
+  --ui-state-info-border: var(--depth-400);
+
+  /* status · live indicators · for daemons, agents, signals */
+  --ui-status-live:   var(--signal-500);
+  --ui-status-watch:  var(--watch-500);
+  --ui-status-alarm:  var(--alarm-500);
+  --ui-status-idle:   var(--text-mute);
+  --ui-status-done:   var(--connection-500);
+
+  /* surface · interactive */
+  --ui-focus-ring:    var(--clarity-500);
+  --ui-focus-bg:      var(--clarity-200);
+  --ui-selection:     var(--clarity-300);
+  --ui-link:          var(--clarity-500);
+  --ui-link-hover:    var(--clarity-700);
+  --ui-link-visited:  var(--liminal-500);
+
+  /* surface · brand moments */
+  --ui-brand-primary:   var(--clarity-500);
+  --ui-brand-secondary: var(--wholeness-500);
+  --ui-brand-accent:    var(--vitality-500);
+
+  /* surface · ambient · for dreamlike ambient state field (Layer C) */
+  --ui-ambient-wash:   var(--ambient-wash);
+  --ui-ambient-deep:   var(--ambient-wash-deep);
+  --ui-ambient-glow:   var(--liminal-glow);
+
+  /* ════════════════════════════════════════════════════════════
+     · GRADIENT GRAMMAR · constrained adjacent-hue blends
+     ════════════════════════════════════════════════════════════
+     Adjacent on the wheel = allowed (smooth pigment migration).
+     Diametric = brand-only, used for specific rare moments
+     (e.g. the brand-3 spectrum which spans 60°→270°→330°).
+
+     Disallowed: random cross-wheel blends.
+  */
+
+  /* allowed · adjacent-hue blends · 30°-60° apart */
+  --blend-clarity-to-liminal:    linear-gradient(120deg, var(--clarity-400), var(--liminal-300));
+  --blend-clarity-to-wholeness:  linear-gradient(120deg, var(--clarity-400), var(--wholeness-300));
+  --blend-wholeness-to-clarity:  linear-gradient(120deg, var(--wholeness-400), var(--clarity-300));
+  --blend-vital-to-watch:        linear-gradient(120deg, var(--vital-300), var(--watch-300));
+  --blend-vital-to-surge:        linear-gradient(120deg, var(--vital-300), var(--surge-300));
+  --blend-connection-to-signal:  linear-gradient(120deg, var(--connection-400), var(--signal-300));
+  --blend-connection-to-ambient: linear-gradient(120deg, var(--connection-400), var(--ambient-300));
+  --blend-ambient-to-depth:      linear-gradient(120deg, var(--ambient-400), var(--depth-300));
+  --blend-depth-to-clarity:      linear-gradient(120deg, var(--depth-400), var(--clarity-300));
+  --blend-stability-to-surge:    linear-gradient(120deg, var(--stability-400), var(--surge-300));
+  --blend-orchid-to-wholeness:   linear-gradient(120deg, var(--orchid-400), var(--wholeness-300));
+
+  /* allowed · brand 3 spectrum · the "ambient state field" gradient */
+  /* gold → orange → pink → magenta → violet · per Brand OS Canon v4 */
+  --brand-spectrum: linear-gradient(120deg,
+    var(--vitality-400) 0%,
+    var(--surge-300)    25%,
+    var(--wholeness-400) 55%,
+    var(--liminal-300)  80%,
+    var(--clarity-400)  100%);
+
+  /* allowed · ambient atmosphere · for Layer C state-rendered orbs/washes */
+  --brand-ambient-orb: radial-gradient(ellipse at 30% 30%,
+    var(--clarity-glow) 0%,
+    var(--ambient-glow) 40%,
+    transparent 70%);
+  --brand-ambient-mist: radial-gradient(ellipse at 50% 80%,
+    var(--ambient-wash) 0%,
+    var(--depth-wash) 40%,
+    transparent 70%);
+
+  /* ─── 4 · ink (5 tiers) ─────────────────────────────────── */
+  --text:         #F4F2EE;
+  --text-mid:     #C9C5BD;
+  --text-dim:     #8A8780;
+  --text-faint:   #5A5852;
+  --text-mute:    #3A3833;
+
+  /* ─── 5 · type families ─────────────────────────────────── */
+  --display: "Nineties Headliner", "Perfectly Nineties", "Iowan Old Style", Georgia, serif;
+  --serif:   "Perfectly Nineties", "Iowan Old Style", Georgia, serif;
+  --sans:    "Geist", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --hand:    "Caveat", "Patrick Hand", cursive;
+
+  /* ─── 6 · type scale (18 sizes) ─────────────────────────── */
+  --fs-eyebrow:    9px;     /* small uppercase mono labels  */
+  --fs-mono-xs:   10px;     /* mono labels, source tags     */
+  --fs-mono-sm:   11px;     /* masthead, bar metadata       */
+  --fs-mono:      12px;     /* default mono body            */
+  --fs-mono-lg:   13px;     /* mono code/prompt             */
+  --fs-xs:        12px;     /* small body                   */
+  --fs-sm:      13.5px;     /* secondary body               */
+  --fs-body:      14px;     /* literary body sweet spot     */
+  --fs-body-tight: 14.5px;  /* dense literary body          */
+  --fs-base:      15px;     /* default sans body            */
+  --fs-md:        17px;     /* lifted body                  */
+  --fs-lg:        19px;     /* doc body, agent reads        */
+  --fs-lede:      20px;     /* foundation lede paragraphs   */
+  --fs-xl:        22px;     /* sub-heads                    */
+  --fs-2xl:       28px;     /* pin-name, section h2         */
+  --fs-3xl:       36px;     /* overlay h3, foundation ledes */
+  --fs-interior:  36px;     /* interior face italic line    */
+  --fs-check:     30px;     /* coherence-check step lines   */
+  --fs-delta:     56px;     /* coherence-check Δ headline   */
+  --fs-display:   64px;     /* screen-h1                    */
+
+  /* ─── 7 · line-height ───────────────────────────────────── */
+  --lh-tight:    1;
+  --lh-snug:     1.2;
+  --lh-normal:   1.45;
+  --lh-relaxed:  1.55;
+  --lh-loose:    1.65;
+
+  /* ─── 8 · letter-spacing ────────────────────────────────── */
+  --ls-mono:     0.18em;   /* default mono uppercase  */
+  --ls-mono-sm:  0.16em;   /* tighter mono            */
+  --ls-mono-lg:  0.20em;   /* loose mono              */
+  --ls-tight:   -0.025em;
+  --ls-tighter: -0.030em;
+  --ls-display: -0.038em;
+
+  /* ─── 9 · spacing · 4px base ────────────────────────────── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  22px;
+  --space-6:  28px;
+  --space-7:  36px;
+  --space-8:  48px;
+  --space-9:  64px;
+  --space-10: 96px;
+
+  /* ─── 10 · shape ────────────────────────────────────────── */
+  --radius-1:  2px;
+  --radius-2:  3px;
+  --radius-3:  4px;
+  --radius-4:  6px;
+  --radius-5: 14px;
+
+  /* ─── 11 · motion · intent-named ─────────────────────────── */
+  --tx-fast:        0.15s;   /* micro feedback · hover color shifts */
+  --tx-base:        0.20s;   /* most chrome state changes           */
+  --tx-emphasize:   0.25s;   /* buttons · refresh feel              */
+  --tx-settle:      0.32s;   /* panel slides · page transitions     */
+  --tx-deliberate:  0.35s;   /* vault flash · slider pop            */
+  --tx-extended:    0.40s;   /* fade-ins · scrim opacity            */
+  --tx-long:        0.80s;   /* expand · accordions · slow reveals  */
+  --ease:           cubic-bezier(0.4, 0, 0.2, 1);
+  /* legacy aliases */
+  --tx-medium: var(--tx-base);
+  --tx-slow:   var(--tx-settle);
+
+  /* ─── 12 · shadow + dash ─────────────────────────────────── */
+  --shadow-soft:    rgba(0,0,0,0.20);
+  --shadow-medium:  rgba(0,0,0,0.30);
+  --shadow-strong:  rgba(0,0,0,0.55);
+  --shadow-card:    0 8px 24px rgba(0,0,0,0.35);              /* default card shadow */
+  --shadow-card-lifted: 0 16px 40px rgba(0,0,0,0.5), 0 0 24px rgba(0,0,0,0.3); /* drag/hover */
+  --shadow-paper:   0 18px 38px rgba(0,0,0,0.55), 0 6px 14px rgba(0,0,0,0.35); /* paper-card disposition */
+  --scrim-modal:    rgba(0,0,0,0.55);         /* modal backdrop */
+  --scrim-overlay:  rgba(0,0,0,0.92);         /* overlay backdrop */
+  --dash-strong:    rgba(142,102,251,0.32);   /* dashed border, subtle */
+  --dash-pink:      rgba(233,0,149,0.30);     /* dashed border, judgment */
+
+  /* ─── 13 · legacy aliases · primary brand is Clarity ────── */
+  /* --accent points to Clarity (BRAND PRIMARY · #8e66fb) */
+  /* --pink points to Wholeness (BRAND SECONDARY · Liminal Pink #e90095) */
+  /* For Vitality (BRAND ACCENT · #ff9549) use --vitality directly */
+  --accent:        var(--clarity);
+  --accent-soft:   var(--clarity-soft);
+  --accent-bg:     var(--clarity-bg);
+  --accent-glow:   var(--clarity-glow);
+  --accent-faint:  var(--clarity-faint);
+  --accent-tint:   var(--clarity-tint);
+  --accent-edge:   var(--clarity-edge);
+  --accent-mid:    var(--clarity-mid);
+  --accent-strong: var(--clarity-strong);
+  --pink:          var(--wholeness);
+  --pink-bg:       var(--wholeness-bg);
+  --pink-faint:    var(--wholeness-faint);
+  --pink-tint:     var(--wholeness-tint);
+  --pink-edge:     var(--wholeness-edge);
+  --pink-strong:   var(--wholeness-strong);
+  --pink-due:      var(--wholeness-due);
+
+  /* ════════════════════════════════════════════════════════════
+     14 · DENSITY · 3 product registers
+     ════════════════════════════════════════════════════════════
+     Three densities · one per product surface. Components multiply
+     their spacing tokens by --density-scale to compress or expand.
+
+       anointed (1.10) · Personal · self-read · the wedge · spacious
+       shared   (1.00) · Team     · peer-read · default · neutral
+       analyst  (0.85) · Business · institutional-read · console-grade
+
+     RULE: only spacing tokens scale. Type sizes and radius NEVER scale.
+     Use: padding: calc(var(--space-3) * var(--density-scale));
+  */
+  --density-scale: 1;
+
+  /* ════════════════════════════════════════════════════════════
+     15 · ROLE · who is reading
+     ════════════════════════════════════════════════════════════
+     Role accent tokens. Each named operator role has a register-color
+     so the surface knows who's looking.
+
+     Personal roles (operator = subject):
+       founder · creator · autodidact
+
+     Team roles (operator ≠ subject · interpersonal consent):
+       manager · cofounder-mutual · team-lead · advisor
+
+     Business roles (operator ≠ subject · institutional clearance):
+       analyst · reviewer · subject · oversight · contracting-officer
+  */
+  --ui-role-self:           var(--clarity);     /* personal · founder · creator · autodidact */
+  --ui-role-peer:           var(--synthesis);   /* team · manager · team-lead · advisor */
+  --ui-role-cofounder:      var(--clarity);     /* team · cofounder-mutual · symmetric */
+  --ui-role-analyst:        var(--outreach);    /* business · CI analyst · contracting officer */
+  --ui-role-reviewer:       var(--watch);       /* business · human-in-loop reviewer */
+  --ui-role-subject:        var(--liminal);     /* the person being read · §552a(d) audit access */
+  --ui-role-oversight:      var(--depth);       /* audit · legal · review-only */
+
+  /* ════════════════════════════════════════════════════════════
+     16 · RELATIONSHIP · operator's relationship to subject
+     ════════════════════════════════════════════════════════════
+     The fifth axis. Same component renders differently depending on
+     who the operator is to the person being read.
+
+     See: design-system/docs/relationship-axis.md
+
+     Values for body[data-relationship]:
+       self                    · operator-equals-subject (Personal)
+       cofounder-mutual        · symmetric peer · joint vault
+       direct-report           · manager → direct-report (consent-gated)
+       advisor                 · external trusted observer (summaries-only)
+       institutional-subject   · CI analyst → cleared subject (clearance-gated)
+       self-as-subject         · the person being read · their own audit-chain access
+       peer                    · third party in same product · sanitized view
+       oversight               · legal/audit · process review · audit-chain only
+       public                  · outside consent boundary · refused surface
+
+     Each relationship has an edge-accent for the surface frame and a
+     refusal-copy register for relationship-specific gate explanations.
+  */
+  --ui-relationship-edge-self:                  var(--clarity-edge);
+  --ui-relationship-edge-cofounder-mutual:      var(--clarity-edge);
+  --ui-relationship-edge-direct-report:         var(--synthesis-edge);
+  --ui-relationship-edge-advisor:               var(--ambient-edge);
+  --ui-relationship-edge-institutional-subject: var(--outreach-edge);
+  --ui-relationship-edge-self-as-subject:       var(--liminal-edge);
+  --ui-relationship-edge-peer:                  var(--text-mute);
+  --ui-relationship-edge-oversight:             var(--depth-edge);
+  --ui-relationship-edge-public:                var(--alarm-edge);
+
+  /* ════════════════════════════════════════════════════════════
+     17 · CAPABILITY · what role+relationship permits
+     ════════════════════════════════════════════════════════════
+     Capability state colors. Components check the operator's
+     role-and-relationship capability and render accordingly.
+
+       allowed     · the operator can take this action
+       restricted  · cannot · greyed · still visible (informational)
+       forbidden   · cannot · refused state · explanation visible
+       review      · read-only · oversight role · view-but-no-action
+       joint       · requires multi-party consent (mutual-cofounder, joint-correction)
+  */
+  --ui-capability-allowed:    var(--ui-action-primary);
+  --ui-capability-restricted: var(--text-mute);
+  --ui-capability-forbidden:  var(--ui-state-error);
+  --ui-capability-review:     var(--watch-500);
+  --ui-capability-joint:      var(--liminal-500);
+
+  --ui-capability-allowed-bg:    var(--ui-action-primary-bg);
+  --ui-capability-restricted-bg: var(--frame-bg-2);
+  --ui-capability-forbidden-bg:  var(--ui-state-error-bg);
+  --ui-capability-review-bg:     var(--watch-100);
+  --ui-capability-joint-bg:      var(--liminal-100);
+}
+
+/* ════════════════════════════════════════════════════════════
+   DENSITY · body-scoped overrides (axis 14)
+   ════════════════════════════════════════════════════════════
+   Default = shared (1.0). Override on body to switch product register.
+*/
+body[data-density="anointed"] { --density-scale: 1.1; }
+body[data-density="shared"]   { --density-scale: 1.0; }
+body[data-density="analyst"]  { --density-scale: 0.85; }
+
+/* ════════════════════════════════════════════════════════════
+   PRODUCT-DEFAULT DENSITY · body[data-product] sets the right density
+   automatically when no explicit density is set. Components inheriting
+   from body get the product's canonical density unless overridden.
+   ════════════════════════════════════════════════════════════ */
+body[data-product="personal"]:not([data-density]) { --density-scale: 1.1; }
+body[data-product="team"]:not([data-density])     { --density-scale: 1.0; }
+body[data-product="business"]:not([data-density]) { --density-scale: 0.85; }
+
+/* ════════════════════════════════════════════════════════════
+   RELATIONSHIP · surface-edge accent (axis 16)
+   ════════════════════════════════════════════════════════════
+   Components consume --ui-relationship-edge to render the
+   relationship-typed frame around the operator's surface.
+*/
+body[data-relationship="self"]                  { --ui-relationship-edge: var(--ui-relationship-edge-self); }
+body[data-relationship="cofounder-mutual"]      { --ui-relationship-edge: var(--ui-relationship-edge-cofounder-mutual); }
+body[data-relationship="direct-report"]         { --ui-relationship-edge: var(--ui-relationship-edge-direct-report); }
+body[data-relationship="advisor"]               { --ui-relationship-edge: var(--ui-relationship-edge-advisor); }
+body[data-relationship="institutional-subject"] { --ui-relationship-edge: var(--ui-relationship-edge-institutional-subject); }
+body[data-relationship="self-as-subject"]       { --ui-relationship-edge: var(--ui-relationship-edge-self-as-subject); }
+body[data-relationship="peer"]                  { --ui-relationship-edge: var(--ui-relationship-edge-peer); }
+body[data-relationship="oversight"]             { --ui-relationship-edge: var(--ui-relationship-edge-oversight); }
+body[data-relationship="public"]                { --ui-relationship-edge: var(--ui-relationship-edge-public); }
+body:not([data-relationship])                   { --ui-relationship-edge: var(--frame-border); }
+
+/* ────────────────────────────────────────────────────────────
+ * baseline reset · applies wherever this file is imported
+ * ──────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; min-height: 100vh; }
+html { font-synthesis: weight; font-synthesis-style: none; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-feature-settings: "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select {
+  font: inherit; color: inherit;
+  background: none; border: none;
+  padding: 0; margin: 0;
+}
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent-soft); color: var(--text); }
+
+/* atmospheric grid · 64px lattice at low alpha */
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.6;
+}

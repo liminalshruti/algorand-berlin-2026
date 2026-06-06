@@ -1,6 +1,6 @@
 import algosdk from 'algosdk';
 import crypto from 'crypto';
-import type { AlgoAccount, Ctx, RepState } from './contract';
+import type { AlgoAccount, Ctx, RepState } from './contract.js';
 
 const ALGOD_URL   = process.env.ALGOD_URL   ?? 'http://localhost';
 const ALGOD_PORT  = Number(process.env.ALGOD_PORT  ?? 4001);
@@ -14,9 +14,10 @@ const stubRepState: RepState = { getReputation: () => null };
 function loadAccount(mnemonic?: string): AlgoAccount {
   if (mnemonic) {
     const { addr, sk } = algosdk.mnemonicToSecretKey(mnemonic);
-    return { addr, sk };
+    return { addr: addr.toString(), sk };
   }
-  return algosdk.generateAccount();
+  const acct = algosdk.generateAccount();
+  return { addr: acct.addr.toString(), sk: acct.sk };
 }
 
 export async function buildContext(repState: RepState = stubRepState): Promise<Ctx> {
@@ -34,16 +35,16 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
   ): Promise<{ txid: string; round: number }> {
     const params = await algodClient.getTransactionParams().do();
     const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      from: from.addr,
-      to,
-      amount: Math.round(amountAlgo * MICROALGO),
+      sender: from.addr,
+      receiver: to,
+      amount: BigInt(Math.round(amountAlgo * MICROALGO)),
       suggestedParams: params,
       note: Buffer.from(JSON.stringify(note)),
     });
     const signed = txn.signTxn(from.sk);
-    const { txId } = await algodClient.sendRawTransaction(signed).do();
-    const confirmed = await algosdk.waitForConfirmation(algodClient, txId, 4);
-    return { txid: txId, round: confirmed['confirmed-round'] as number };
+    const { txid } = await algodClient.sendRawTransaction(signed).do();
+    const confirmed = await algosdk.waitForConfirmation(algodClient, txid, 4);
+    return { txid, round: Number(confirmed['confirmed-round']) };
   }
 
   async function anchorNote(

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import type { Ctx, RouteOption, PaymentResult } from './contract';
+import type { Ctx, RouteOption, PaymentResult } from './contract.js';
 
 const HIDDEN_FEE_RATIO = 0.5; // dishonest providers add 50% on top of quoted
 
