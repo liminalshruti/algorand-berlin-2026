@@ -9,6 +9,7 @@
     "deploy": "npm run deploy:ci",
     "deploy:ci": "npm run compile:deploy && node dist/index.js",
     "deploy:localnet": "npm run deploy:ci",
+    "deploy:testnet": "tsx smart_contracts/deploy-testnet.ts",
     "localnet:start": "docker compose -f docker-compose.localnet.yml up -d",
     "localnet:stop": "docker compose -f docker-compose.localnet.yml down",
     "localnet:reset": "docker compose -f docker-compose.localnet.yml down -v && docker compose -f docker-compose.localnet.yml up -d",

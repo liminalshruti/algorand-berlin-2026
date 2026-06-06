@@ -66,6 +66,9 @@ export class NewFeedback extends arc4.Struct<{
   endpoint: arc4.Str
   feedbackURI: arc4.Str
   feedbackHash: arc4.StaticBytes<32>
+  // ERC-8004 §x402 Profile: the proof-of-payment backing this feedback.
+  paymentTxid: arc4.StaticBytes<32>
+  nonce: arc4.Uint64
 }> {}
 
 export class FeedbackRevoked extends arc4.Struct<{

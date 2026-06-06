@@ -18,8 +18,9 @@
   const NET = "testnet";   // pinned to TestNet — matches wallet.js + router-server; never switch
   // Genesis-hash prefix per network (CAIP-2).
   const GENESIS = { localnet: "localnet-v1", testnet: "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe", mainnet: "wGHE2Pwdvd7S12BL5FaOP20EGYesN73k" };
-  // Deployed app ids (the contracts you're interacting with). Mock placeholders until deploy.
-  const APP = { identity: 1001, reputation: 1002, validation: 1003 };
+  // Deployed app ids on TestNet (source of truth: public/deployed.testnet.json).
+  // Reputation + Validation are initialize()'d to point at Identity (global 'idApp').
+  const APP = { identity: 764031067, reputation: 764031363, validation: 764031094 };
   const agentRef = (id) => `algorand:${GENESIS[NET]}:${APP.identity}/${id}`;
 
   const state = {

@@ -7,8 +7,9 @@ Everyone's Claude should read this before writing anything.
 
 - **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`.
 - **On-chain:** ARC-8004 Identity + Reputation + Validation registries (Algorand TS) with deploy configs, unit specs, and `localnet-e2e.ts`.
+- **✅ DEPLOYED ON TESTNET (wired):** Identity `764031067`, Reputation `764031363`, Validation `764031094` — both Reputation & Validation are `initialize()`'d so their global `idApp` = `764031067` (verified on-chain). Reputation `764031363` ships the x402 `giveFeedback` coupling (supersedes earlier `764031075`). Deployer/creator = shared payer `24E3…`. **See `DEPLOYED.md`** for code hashes + creation txids; app ids also in `public/deployed.testnet.json`; UI (`arc8004.js`) consumes them. Redeploy: `npm run deploy:testnet` (orchestrator: `smart_contracts/deploy-testnet.ts`, idempotent via indexer).
 - **Frontend:** 5 pages + a left sidebar (Trust Router · Marketplace · Agent Studio · Contracts · Admin) under `public/`.
-- **Open follow-ups:** on-chain `giveFeedback` still omits the mandatory x402 `paymentTxid`/`nonce` (ARC-8004 §x402 Profile); `sandbox/lib/router/ranking.ts` is an unused stub (ranking lives in `providers.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
+- **Open follow-ups:** on-chain `giveFeedback` x402 `paymentTxid`/`nonce` coupling is now **landed + deployed** (Reputation `764031363`) — remaining piece is wiring `onchain.ts` to pass the two new args (see Shayaun's section); `sandbox/lib/router/ranking.ts` is an unused stub (ranking lives in `providers.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
 
 ---
 
@@ -131,7 +132,7 @@ ctx.routeStore.set(route_id, {
 - Verdict anchored hash-only via `ctx.deps.anchorNote` (real txid on LocalNet; skipped if algod down).
 - On-chain registries deploy via new `smart_contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
 - **On-chain write wired (env-gated):** `onchain.ts::maybeWriteReputation` calls `giveFeedback` on the deployed Reputation registry from `/api/validate` (best-effort; returns the txid in `on_chain_feedback_txid` + a `erc8004.giveFeedback` ledger entry). Enable with `REPUTATION_APP_ID` + `REPUTATION_SUBMITTER_MNEMONIC` (or `PAYER_MNEMONIC`). No-op/safe when unset.
-- ⚠️ TODO (yours): add mandatory x402 `paymentTxid`+`nonce` to the on-chain `giveFeedback` (ARC-8004 §x402 Profile) — recompile, then pass them through `onchain.ts`. Confirm the generated client method/arg names match `onchain.ts`.
+- ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`. ⚠️ TODO (yours): wire `onchain.ts` to pass the two new args (`giveFeedback` arg order: `…, feedbackHash, paymentTxid, nonce`); confirm the regenerated `ReputationRegistryClient` method/arg names match.
 
 **What's ready for you to consume:**
 

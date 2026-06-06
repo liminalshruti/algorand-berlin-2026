@@ -71,6 +71,8 @@ export class ReputationRegistry extends arc4.Contract {
   respCount = BoxMap<bytes, arc4.Uint64>({ keyPrefix: 'rc' })
   /** DEFERRED identity seam: local owner registry. key = agentId */
   owners = BoxMap<uint64, arc4.Address>({ keyPrefix: 'own' })
+  /** x402 proof-of-payment replay guard (ERC-8004 §x402): settlement txid → agentId it backed. key = paymentTxid(32) */
+  usedPayment = BoxMap<bytes, arc4.Uint64>({ keyPrefix: 'pay' })
 
   // --- lifecycle ---
 
@@ -89,7 +91,12 @@ export class ReputationRegistry extends arc4.Contract {
 
   // --- writes ---
 
-  /** giveFeedback (mapping §2.2). Caller MUST NOT be the agent owner (self-feedback prohibition). */
+  /**
+   * giveFeedback (mapping §2.2 + §x402 Profile). Caller MUST NOT be the agent owner
+   * (self-feedback prohibition) and MUST supply the x402 proof-of-payment that backs the
+   * review: `paymentTxid` (the settlement txid) plus its `nonce`. Each settlement txid can
+   * back exactly one feedback — reputation is earned per real, unique payment.
+   */
   giveFeedback(
     agentId: uint64,
     value: arc4.StaticBytes<16>,
@@ -99,9 +106,15 @@ export class ReputationRegistry extends arc4.Contract {
     endpoint: arc4.Str,
     feedbackURI: arc4.Str,
     feedbackHash: arc4.StaticBytes<32>,
+    paymentTxid: arc4.StaticBytes<32>,
+    nonce: arc4.Uint64,
   ): void {
     assert(dec.asUint64() <= 18, 'valueDecimals must be 0..18')
+    // ERC-8004 §x402: a missing proof is rejected, and each proof is single-use.
+    assert(!paymentTxid.bytes.equals(op.bzero(32)), 'x402 paymentTxid required')
+    assert(!this.usedPayment(paymentTxid.bytes).exists, 'payment proof already used')
     this.requireNotSelf(agentId)
+    this.usedPayment(paymentTxid.bytes).value = new arc4.Uint64(agentId)
 
     const client = Txn.sender.bytes
     const liKey = this.acKey(agentId, client)
@@ -140,6 +153,8 @@ export class ReputationRegistry extends arc4.Contract {
         endpoint,
         feedbackURI,
         feedbackHash,
+        paymentTxid,
+        nonce,
       }),
     )
   }

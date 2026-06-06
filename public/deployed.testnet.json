@@ -1,0 +1,23 @@
+{
+  "network": "testnet",
+  "genesisId": "testnet-v1.0",
+  "genesisHashPrefix": "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+  "deployer": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+  "deployedAt": "2026-06-06T20:23:49.296Z",
+  "apps": {
+    "identity": {
+      "appId": 764031067,
+      "address": "7GQKWP7LUSOUGPGV4GHVVCEYSIVCTW7MEKRTIDJHHEJW73LIM2JXJVB2SE"
+    },
+    "reputation": {
+      "appId": 764031363,
+      "address": "JELJPBIAQT6FT5BGRODOSPUZPJU3GDX4XESASUQZKKVNPV2KNIBF7ZXDPA",
+      "identityApp": 764031067
+    },
+    "validation": {
+      "appId": 764031094,
+      "address": "M6IAU57YF6WUNSQQH5XCDT2CTQVQSJ236I5XWMTQBL725LPODTY3KMGNX4",
+      "identityApp": 764031067
+    }
+  }
+}

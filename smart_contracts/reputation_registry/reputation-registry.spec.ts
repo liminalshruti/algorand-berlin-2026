@@ -35,12 +35,16 @@ describe('ReputationRegistry', () => {
   const list = (...a: ReturnType<typeof ctx.any.account>[]) =>
     new arc4.DynamicArray<arc4.Address>(...a.map((x) => new arc4.Address(x)))
 
+  // unique, non-zero x402 proof-of-payment txid per call (replay guard rejects reuse)
+  let paySeq = 0
+  const txid = (seq: number) => new arc4.StaticBytes<32>(Bytes.fromHex(seq.toString(16).padStart(64, '0')))
+
   // give one feedback row as `client` about `agentId`
   const give = (
     client: ReturnType<typeof ctx.any.account>,
     agentId: number,
     value: bigint,
-    opts: { dec?: number; tag1?: string; tag2?: string } = {},
+    opts: { dec?: number; tag1?: string; tag2?: string; paymentTxid?: arc4.StaticBytes<32>; nonce?: number } = {},
   ) =>
     asSender(client, () =>
       c.giveFeedback(
@@ -52,6 +56,8 @@ describe('ReputationRegistry', () => {
         str(''),
         str(''),
         ZERO32,
+        opts.paymentTxid ?? txid(++paySeq),
+        new arc4.Uint64(opts.nonce ?? paySeq),
       ),
     )
 
@@ -79,6 +85,20 @@ describe('ReputationRegistry', () => {
   it('rejects valueDecimals > 18', () => {
     const alice = ctx.any.account()
     expect(() => give(alice, 1, 1n, { dec: 19 })).toThrow()
+  })
+
+  // --- ERC-8004 §x402 Profile: mandatory, single-use proof-of-payment ---
+
+  it('requires an x402 paymentTxid (rejects an all-zero proof)', () => {
+    const alice = ctx.any.account()
+    expect(() => give(alice, 1, 1n, { paymentTxid: ZERO32 })).toThrow()
+  })
+
+  it('binds each settlement to one feedback (rejects a reused proof)', () => {
+    const alice = ctx.any.account()
+    const proof = txid(0x9999)
+    expect(() => give(alice, 1, 1n, { paymentTxid: proof })).not.toThrow()
+    expect(() => give(alice, 1, 2n, { paymentTxid: proof })).toThrow()
   })
 
   it('tracks distinct clients per agent (getClients), once each', () => {
