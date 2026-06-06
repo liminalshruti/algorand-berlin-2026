@@ -152,17 +152,24 @@ const mockApi = {
 
 /* ───────────────── api wrapper · live with mock fallback (#13) ─────── */
 const srcMode = {};   // ep → "live" | "mock" | "fallback"
+let serverUp = false; // set by probe(): is the router-server reachable on :3001?
 async function http(method, path, body) {
   const res = await fetch(BASE_URL + path, body ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { method });
   if (!res.ok) { const e = new Error(`${path} → ${res.status}`); e.status = res.status; throw e; }
   return res.json();
 }
+async function probe() {   // health check — gate live attempts on a reachable server
+  if (!ANY_LIVE) { serverUp = false; renderSrc(); return false; }
+  try { const c = new AbortController(); const t = setTimeout(() => c.abort(), 1500); const r = await fetch(BASE_URL + "/api/ledger", { signal: c.signal }); clearTimeout(t); serverUp = r.ok; }
+  catch (_) { serverUp = false; }
+  setBanner(); renderSrc(); return serverUp;
+}
 async function call(ep, liveFn, mockFn) {
-  if (LIVE[ep]) {
+  if (LIVE[ep] && serverUp) {
     try { const r = await liveFn(); srcMode[ep] = "live"; renderSrc(); return r; }
-    catch (_) { srcMode[ep] = "fallback"; renderSrc(); return mockFn(); }   // graceful degrade
+    catch (_) { srcMode[ep] = "fallback"; renderSrc(); return mockFn(); }   // graceful degrade (e.g. endpoint still stubbed)
   }
-  srcMode[ep] = "mock"; renderSrc(); return mockFn();
+  srcMode[ep] = LIVE[ep] ? "fallback" : "mock"; renderSrc(); return mockFn();
 }
 const api = {
   route: (b) => call("route", () => http("POST", "/api/route", b), () => mockApi.route(b)),
@@ -450,19 +457,21 @@ function renderReceipt() {
   const r = $("frameReceipt"); if (!r) return;
   r.innerHTML = `<span class="fr-glyph">◇</span><span class="fr-strong">route · ${ui.route ? ui.route.route_id : "—"}</span><span class="fr-sep">·</span><span>${ui.route ? ui.route.options.length : 0} providers</span><span class="fr-sep">·</span><span>${NETWORK} · ${ANY_LIVE ? "live" : "mock"}</span><span class="fr-right">R route · A approve · P present · ⌘. tray</span>`;
 }
-function renderSrc() {   // #13 per-endpoint source indicator
+function renderSrc() {   // #13 per-endpoint source indicator + server health
   const el = $("srcMode"); if (!el) return;
   const live = Object.values(srcMode).filter((s) => s === "live").length;
   const fb = Object.values(srcMode).filter((s) => s === "fallback").length;
-  const mk = Object.values(srcMode).filter((s) => s === "mock").length;
-  el.textContent = `${live} live${fb ? ` · ${fb} fallback` : ""}${mk ? ` · ${mk} mock` : ""}`;
-  el.className = "sm-src" + (fb ? " has-fallback" : "");
+  const dot = !ANY_LIVE ? "○ mock" : serverUp ? "● server online" : "○ server offline";
+  el.textContent = `${dot}${live ? ` · ${live} live` : ""}${fb ? ` · ${fb} fallback` : ""}`;
+  el.className = "sm-src" + (ANY_LIVE && serverUp ? " is-up" : " has-fallback");
+  el.title = "click to re-check the router-server";
 }
 
 /* ─────────────────────────── flow control ─────────────────────────── */
 async function doRoute(isRerun) {
   $("routeBtn").disabled = true; const rb = $("rerunBtn"); if (rb) rb.disabled = true;
   setStep(isRerun ? "rerun" : "request");
+  if (ANY_LIVE && !serverUp) await probe();   // reconnect if the server came online
   try {
     const prevById = isRerun && ui.route ? Object.fromEntries(ui.route.options.map((o) => [o.provider_id, o.reputation])) : null;
     const route = await api.route({ task: ($("taskInput").value || "").trim() || REGISTER_TASKS[ui.register], register: ui.register });
@@ -570,10 +579,12 @@ function boot() {
   // JTBD#4 — click any address/txid/hash to copy
   document.addEventListener("click", (e) => { const c = e.target.closest("[data-copy]"); if (c) { e.preventDefault(); copy(c.dataset.copy); } });
 
+  $("srcMode").addEventListener("click", () => probe().then((up) => toast(up ? "router-server online :3001" : "router-server offline — using mock", !up)));
   setBanner(); setStep("request"); renderReceipt(); renderSrc();
+  probe();   // health check on boot; gates live calls + updates the indicator
   requestAnimationFrame(() => document.body.classList.add("ready"));
 }
-function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${ANY_LIVE ? "LIVE :3001" : "MOCK"}`; }
+function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${!ANY_LIVE ? "MOCK" : serverUp ? "LIVE :3001" : "SERVER OFFLINE"}`; }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();

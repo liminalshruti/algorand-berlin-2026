@@ -275,3 +275,7 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 .dispo-btn.da-flag:hover { background: var(--stability-bg); }
 .dispo-btn.da-flag[disabled] { opacity: 0.6; color: var(--watch); }
 .lm-raw { color: var(--text-faint); font-family: var(--mono); font-size: 9px; }
+
+/* server health indicator */
+.sm-src { cursor: pointer; }
+.sm-src.is-up { color: var(--good); }
