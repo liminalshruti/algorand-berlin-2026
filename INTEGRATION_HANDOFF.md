@@ -84,7 +84,13 @@ ctx.routeStore.set(route_id, {
 
 ---
 
-## Shayaun — Reputation Registry + Validation Registry
+## Shayaun — Reputation Registry + Validation Registry ✅ ROUTER GLUE WIRED
+
+- Live: `POST /api/validate {payment_id}` → `{validation_id, price_match, output_pass, response, new_reputation, verdict_txid}`; `GET /api/reputation?provider=` → `{provider_id, score, reads_logged, corrections_logged, by_tag, uri, hash}`.
+- `makeValidationRoutes(ctx)` **injects `ctx.repState`** (in-memory; score = (landed−corrected)/landed) so `/api/route` reroutes after a write-back — no `router-server.ts` change needed.
+- Verdict anchored hash-only via `ctx.deps.anchorNote` (real txid on LocalNet; skipped if algod down).
+- On-chain registries deploy via new `smart_contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
+- ⚠️ TODO (yours): `giveFeedback` needs mandatory x402 `paymentTxid`+`nonce` (ARC-8004 §x402 Profile) — recompile; then mirror the in-memory write to the on-chain client (seam noted in `routes.validation.ts`).
 
 **What's ready for you to consume:**
 
