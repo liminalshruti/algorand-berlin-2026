@@ -79,7 +79,12 @@ const ctx = await buildContext(repState);
 
 ---
 
-## Shruti — UI + Narrative
+## Shruti — UI + Narrative ✅ UI BUILT · LIVE MODE ON
+
+- UI lives in `public/router.{html,js,css}` (vendored design system; open via a static server, not file://).
+- `public/router.js` top: `const LIVE = { route, pay, validate, reputation, ledger }` — per-endpoint mock↔live switch; `BASE_URL='http://localhost:3001'`. Currently **all true** (live). Flip any to `false` to mock that endpoint.
+- Needs from backend: live `/api/route` (mine sends its `route_id` to `/api/pay`); CORS allow-origin on the router-server if the page isn't served from `:3001`.
+- Failures surface as a red toast; provider identity + before-score are sourced from the picked RouteOption (never from pay/validate).
 
 **Live endpoints right now:**
 ```
