@@ -1,4 +1,60 @@
-# arc8004
+# x402 Trust Router + ARC-8004 on Algorand
+
+**Algorand Builders Berlin · Agentic Commerce x402 · Infrastructure track.**
+A trust router over x402 on Algorand where agent reputation is *earned and verified*, not
+self-reported: collect competing providers' quotes, rank by price + earned reputation +
+validation, pay the winner over x402, then validate the delivery against its quote on-chain —
+so a provider that quotes low and charges high is caught by the chain and loses the next route.
+*"ERC-8004 gives agents a passport; we give the marketplace a conscience."*
+
+## Architecture (current — `origin/main`)
+
+| Layer | Where | What |
+|---|---|---|
+| **Frontend** | `public/` | 5 pages behind a left sidebar — **Trust Router**, **Marketplace**, **Agent Studio**, **Contracts**, **Admin** — vanilla JS/CSS with the vendored Liminal design system. Mock-first; flips per-endpoint to the live server. |
+| **Router server** | `sandbox/` | Hono server on `:3001`. Endpoints: `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`. Settles x402 + anchors hash-only notes. **Defaults to TestNet** (shared throwaway payer); LocalNet optional via `.env`. |
+| **On-chain** | `smart_contracts/` | ARC-8004 **Identity**, **Reputation**, **Validation** registries in Algorand TypeScript (ARC-72/28/60), with deploy configs, unit specs, and `localnet-e2e.ts` (exercises every ABI method on real algod). |
+
+**The demo beat:** the cheapest provider wins → pay → settled > quoted (hidden fee, caught on-chain)
+→ its reputation drops → re-run reroutes to the honest provider. Pitch artifacts in `pitch/`.
+
+## Quickstart
+
+**Frontend only (no backend, instant):**
+```sh
+npx serve public        # then open http://localhost:<port>/router.html
+```
+The UI runs fully on its in-file mock. Use the sidebar to reach Marketplace / Studio / Contracts / Admin.
+
+**Full stack (live router server on :3001):**
+```sh
+npm install
+# TestNet (default): fund the shared payer once (see INTEGRATION_HANDOFF.md), then:
+npm start               # boots :3001, seeds providers, real on-chain txids
+#   — or LocalNet: npm run localnet:start  (set ALGO_NETWORK=localnet + PAYER_MNEMONIC in .env)
+```
+Then open `public/router.html` (served statically) — it calls the live endpoints, with graceful
+mock fallback per endpoint.
+
+**Contracts (build · deploy · test):**
+```sh
+npm run build           # algokit compile TS → TEAL + generated clients
+npm run localnet:start && npm run deploy:localnet   # deploys all registries
+npm run test:contracts  # vitest unit suites (in-process, no chain)
+tsx localnet-e2e.ts     # full ABI exercise on LocalNet algod
+```
+
+## Status (as of latest `origin/main`)
+
+- ✅ **Frontend** (Shruti) — 5-page console + sidebar; trust-router loop; ARC-8004 marketplace/admin with verified, payment-anchored reviews.
+- ✅ **Payment + integration** (Navid) — `/api/pay` + `/api/ledger`, real settle + hash-only anchor, verified on-chain.
+- ✅ **Identity + discovery + ranking** (Reza) — `/api/route` + `/api/providers`; on-chain Identity registry.
+- ✅ **Reputation + Validation** (Shayaun) — router glue (`/api/validate`, `/api/reputation`) + on-chain registries + LocalNet e2e.
+- ⚠️ **Known follow-ups:** on-chain `giveFeedback` still omits the mandatory x402 `paymentTxid`/`nonce` (ARC-8004 §x402 Profile); `sandbox/lib/router/ranking.ts` is an unused stub (ranking lives in `providers.ts::discoveryOptions`).
+
+---
+
+> The remainder of this file is the AlgoKit template reference.
 
 This project has been generated using AlgoKit. See below for default getting started instructions.
 

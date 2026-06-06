@@ -1,62 +1,50 @@
-# Trust Router UI (`public/`)
+# Frontend (`public/`)
 
-The visible layer over the four backend lanes — the x402 trust router rendered
-as **a flow inside the Liminal desktop app** (the slate-tray shell). Built
-**mock-first**: it renders the full loop with the backend OFF.
+A multi-page console behind a shared **left sidebar** (rendered *inside* the app frame),
+all sharing the vendored Liminal design system. No build step — serve the folder statically.
 
-The router maps onto the desktop-app surface:
-
-- **left rail** — Route box + ranked providers (case-items)
-- **center slate** — selected provider → brief (approve gate) → **signed packet**
-  (the paper `dispo-artifact` with SHA-256) → **ledger** (audit ribbon)
-- **right rail** — **Trust Registry** (earned reputation; the caught provider drops)
-
-## Run
-
-No build step. Serve the folder statically and open `router.html`:
-
-```bash
-# from repo root
-npx serve public        # or: python3 -m http.server -d public 8080
+```sh
+npx serve public          # then open any page, e.g. http://localhost:<port>/router.html
 ```
 
-Then open `http://localhost:<port>/router.html`.
+## Pages (one role each)
 
-## The loop it demonstrates
+| Page | Role / JTBD |
+|---|---|
+| `router.html` | **Trust Router** (operator) — request → rank → pay → validate → re-run that reroutes off a caught provider. The demo centerpiece. |
+| `marketplace.html` | **Marketplace** (client) — discover agents by earned trust; leave a **verified, payment-anchored** review. |
+| `studio.html` | **Agent Studio** (owner) — fetch & manage *your* agents (identity, metadata, replies). |
+| `contracts.html` | **Contracts** (developer) — deployed ARC-8004 app-ids + the full ABI, callable. |
+| `admin.html` | **Admin** (observability) — KPIs, ARC-28 transaction ledger, validations queue, health. |
 
-1. **Request** — operator types a task in the left rail, picks a register lane, hits Route.
-2. **Rank** (left rail) — competing providers ranked by `trust = 0.3·price + 0.4·reputation + 0.3·validation`; weighted-lottery pick selected; the registry (right rail) shows current reputation.
-3. **Brief / approve gate** (center) — the selected provider's quote + disposition: **Approve & pay** / **Deny**.
-4. **Pay & validate** — x402 settlement; the metric band shows quoted vs settled with the **hidden-fee gap in red**; price-vs-quote verdict + `response 0..100`.
-5. **Signed packet** (center) — a paper `dispo-artifact` with the disposition, verdict, **reputation delta**, ledger anchor count, and a SHA-256 — plus the **Re-run** handoff.
-6. **Ledger** (audit ribbon) — every settle + verdict anchor, hash-only, with explorer links; the titlebar ledger pill counts anchors.
-7. **Re-run** — re-routes the same request; the caught provider has dropped in the registry, so the router **self-corrects to the honest provider**. This is the demo centerpiece.
+Sidebar: `nav.js` + `nav.css` (injected into `.frame`). Engine: `registry.js` + `arc8004.js`
+drive marketplace/studio/contracts/admin by `body[data-view]`; the trust router is `router.{html,js,css}`.
 
-## Mock → live
+## Live wiring
 
-Everything goes through `api.*` in `router.js`. To point at the real
-router-server, set one const at the top of `router.js`:
-
+`router.js` top:
 ```js
-const API_BASE = "http://127.0.0.1:8787";   // null = mock
+const BASE_URL = "http://localhost:3001";
+const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
 ```
+Per-endpoint mock↔live switch with a **server health probe** and graceful per-endpoint mock
+fallback, so the loop runs whether the server is up, partially live, or down. The ARC-8004
+console (`arc8004.js`) is mock-first — an ABI-faithful client with the spec guards (verified
+proof-of-payment reviews, self-feedback/self-validation prevention, satisfaction-based trust).
 
-The UI codes to the frozen API (`TEAM_SWIMLANES_2026-06-06.md`):
-`POST /api/route`, `POST /api/pay`, `POST /api/validate`,
-`GET /api/reputation?provider=…`, `GET /api/ledger`.
+The trust router consumes the frozen API: `POST /api/route`, `POST /api/pay`, `POST /api/validate`,
+`GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`.
 
 ## Files
 
 | File | Role |
 |---|---|
-| `router.html` | structure on the desktop-app shell (frame, rails, slate, registry) |
-| `router.css` | per-cut overrides only (consumes the shell + tokens; no token redefinition) |
-| `router.js` | mock backend + the route→rank→pay→validate→re-run state machine |
-| `design-tokens.css` | vendored Liminal design tokens (canon from `liminal-prototype`) |
-| `cut-shell.css` | vendored desktop-app shell (frame chrome, rails, slate, brief, dispo, audit) |
-| `brand-upgrade.css` + `fonts/` | vendored brand serif/display faces (Perfectly Nineties, Nineties Headliner) |
+| `router.{html,js,css}` | trust-router flow (desktop-app shell) |
+| `marketplace/studio/contracts/admin.html` | the four console pages (thin wrappers) |
+| `registry.{js,css}` | engine + styles for the console pages |
+| `arc8004.js` | mock-first ARC-8004 client (Identity/Reputation/Validation) |
+| `nav.{js,css}` | shared in-frame sidebar |
+| `design-tokens.css` · `cut-shell.css` · `brand-upgrade.css` + `fonts/` | vendored Liminal design system |
 
-**This repo is the single home for the trust-router frontend.** The Liminal
-design system (`design-tokens.css`, `cut-shell.css`, `brand-upgrade.css`, fonts)
-is vendored here so the judged repo renders identically to the desktop app with
-no external dependency — edit the UI here, not in `liminal-prototype`.
+Chain context (network + contract app-ids / settlement) shows bottom-right on every page.
+`registry.html` redirects to `marketplace.html` (legacy combined console).
