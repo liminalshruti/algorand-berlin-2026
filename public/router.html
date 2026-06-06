@@ -3,166 +3,153 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Liminal · x402 Trust Router</title>
+<title>Cut 09 · x402 Trust Router · Liminal</title>
 
 <!--
-  Liminal x402 Trust Router · UI lane (Shruti)
+  Cut 09 · x402 Trust Router · the trust router as a flow in the Liminal desktop app
   ──────────────────────────────────────────────────────────────────────
-  Surface    · standalone web UI · the visible layer over the four backend lanes
-  Spec ref   · TEAM_SWIMLANES_2026-06-06.md (Shruti lane) + END_TO_END_HACK_SCOPE_2026-06-06.md §5/§8
-  Renders    · MOCK-FIRST. Backend OFF by default (window.API_BASE === null).
-               Flip to live by setting API_BASE to the router-server origin.
-  Tokens     · public/design-tokens.css (vendored from liminal-prototype canon · DO NOT redefine)
+  ICP        · operator routing agent-to-agent commerce over x402 on Algorand
+  Surface    · Liminal desktop app (slate-tray shell · cut-shell.css)
+  Spec ref   · algorand-berlin-2026/TEAM_SWIMLANES_2026-06-06.md (Shruti lane)
+               + END_TO_END_HACK_SCOPE_2026-06-06.md §5/§8
+  Status     · sketch · mock-first (renders with backend OFF)
   ──────────────────────────────────────────────────────────────────────
-  The four views surfacing each backend lane:
-    1 · Ranked providers  (Reza · POST /api/route)
-    2 · Pay & settle      (Navid · POST /api/pay   + GET /api/ledger)
-    3 · Validate & rep    (Shayaun · POST /api/validate + GET /api/reputation)
-    4 · On-chain ledger   (Navid · GET /api/ledger)
-  The loop: request → rank → pay → validate → RE-RUN reroutes away from the cheater.
+  Adopts the canonical desktop-app shell from cut-shell.css. The router flow
+  maps onto the slate surface:
+    left rail  · Route box + ranked providers (case-items)
+    center     · selected provider → brief (approve gate) → signed packet → ledger
+    right rail · Trust Registry (earned reputation; the caught provider drops)
+  Canonical shippable copy: algorand-berlin-2026/public/router.{html,css,js}.
+  trust-router.{css,js} here are the catalog mirror for design-system review.
+  ──────────────────────────────────────────────────────────────────────
 -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet" />
 
-<!-- canon tokens · vendored · DO NOT redefine -->
+<!-- canon · 12-wheel tokens -->
 <link rel="stylesheet" href="design-tokens.css" />
+<!-- shared desktop-app shell · frame chrome + rails + slate + brief + dispo + audit -->
+<link rel="stylesheet" href="cut-shell.css" />
+<link rel="stylesheet" href="brand-upgrade.css" />
+<!-- per-cut overrides only -->
 <link rel="stylesheet" href="router.css" />
 </head>
-<body>
+<body data-product="personal">
 
 <div class="stage">
-  <main class="frame" role="application" aria-label="Liminal x402 Trust Router">
+  <div class="frame">
 
-    <!-- ── titlebar chrome ── -->
+    <!-- titlebar -->
     <header class="titlebar">
-      <div class="lights" aria-hidden="true">
-        <span class="light red"></span>
-        <span class="light yellow"></span>
-        <span class="light green"></span>
+      <div class="lights">
+        <span class="light red"></span><span class="light yellow"></span><span class="light green"></span>
       </div>
       <div class="title-row">
         <span class="diamond">◇</span>
-        <span class="wordmark">Liminal</span>
-        <span class="crumb-sep">·</span>
-        <span class="breadcrumb">x402 Trust Router</span>
+        <span class="tb-wedge">A trust router over x402 on Algorand · reputation is earned, not self-reported.</span>
+        <span class="crumb-sep" id="crumb-sep" hidden>·</span>
+        <span class="breadcrumb" id="breadcrumb"></span>
       </div>
-      <div class="net-pill" id="netPill" title="Settlement network">
-        <span class="net-dot"></span>
-        <span id="netLabel">ALGORAND · LOCALNET</span>
-        <span class="net-mode" id="netMode">MOCK</span>
-      </div>
+      <div class="vault-pill" id="ledgerPill"><span class="diamond">◇</span>ledger: <strong id="ledgerCount">0</strong></div>
     </header>
 
-    <!-- ── request bar ── -->
-    <section class="request-bar" aria-label="Service request">
-      <label class="req-eyebrow" for="taskInput">Operator request</label>
-      <div class="req-controls">
-        <input
-          id="taskInput"
-          class="req-input"
-          type="text"
-          value="Diligence read: partner email says rejected; dashboard says in-review"
-          aria-label="Task to route"
-        />
-        <select id="registerSelect" class="req-register" aria-label="Register">
-          <option value="Diligence" selected>Diligence</option>
-          <option value="Outreach">Outreach</option>
-          <option value="Judgment">Judgment</option>
-          <option value="Operations">Operations</option>
-        </select>
-        <button id="routeBtn" class="btn btn-primary">Route&nbsp;→</button>
+    <!-- product row · register lanes -->
+    <nav class="product-row">
+      <button class="product-tab reg-tab is-active" data-register="Diligence"><span class="pt-glyph"></span>diligence<span class="pt-shape">read</span></button>
+      <button class="product-tab reg-tab" data-register="Outreach"><span class="pt-glyph"></span>outreach<span class="pt-shape">draft</span></button>
+      <button class="product-tab reg-tab" data-register="Judgment"><span class="pt-glyph"></span>judgment<span class="pt-shape">verdict</span></button>
+      <button class="product-tab reg-tab" data-register="Operations"><span class="pt-glyph"></span>operations<span class="pt-shape">run</span></button>
+      <div class="surface-meta"><span class="sm-banner" id="netBanner">ALGORAND · LOCALNET · MOCK</span></div>
+    </nav>
+
+    <!-- main · three pane -->
+    <main class="main">
+
+      <!-- left rail · route + ranked providers -->
+      <aside class="rail-left">
+        <div class="rail-header"><span>Route</span><span class="rh-meta" id="railMeta">·</span></div>
+        <div class="route-box">
+          <span class="rb-label">Operator request</span>
+          <textarea id="taskInput" class="rb-input" rows="2" aria-label="Task to route">Diligence read: partner email says rejected; dashboard says in-review</textarea>
+          <button id="routeBtn" class="dispo-btn is-primary">Route →</button>
+        </div>
+        <div class="rail-subhead"><span>Providers</span><span class="rs-meta" id="railSub">price · rep · trust</span></div>
+        <div id="providerList"></div>
+      </aside>
+
+      <!-- center · slate -->
+      <section class="slate-area">
+        <div class="classification" id="classification">ROUTE · DILIGENCE · LOCALNET</div>
+
+        <header class="slate-header">
+          <div class="slate-eyebrow" id="slateEyebrow"><span class="sb-strong">Trust router</span></div>
+          <h1 class="slate-title" id="slateTitle">Route a request to begin</h1>
+          <p class="slate-subtitle" id="slateSubtitle">Collect competing quotes; rank by price + earned reputation + validation; pay the winner; validate against the quote on-chain.</p>
+        </header>
+
+        <div class="metric-band" id="metricBand" hidden></div>
+
+        <div class="slate-canvas" id="slateCanvas" data-empty="1" data-layout="freeform">
+          <div class="slate-empty" id="slate-empty">
+            <div class="se-glyph">◇</div>
+            <div class="se-eyebrow">Agentic commerce</div>
+            <h2 class="se-headline">Route a request to collect competing on-chain quotes.</h2>
+            <p class="se-helper">The router ranks providers by price, earned reputation, and validation — then catches the ones that quote low and charge high.</p>
+          </div>
+          <div id="quoteWrap"></div>
+        </div>
+
+        <div class="brief-area" id="briefArea" hidden>
+          <div class="brief-head"><span class="bh-glyph">◇</span><span>Brief · the route decision</span></div>
+          <p class="brief-body" id="briefBody">·</p>
+          <div class="disposition" id="disposition">
+            <button class="dispo-btn is-primary" id="dispoPrimary">Approve &amp; pay</button>
+            <button class="dispo-btn is-defer" id="dispoDefer">Deny</button>
+          </div>
+        </div>
+
+        <div class="dispo-artifact" id="dispoArtifact" hidden></div>
+
+        <div class="audit-ribbon" id="auditRibbon">
+          <span class="ar-label">Ledger</span>
+          <div id="auditRows" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
+        </div>
+      </section>
+
+      <!-- right rail · trust registry -->
+      <aside class="rail-right">
+        <div class="rail-right-header">
+          <span class="agency-label" title="ERC-8004-shaped reputation. Score = how a provider's reads survive validation. Caught once → routed around.">◇ REGISTRY · ERC-8004-SHAPED</span>
+          <span class="live-indicator">live</span>
+        </div>
+        <div class="registry-list" id="registryList"></div>
+        <p class="registry-note">Reputation is earned through on-chain validation — the chain catches the quote-vs-settled gap. Self-reported scores are gameable; these are not.</p>
+      </aside>
+    </main>
+
+  </div><!-- /.frame -->
+
+  <!-- tray · context dropped into the app -->
+  <div class="tray-pop" id="tray-pop">
+    <button class="tray-pill" id="tray-pill" aria-label="Toggle tray">
+      <span class="tp-chevron"></span><span class="tp-glyph">◇</span>
+      <span class="tp-count">context <strong>2</strong></span><span class="tp-dot"></span>
+    </button>
+    <div class="tray-panel" id="tray-panel" aria-hidden="true">
+      <div class="tray-panel-head"><span class="tpa-title">Context</span><span class="tpa-meta">2 dropped</span></div>
+      <div class="tray-tiles" style="padding:12px 14px;">
+        <div class="tr-tile"><div class="tt-app">Gmail · partner</div><div class="tt-text">"After review, we've decided not to move forward at this time."</div></div>
+        <div class="tr-tile"><div class="tt-app">HubSpot · dashboard</div><div class="tt-text">Application status: <b>In review</b> · stage 3 of 4 · updated today</div></div>
       </div>
-      <p class="req-hint" id="reqHint">
-        Collect competing providers' quotes, rank by <em>price + earned reputation + validation</em>,
-        pay the winner, then validate the delivery against its quote — on-chain.
-      </p>
-    </section>
-
-    <!-- ── two-column workspace ── -->
-    <div class="workspace">
-
-      <!-- LEFT · View 1 — ranked providers -->
-      <section class="col col-left" aria-labelledby="rankHdr">
-        <div class="col-head">
-          <h2 id="rankHdr" class="col-title">Ranked providers</h2>
-          <span class="col-meta" id="rankMeta">awaiting request</span>
-        </div>
-
-        <div id="rerouteBanner" class="reroute-banner" hidden></div>
-
-        <div id="providerList" class="provider-list" aria-live="polite">
-          <div class="empty-state" id="rankEmpty">
-            <div class="empty-glyph">◇</div>
-            <p>Route a request to collect quotes from competing providers.</p>
-          </div>
-        </div>
-
-        <div id="approveGate" class="approve-gate" hidden>
-          <div class="gate-label">
-            <span class="gate-eyebrow">Operator sovereignty</span>
-            <span id="gateProvider" class="gate-provider">—</span>
-          </div>
-          <div class="gate-actions">
-            <button id="denyBtn" class="btn btn-ghost">Deny</button>
-            <button id="approveBtn" class="btn btn-primary">Approve &amp; pay&nbsp;→</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- RIGHT · evidence rail (views 2–4) -->
-      <section class="col col-right" aria-label="Evidence">
-
-        <!-- View 2 — pay & settle -->
-        <article class="panel" id="payPanel" data-state="idle">
-          <div class="panel-head">
-            <span class="panel-step">02</span>
-            <h3 class="panel-title">Pay &amp; settle</h3>
-            <span class="panel-status" id="payStatus">idle</span>
-          </div>
-          <div class="panel-body" id="payBody">
-            <p class="panel-placeholder">Approve a provider to settle payment over x402 on Algorand.</p>
-          </div>
-        </article>
-
-        <!-- View 3 — validate & reputation -->
-        <article class="panel" id="validatePanel" data-state="idle">
-          <div class="panel-head">
-            <span class="panel-step">03</span>
-            <h3 class="panel-title">Validate &amp; reputation</h3>
-            <span class="panel-status" id="validateStatus">idle</span>
-          </div>
-          <div class="panel-body" id="validateBody">
-            <p class="panel-placeholder">Validation compares settled amount to the quote — on-chain.</p>
-          </div>
-        </article>
-
-        <!-- View 4 — ledger -->
-        <article class="panel" id="ledgerPanel" data-state="idle">
-          <div class="panel-head">
-            <span class="panel-step">04</span>
-            <h3 class="panel-title">On-chain ledger</h3>
-            <span class="panel-status" id="ledgerStatus">hash-only</span>
-          </div>
-          <div class="panel-body" id="ledgerBody">
-            <p class="panel-placeholder">Every decision, payment, and verdict — anchored, verifiable by anyone.</p>
-          </div>
-        </article>
-
-      </section>
     </div>
+  </div>
 
-    <!-- ── footer / loop control ── -->
-    <footer class="loop-bar">
-      <div class="loop-note" id="loopNote">
-        Reputation is <em>earned</em>, not self-reported. Catch a provider once — the next route avoids it.
-      </div>
-      <button id="rerunBtn" class="btn btn-loop" disabled>↻ Re-run request</button>
-    </footer>
+</div><!-- /.stage -->
 
-  </main>
-</div>
+<!-- toast -->
+<div class="toast" id="toast"><span class="t-glyph">◇</span><span id="toast-msg">·</span></div>
 
 <script src="router.js"></script>
 </body>
