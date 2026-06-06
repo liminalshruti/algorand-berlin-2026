@@ -48,16 +48,25 @@ Check status:
 npm run localnet:status
 ```
 
-Deploy and call the mock `hello_world` smart contract:
+Build and deploy the current smart contracts:
 
 ```sh
+npm run build
 npm run deploy:localnet
 ```
 
-Expected successful call output includes:
+The deployer auto-discovers each `smart_contracts/*/deploy-config.ts`, so LocalNet deployment includes
+`hello_world`, `identity_registry`, `reputation_registry`, and `validation_registry`. Expected
+successful output still includes the starter contract call:
 
 ```txt
 Called hello on HelloWorld (...) with name = world, received: Hello, world
+```
+
+To deploy only the starter contract smoke test:
+
+```sh
+npm run deploy:ci -- hello_world
 ```
 
 Useful LocalNet commands:
@@ -159,4 +168,3 @@ This project makes use of Algorand TypeScript to build Algorand smart contracts.
 
 
 It has also been configured to have a productive dev experience out of the box in [VS Code](https://code.visualstudio.com/), see the [.vscode](./.vscode) folder.
-

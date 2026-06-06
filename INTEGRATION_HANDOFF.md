@@ -66,6 +66,7 @@ npm start                # funds providers automatically, prints option_ids on b
 - ERC-8004 reads/writes: `getAgentURI`, `setAgentURI`, `getMetadata`, `setMetadata`, `getAgentWallet`, `setAgentWallet`, `unsetAgentWallet`
 - ARC-73: `supportsInterface` for ARC-73 + ARC-72 core/metadata/transfer/enumeration
 - Deploy: `smart_contracts/identity_registry/deploy-config.ts`; client/artifacts in `smart_contracts/artifacts/identity_registry/`
+- Deploy path: `npm run build && npm run deploy:localnet` includes `identity_registry`
 - Router identity remains compatibility alias: `providerId(net,address)` → `algorand:{net}:{address}`
 
 **Live endpoints:**

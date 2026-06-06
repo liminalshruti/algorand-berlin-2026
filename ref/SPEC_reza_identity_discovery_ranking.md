@@ -1,7 +1,17 @@
 # SPEC — Reza · Identity Registry + Discovery + Ranking
 
 **Lane:** mirrors ERC-8004 **Identity Registry**. Ranking is a follow-up layer over this identity surface.
-**Owns:** `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js`
+**Owns:** `sandbox/lib/router/providers.ts`, `sandbox/lib/router/ranking.ts`, `sandbox/lib/router/routes.providers.ts`, `smart_contracts/identity_registry/*`
+
+## Current identity split
+
+- Chain/protocol identity: `smart_contracts/identity_registry/IdentityRegistry`, an ARC-72-style
+  registry with canonical `{agentRegistry, agentId}` identity.
+- Router compatibility identity: `providerId(net,address) -> algorand:{net}:{address}` for today's
+  discovery, route, and pay flow.
+
+This spec describes the router compatibility surface. The chain identity contract is the canonical
+ERC-8004 analog.
 
 ## Abstract
 
@@ -16,7 +26,7 @@ handle and agent registration file URI; reputation, validation, and weighted ran
 
 ## Specification
 
-### `lib/router/providers.js` (Identity Registry, Algorand-native)
+### `sandbox/lib/router/providers.ts` (router compatibility registry)
 ```js
 providerId(net,address) → `algorand:${net}:${address}`
 registerProvider(ctx,{ name, register, quote, asset, quality, dishonest, agent_uri }) → Provider
@@ -26,11 +36,13 @@ discover(providers,register) → Provider[]
   (cheapest quote, dishonest=true), `low_quality` (quality≈0.3).
 - Live adapter behind `LIVE_PROVIDERS=true` (query an external x402 marketplace) — fully isolated,
   no-op when the flag is off. Never on the critical path.
-- Identity = Algorand **address** + a registry entry pointing to `agent_uri` (no NFT).
+- Router identity = Algorand **address** + a registry entry pointing to `agent_uri`.
+- Protocol identity = ARC-72-style NFT in `smart_contracts/identity_registry`, with `agentId` as a
+  uint64-backed token id.
 - `agent_uri` is the ERC-8004 agent registration file URI analog. No identity hash is stored in this
   scope; hashes remain in payment/reputation/validation anchoring.
 
-### `lib/router/ranking.js` (pure — no chain/server imports)
+### `sandbox/lib/router/ranking.ts` (pure — no chain/server imports)
 ```js
 collectQuotes(providers) → options with price
 trustScore(price, reputation, validation_rate, weights=TRUST_WEIGHTS) → 0..1
@@ -39,7 +51,7 @@ rankOptions(providers, repLookup) → RouteOption[]   // follow-up scope
 weightedPick(options, seed=route_id) → option        // deterministic — NO Math.random
 ```
 
-### `lib/router/routes.providers.js`
+### `sandbox/lib/router/routes.providers.ts`
 ```js
 makeProviderRoutes(ctx) → { "GET /api/providers", "POST /api/route" }
 // GET /api/providers: discover → return provider_id + agent_uri identities
@@ -48,9 +60,9 @@ makeProviderRoutes(ctx) → { "GET /api/providers", "POST /api/route" }
 
 ## Rationale
 
-Identity = address + agent registration file URI (ERC-8004 Identity construct, Algorand-native). The
-aggregate `f(price, reputation, validation)` is the anti-race-to-bottom follow-up layer; this slice
-deliberately does not call `ctx.repState`.
+The router alias keeps today's app flow stable while the chain-layer `IdentityRegistry` supplies the
+canonical ERC-8004 analog. The aggregate `f(price, reputation, validation)` is the
+anti-race-to-bottom follow-up layer; this slice deliberately does not call `ctx.repState`.
 
 ## Security / Risk Considerations
 

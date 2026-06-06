@@ -1,17 +1,21 @@
 # Team swimlanes — x402 trust router (4 engineers, 4h code-complete)
 
-**Date:** 2026-06-06 (hack day 1) · **Spine:** `liminal-agents-v1/sandbox/bin/berlin-server.js`
+**Date:** 2026-06-06 (hack day 1) · **Spine:** `sandbox/bin/router-server.ts`
 **Goal:** code-complete in 4h with zero merge conflicts — every commit atomic, every lane independently QA'd before PR.
-**Companion docs:** `END_TO_END_HACK_SCOPE_2026-06-06.md` (scope + dataflow), `ERC8004_SPEC` mapping below.
+**Companion docs:** `ref/END_TO_END_HACK_SCOPE_2026-06-06.md` (scope + dataflow), `ERC8004_SPEC` mapping below.
+
+**Current implementation note:** router files landed as TypeScript under `sandbox/`. Reza's canonical
+chain identity is now the ARC-72-style `smart_contracts/identity_registry/IdentityRegistry`; the
+address-only `providerId(net,address)` remains the app-layer discovery/payment compatibility alias.
 
 ---
 
 ## Conflict model (read first)
 
-- **The hot file is `sandbox/bin/berlin-server.js`** — if everyone adds routes there, you get four-way conflicts.
-- **Rule: nobody edits `berlin-server.js` or any existing `lib/x402/*` file.** All new work lands in `sandbox/lib/router/`, `sandbox/public/`, and one new `sandbox/bin/router-server.js` that *imports* berlin's routes and merges yours.
+- **The hot file is `sandbox/bin/router-server.ts`** — Navid owns it so everyone else avoids four-way route conflicts.
+- **Rule: nobody edits `sandbox/bin/berlin-server.js` or any existing `sandbox/lib/x402/*` file.** All new backend work lands in `sandbox/lib/router/`, UI work lands in `public/`, and `sandbox/bin/router-server.ts` composes the route factories.
 - **Each engineer owns a disjoint file set** → atomic, conflict-free commits in any merge order.
-- **One shared file, `lib/router/contract.js`, frozen at H0** (Navid writes it once; everyone else read-only).
+- **One shared file, `sandbox/lib/router/contract.ts`, frozen at H0** (Navid writes it once; everyone else read-only).
 - Route handlers are composed via `make…Routes(ctx)` factories — the route table is assembled, never co-edited.
 
 ## Seating + file ownership
@@ -19,9 +23,9 @@
 | Engineer | Lane | Owns (disjoint files) |
 |---|---|---|
 | **Shruti** | UI + Narrative | `public/router.html`, `public/router.js`, `public/router.css` + demo video, pitch deck, pitch script |
-| **Shayaun** | Reputation Registry + Validation Registry | `lib/router/validation.js`, `lib/router/reputation-state.js`, `lib/router/routes.validation.js` |
-| **Navid** | Payment + Integration harness *(integration owner)* | `bin/router-server.js`, `lib/router/pay.js`, `lib/router/context.js`, `lib/router/contract.js` *(H0 only)* |
-| **Reza** | Identity Registry + Discovery *(ranking follow-up)* | `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js` |
+| **Shayaun** | Reputation Registry + Validation Registry | `sandbox/lib/router/validation.ts`, `sandbox/lib/router/reputation-state.ts`, `sandbox/lib/router/routes.validation.ts`, `smart_contracts/{reputation,validation}_registry/*` |
+| **Navid** | Payment + Integration harness *(integration owner)* | `sandbox/bin/router-server.ts`, `sandbox/lib/router/pay.ts`, `sandbox/lib/router/context.ts`, `sandbox/lib/router/contract.ts` *(H0 only)* |
+| **Reza** | Identity Registry + Discovery *(ranking follow-up)* | `sandbox/lib/router/providers.ts`, `sandbox/lib/router/ranking.ts`, `sandbox/lib/router/routes.providers.ts`, `smart_contracts/identity_registry/*` |
 
 ## ERC-8004 → Algorand mapping (basis for the specs)
 
@@ -29,7 +33,7 @@ Reference: `erc-8004/erc-8004-contracts` (3 upgradeable contracts) + `ChaosChain
 
 | ERC-8004 RI (Ethereum, Solidity) | Our Algorand-native equivalent | Owner |
 |---|---|---|
-| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | Provider = Algorand **address** (no NFT); `register(address, agent_uri)`; id `algorand:{net}:{address}` | Reza |
+| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | ARC-72-style `IdentityRegistry`; canonical id `{agentRegistry: algorand:{genesisHashPrefix}:{identityAppId}, agentId:uint64}`; router alias remains `algorand:{net}:{address}` | Reza |
 | **Reputation** — `giveFeedback(agentId, value:int128, valueDecimals, …, feedbackURI, feedbackHash)`, `getSummary`; self-feedback prevented | feedback `{provider, response:0–100, uri, hash}` anchored hash-only; `score=(landed−corrected)/landed`; submitter≠provider | Shayaun |
 | **Validation** — `validationRequest/Response(response:uint8 0–100, responseHash)`; self-validation prevented | `validate(payment)→{response:0–100, verdict_hash}` = price-vs-quote + output; validator≠provider | Shayaun |
 | *(payment — out of ERC-8004 scope)* | x402 settle on Algorand = the on-chain evidence; ranking = our trust aggregate | Navid / Reza |
@@ -54,14 +58,14 @@ Reference: `erc-8004/erc-8004-contracts` (3 upgradeable contracts) + `ChaosChain
 
 ### Navid — Payment + Integration harness *(integration owner)*
 - **Mission:** the chain spine + the glue that merges four people's modules into one server.
-- **Builds:** `payProvider` (honest = settle quote; dishonest = quote + a real second hidden-fee settlement), `buildContext`, the `/api/pay` + `/api/ledger` routes, and `router-server.js` merging everyone's `make…Routes(ctx)`.
-- **Accountable for:** server boots on LocalNet; `/api/pay` returns real txids; `berlin-server.js` untouched; **owns `contract.js`, frozen at H0**.
+- **Builds:** `payProvider` (honest = settle quote; dishonest = quote + a real second hidden-fee settlement), `buildContext`, the `/api/pay` + `/api/ledger` routes, and `router-server.ts` merging everyone's `make…Routes(ctx)`.
+- **Accountable for:** server boots on LocalNet; `/api/pay` returns real txids; `sandbox/bin/berlin-server.js` untouched; **owns `contract.ts`, frozen at H0**.
 - **Consumes:** Reza's `routeStore`. **Produces:** `ctx.paymentStore` (read by Shayaun). Pairs with anyone during H3–H4 wiring.
 
 ### Reza — Identity Registry + Discovery
-- **Mission:** give providers an ERC-8004-shaped Algorand identity and expose discovery so downstream payment/ranking can consume stable provider IDs.
-- **Builds:** `providerId`/`registerProvider`/`discover` (3 seeded Diligence providers), `GET /api/providers`, and discovery-compatible `POST /api/route`.
-- **Accountable for:** `providerId` = `algorand:{net}:{address}`; `agent_uri` is preserved; `discover('Diligence')` returns only Diligence; `/api/route` stores options in `ctx.routeStore` without reputation ranking.
+- **Mission:** give providers an ERC-8004-shaped Algorand identity on-chain, while preserving the router's address alias for today's payment/discovery flow.
+- **Builds:** ARC-72-style `IdentityRegistry`, `providerId`/`registerProvider`/`discover` (3 seeded Diligence providers), `GET /api/providers`, and discovery-compatible `POST /api/route`.
+- **Accountable for:** canonical chain identity = `{agentRegistry, agentId}`; router compatibility id = `algorand:{net}:{address}`; `agent_uri` is preserved; `discover('Diligence')` returns only Diligence; `/api/route` stores options in `ctx.routeStore` without reputation ranking.
 - **Consumes:** `ctx.providers`. **Produces:** `ctx.routeStore` (read by Navid).
 
 ---
@@ -69,7 +73,7 @@ Reference: `erc-8004/erc-8004-contracts` (3 upgradeable contracts) + `ChaosChain
 ## The frozen contract (Navid commits at H0; read-only after)
 
 ```js
-// lib/router/contract.js  — types-as-comments + shared constants.
+// sandbox/lib/router/contract.ts  — shared types + constants.
 // Provider:     { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, agent_uri }
 // RouteOption:  { option_id, provider_id, name, price, reputation, validation_rate, trust_score, weight }
 // PaymentResult:{ payment_id, provider_id, quoted, settled, txids:[], read }
@@ -96,24 +100,24 @@ GET  /api/ledger    → { anchors:[{txid,schema,ref_id,hash,round,network}] }
 
 ## Definition of Done + QA per lane (run before opening a PR)
 
-**Universal gate (everyone):** `git diff --name-only` ⊆ your owned files · imports only from `contract.js` + existing `lib/x402/*` (read-only) + your files · your own `*.test.js` green via `node --test` · `node bin/router-server.js` boots clean after merge.
+**Universal gate (everyone):** `git diff --name-only` ⊆ your owned files · imports only from `contract.ts` + existing `sandbox/lib/x402/*` (read-only) + your files · router tests green via `npm test` and contract tests green via `npm run test:contracts` when touched · `npm start` boots clean after merge.
 
 **Shruti (UI):** renders with backend OFF (mock) · ranked table shows price/rep/trust/weight, pick highlighted · settle view shows txid (explorer link) + quoted-vs-settled, **gap in red** on hidden fee · validation view shows verdict + rep delta · **re-run visibly reroutes** · ledger lists anchored txids · no console errors · mock→live via one base-URL const.
 
 **Shayaun (Reputation + Validation):** hidden fee → `response=0` · `response` ∈ [0,100] · self-feedback rejected (client≠provider) · self-validation rejected (validator≠provider) · unknown provider → `null` not `0` · score **strictly decreases** after a fail · anchored note = `{schema,provider,score,hash}` only · `by_tag` uses the 9-tag taxonomy.
 
-**Navid (Payment + Integration):** honest → `settled==quoted`, 1 txid · dishonest → `settled>quoted`, 2 txids confirmed · unknown route/option → 400, no settlement · replay rejected · ledger entry has `{txid,schema,hash,round}` only · `git diff berlin-server.js` empty · `contract.js` unchanged since H0.
+**Navid (Payment + Integration):** honest → `settled==quoted`, 1 txid · dishonest → `settled>quoted`, 2 txids confirmed · unknown route/option → 400, no settlement · replay rejected · ledger entry has `{txid,schema,hash,round}` only · `git diff sandbox/bin/berlin-server.js` empty · `contract.ts` unchanged since H0.
 
-**Reza (Identity + Discovery):** `providerId` = `algorand:{net}:{address}` · `agent_uri` preserved · `discover('Diligence')` returns only Diligence · `GET /api/providers` returns identities · `POST /api/route` stores `route_id` in `ctx.routeStore` · no `ctx.repState` dependency in the identity-only slice.
+**Reza (Identity + Discovery):** `IdentityRegistry` tests green via `npm run test:contracts` · `providerId` = `algorand:{net}:{address}` remains the router alias · `agent_uri` preserved · `discover('Diligence')` returns only Diligence · `GET /api/providers` returns identities · `POST /api/route` stores `route_id` in `ctx.routeStore` · no `ctx.repState` dependency in the identity-only slice.
 
 ---
 
 ## H0 ritual + branch protocol
 
-1. **H0 (~20 min, together):** Navid lands `contract.js` + `router-server.js` skeleton + empty stubs for every module on `main`; everyone pulls (green imports).
+1. **H0 (~20 min, together):** Navid lands `contract.ts` + `router-server.ts` skeleton + empty stubs for every module on `main`; everyone pulls (green imports).
 2. Each engineer on `feat/router-<name>`, edits **only** owned files; **merge to `main` early and often** — disjoint files = conflict-free in any order.
-3. Hard rules: never touch `berlin-server.js`; never edit `contract.js` after H0 (need a change → Navid amends once, all pull).
-4. Each engineer adds their **own** `*.test.js` (disjoint).
+3. Hard rules: never touch `sandbox/bin/berlin-server.js`; never edit `contract.ts` after H0 (need a change → Navid amends once, all pull).
+4. Each engineer adds their **own** `*.test.ts` (disjoint).
 5. **Integration order H3–H4:** `route` (Reza) → `pay` (Navid) → `validate`+`writeBack` (Shayaun) → UI reroute (Shruti).
 
 ## Dependency chain

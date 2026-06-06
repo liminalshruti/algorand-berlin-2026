@@ -28,9 +28,13 @@ the chain enforces. *"ERC-8004 gives agents a passport; we give the marketplace 
 Reference: `erc-8004/erc-8004-contracts` + `ChaosChain/trustless-agents-erc-ri`. ERC-8004 is an
 Ethereum standard; **not deployed on Algorand** — ours are ERC-8004-*shaped*, Algorand-native.
 
+Current implementation note: the canonical chain identity is the ARC-72-style
+`smart_contracts/identity_registry/IdentityRegistry`. The router still exposes
+`algorand:{net}:{address}` as an app-layer discovery/payment compatibility alias.
+
 | ERC-8004 registry (Solidity RI) | Our Algorand-native equivalent | Owner |
 |---|---|---|
-| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | Provider = Algorand **address** (no NFT); `register(address, agent_uri)`; id `algorand:{net}:{address}` | Reza |
+| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | ARC-72-style `IdentityRegistry`; canonical id `{agentRegistry: algorand:{genesisHashPrefix}:{identityAppId}, agentId:uint64}`; router alias remains `algorand:{net}:{address}` | Reza |
 | **Reputation** — `giveFeedback(agentId, value:int128, valueDecimals, …, feedbackURI, feedbackHash)`, `getSummary`; self-feedback prevented | feedback `{provider, response:0–100, uri, hash}` anchored hash-only; `score=(landed−corrected)/landed`; submitter≠provider | Shayaun |
 | **Validation** — `validationRequest/Response(response:uint8 0–100, responseHash)`; self-validation prevented | `validate(payment)→{response:0–100, verdict_hash}` = price-vs-quote + output; validator≠provider | Shayaun |
 | *(payment — out of ERC-8004 scope)* | x402 settle on Algorand = the on-chain evidence; ranking = our trust aggregate | Navid / Reza |
@@ -40,19 +44,20 @@ Ethereum standard; **not deployed on Algorand** — ours are ERC-8004-*shaped*, 
 | Engineer | Lane | Owns (new files only) |
 |---|---|---|
 | **Shruti** | UI + Narrative | `public/router.html`, `public/router.js`, `public/router.css` + demo video, pitch deck, pitch script |
-| **Shayaun** | Reputation + Validation registries | `lib/router/validation.js`, `lib/router/reputation-state.js`, `lib/router/routes.validation.js` |
-| **Navid** | Payment + Integration harness *(integration owner)* | `bin/router-server.js`, `lib/router/pay.js`, `lib/router/context.js`, `lib/router/contract.js` *(H0)* |
-| **Reza** | Identity + Discovery *(ranking follow-up)* | `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js` |
+| **Shayaun** | Reputation + Validation registries | `sandbox/lib/router/validation.ts`, `sandbox/lib/router/reputation-state.ts`, `sandbox/lib/router/routes.validation.ts`, `smart_contracts/{reputation,validation}_registry/*` |
+| **Navid** | Payment + Integration harness *(integration owner)* | `sandbox/bin/router-server.ts`, `sandbox/lib/router/pay.ts`, `sandbox/lib/router/context.ts`, `sandbox/lib/router/contract.ts` *(H0)* |
+| **Reza** | Identity + Discovery *(ranking follow-up)* | `sandbox/lib/router/providers.ts`, `sandbox/lib/router/ranking.ts`, `sandbox/lib/router/routes.providers.ts`, `smart_contracts/identity_registry/*` |
 
 ## Conflict model
 
-- Nobody edits the existing x402 server file or existing `lib/x402/*`. All new work in `lib/router/`,
-  `public/`, and one new `bin/router-server.js` that imports the base routes and merges yours.
+- Nobody edits the existing x402 server file or existing `sandbox/lib/x402/*`. All new backend work
+  goes in `sandbox/lib/router/`, UI work goes in `public/`, and `sandbox/bin/router-server.ts`
+  composes the route factories.
 - Route handlers are composed via `make…Routes(ctx)` factories — the route table is assembled, never
   co-edited.
-- One shared file `lib/router/contract.js`, frozen at H0 (Navid writes once; everyone else read-only).
+- One shared file `sandbox/lib/router/contract.ts`, frozen at H0 (Navid writes once; everyone else read-only).
 
-## Frozen contract (`lib/router/contract.js`)
+## Frozen contract (`sandbox/lib/router/contract.ts`)
 
 ```js
 // types-as-comments + shared constants. READ-ONLY after H0.
@@ -86,15 +91,15 @@ Everyone builds against **mocks** for what they consume, so no lane blocks anoth
 
 ## H0 ritual + branch protocol
 
-1. **H0 (~20 min, together):** Navid lands `contract.js` + `router-server.js` skeleton + empty stubs on `main`; everyone pulls (green imports).
+1. **H0 (~20 min, together):** Navid lands `contract.ts` + `router-server.ts` skeleton + empty stubs on `main`; everyone pulls (green imports).
 2. Each engineer on `feat/router-<name>`, edits only owned files; **merge to `main` early and often** — disjoint files = conflict-free in any order.
-3. Hard rules: never touch the base x402 server; never edit `contract.js` after H0.
-4. Each engineer adds their own `*.test.js` (disjoint).
+3. Hard rules: never touch the base x402 server; never edit `contract.ts` after H0.
+4. Each engineer adds their own `*.test.ts` (disjoint).
 5. **Integration order H3–H4:** `route` (Reza) → `pay` (Navid) → `validate`+`writeBack` (Shayaun) → UI reroute (Shruti).
 
 ## Universal PR-ready gate (every engineer)
 
 - `git diff --name-only` ⊆ your owned files.
-- Imports only from `contract.js`, existing `lib/x402/*` (read-only), and your own files.
-- Your own `*.test.js` passes via `node --test`.
-- `node bin/router-server.js` boots clean after your merge.
+- Imports only from `contract.ts`, existing `sandbox/lib/x402/*` (read-only), and your own files.
+- Router tests pass via `npm test`; contract tests pass via `npm run test:contracts` when touched.
+- `npm start` boots clean after your merge.
