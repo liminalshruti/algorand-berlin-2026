@@ -9,17 +9,21 @@
 //   REPUTATION_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>   (falls back to PAYER_MNEMONIC)
 //   ALGOD_URL / ALGOD_PORT / ALGOD_TOKEN  (or AlgorandClient.fromEnvironment defaults)
 //
-// NOTE: confirm the generated method/arg names against
-//   smart_contracts/artifacts/reputation_registry/ReputationRegistryClient.ts
-// before relying on this in the live demo. On-chain giveFeedback does not yet take the
-// x402 paymentTxid/nonce (ARC-8004 §x402 Profile) — add those to the contract + this call
-// when the contract is recompiled.
+// ABI verified against ReputationRegistry.arc56.json: giveFeedback now takes the mandatory
+// x402 coupling paymentTxid(byte[32]) + nonce(uint64); the contract rejects an all-zero proof
+// and replay-guards each settlement txid to one feedback. We pass the real x402 settlement
+// txid + a random nonce. agentId is the REAL Identity-registry id from the on-boot registration
+// (identity-onchain.ts), falling back to a per-run counter when that map is empty.
 import type { Ctx } from './contract.js';
+import { onChainAgentId } from './identity-onchain.js';
 
-// stable agentId per provider for this server run (real systems use the Identity registry id)
+// fallback agentId per provider for this server run (used only if the agent wasn't
+// registered on-chain at boot — i.e. onChainAgentId() returns null).
 const agentIds = new Map<string, bigint>();
 let nextAgentId = 1n;
 function agentIdFor(provider_id: string): bigint {
+  const real = onChainAgentId(provider_id);
+  if (real) return BigInt(real);
   let id = agentIds.get(provider_id);
   if (id === undefined) { id = nextAgentId++; agentIds.set(provider_id, id); }
   return id;
@@ -33,11 +37,30 @@ function i128(n: number): Uint8Array {
   return buf;
 }
 
+// Algorand txid (RFC-4648 base32, no padding, 52 chars) → its raw 32-byte hash for byte[32].
+function txidToBytes(txid: string): Uint8Array {
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0; const out: number[] = [];
+  for (const ch of txid.trim()) {
+    const idx = ALPHABET.indexOf(ch);
+    if (idx < 0) continue;
+    value = (value << 5) | idx; bits += 5;
+    if (bits >= 8) { bits -= 8; out.push((value >>> bits) & 0xff); }
+  }
+  return new Uint8Array(out.slice(0, 32));
+}
+
+const isZero = (b: Uint8Array) => b.every((x) => x === 0);
+
 export interface OnChainFeedback { txid: string; round?: number; appId: number; agentId: string; }
 
-export async function maybeWriteReputation(ctx: Ctx, provider_id: string, response: number): Promise<OnChainFeedback | null> {
+// paymentTxid = the x402 settlement txid (from ctx.paymentStore → pay.txids[0]); required by the
+// coupled contract. Returns null (no-op) when unconfigured OR when no valid proof is available.
+export async function maybeWriteReputation(ctx: Ctx, provider_id: string, response: number, paymentTxid = ''): Promise<OnChainFeedback | null> {
   const appId = Number(process.env.REPUTATION_APP_ID || 0);
   if (!appId) return null;                                  // not configured → no-op
+  const proof = txidToBytes(paymentTxid);
+  if (isZero(proof)) return null;                           // contract rejects all-zero proof
   try {
     const { AlgorandClient } = await import('@algorandfoundation/algokit-utils');
     const { ReputationRegistryClient } = await import(
@@ -65,6 +88,8 @@ export async function maybeWriteReputation(ctx: Ctx, provider_id: string, respon
         endpoint: '',
         feedbackURI: `liminal://verdict/${provider_id}`,
         feedbackHash: new Uint8Array(32),
+        paymentTxid: proof,                                 // x402 settlement proof (byte[32])
+        nonce: BigInt(Date.now()) * 1000n + BigInt((Math.random() * 1000) | 0),
       },
     });
 

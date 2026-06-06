@@ -11,6 +11,8 @@ import {
 } from "../lib/router/seed.js";
 import { makeProviderRoutes } from "../lib/router/routes.providers.js";
 import { makeValidationRoutes } from "../lib/router/routes.validation.js";
+import { makeAgentRoutes } from "../lib/router/routes.agents.js";
+import { registerSeededAgents } from "../lib/router/identity-onchain.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -20,6 +22,9 @@ async function main() {
   console.log("funding providers...");
   await fundProviders(ctx);
   seedTestRoute(ctx);
+  // Best-effort: register the seeded providers on-chain (Identity registry) and map
+  // provider_id → agentId. No-op unless IDENTITY_APP_ID + submitter mnemonic are set.
+  await registerSeededAgents(ctx);
   const app = new Hono();
   app.use("*", cors());
 
@@ -56,6 +61,7 @@ async function main() {
   // --- Teammate routes (wired at H3–H4) ---
   app.route("/", makeProviderRoutes(ctx));
   app.route("/", makeValidationRoutes(ctx));
+  app.route("/", makeAgentRoutes(ctx));
 
   serve({ fetch: app.fetch, port: PORT }, () => {
     console.log(`\nrouter-server :${PORT}  network=${ctx.net}`);
@@ -74,6 +80,8 @@ async function main() {
     console.log("  POST /api/validate { payment_id }");
     console.log("  GET  /api/reputation?provider=");
     console.log("  GET  /api/ledger");
+    console.log("  POST /api/agents/register { name, register, agent_uri }");
+    console.log("  GET  /api/agents");
   });
 }
 

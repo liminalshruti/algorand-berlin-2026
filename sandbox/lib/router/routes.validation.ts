@@ -61,7 +61,7 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
 
     // one REAL on-chain reputation write (env-gated, best-effort): verdict → giveFeedback
     // on the deployed Reputation registry. null when not configured — loop unaffected.
-    const onchain = await maybeWriteReputation(ctx, pay.provider_id, v.response);
+    const onchain = await maybeWriteReputation(ctx, pay.provider_id, v.response, pay.txids?.[0] ?? '');
     if (onchain) {
       ctx.ledger.push({ txid: onchain.txid, schema: 'erc8004.giveFeedback', ref_id: pay.provider_id, hash: '', round: onchain.round ?? 0, network: ctx.net });
     }

@@ -424,7 +424,7 @@ let peraActive = false;
 function applyPeraCaller() {
   const w = window.WALLET; if (!w) return;
   if (w.account) { peraActive = true; A.setCaller(w.account); toast(`Pera connected · acting as ${short(w.account)}`); }
-  else if (peraActive) { peraActive = false; A.setCaller(A.newAddr()); toast('Pera disconnected · acting as a fresh wallet'); }
+  else if (peraActive) { peraActive = false; A.setCaller(); toast('Pera disconnected · back to the operator wallet'); }
   else return;                                   // never connected → leave the demo caller alone
   if (document.body.classList.contains('ready')) render();   // pre-boot connects are picked up by boot's first render
 }

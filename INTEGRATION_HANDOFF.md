@@ -133,6 +133,7 @@ ctx.routeStore.set(route_id, {
 - On-chain registries deploy via new `smart_contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
 - **On-chain write wired (env-gated):** `onchain.ts::maybeWriteReputation` calls `giveFeedback` on the deployed Reputation registry from `/api/validate` (best-effort; returns the txid in `on_chain_feedback_txid` + a `erc8004.giveFeedback` ledger entry). Enable with `REPUTATION_APP_ID` + `REPUTATION_SUBMITTER_MNEMONIC` (or `PAYER_MNEMONIC`). No-op/safe when unset.
 - ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`. ⚠️ TODO (yours): wire `onchain.ts` to pass the two new args (`giveFeedback` arg order: `…, feedbackHash, paymentTxid, nonce`); confirm the regenerated `ReputationRegistryClient` method/arg names match.
+- 🟡 `onchain.ts` wiring DRAFTED by Shruti's session (untested on-chain — no toolchain here): `maybeWriteReputation(ctx, provider_id, response, paymentTxid)` now passes `paymentTxid` (real x402 settlement txid → 32 bytes via base32 decode) + a random `nonce`, and uses the **real** Identity agentId from the on-boot `registerSeededAgents` map (falls back to a per-run counter). Call site `routes.validation.ts` passes `pay.txids[0]`. **Please verify the byte[32] txid encoding + arg names against a live TestNet call.**
 
 **What's ready for you to consume:**
 
@@ -175,3 +176,12 @@ const ctx = await buildContext(repState);
 **All endpoints consumed (live):** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`.
 
 **The demo beat:** ranked providers → pay (gap in red if settled > quoted) → validate (verdict + reputation delta) → re-run reroutes off the caught provider. Pitch script/deck/storyboard in `pitch/`.
+
+**Agent registration surface (NEW — registers agents on the deployed Identity registry):**
+```
+POST /api/agents/register { name, register, agent_uri, role?, address?, quote? }
+     → { agent_id, tx_id, app_id, owner, agent_uri, register, explorer, on_chain }
+GET  /api/agents → { network, app_id, agents[], seeded_providers[] }
+POST /api/agents/seed   (ALLOW_SEED=1) → registers the canonical Liminal roster
+```
+Server: `routes.agents.ts` + `identity-onchain.ts` (env-gated `registerAgent`/`registerSeededAgents`, mirrors `onchain.ts`). On boot, seeded providers are registered on-chain + mapped `provider_id → agentId` when `IDENTITY_APP_ID` (`764031067`) + a funded `IDENTITY_SUBMITTER_MNEMONIC` are set; otherwise no-op (mock `agent_id`, `on_chain:false`). Mounted via `app.route('/', makeAgentRoutes(ctx))`. Uses Reza's `register(string,(string,byte[])[])→uint64` ABI (verified against the generated client). Env vars: `.env.example`. Spec: `TESTNET_AGENT_REGISTRATION_SPEC_2026-06-06.md`. _(No-impersonation reconciled with Pera: `setCaller` honors a real connected wallet, else pins to the fixed operator wallet.)_

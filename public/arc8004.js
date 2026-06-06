@@ -180,9 +180,10 @@
     id, rep, val, proof,
     state, subscribe,
     get caller() { return state.caller; },
-    // No impersonation: the operator wallet is fixed. setCaller is a guarded no-op
-    // (seed() sets distinct owners/reviewers via direct state assignment, not this).
-    setCaller() { state.caller = FIXED_WALLET; return state.caller; },
+    // No fake impersonation buttons. setCaller honors a REAL connected wallet
+    // (e.g. Pera — a 58-char address); with no/invalid arg it pins back to the fixed
+    // operator wallet, the consistent default. seed() sets owners via direct state.
+    setCaller(addr) { state.caller = (typeof addr === "string" && addr.length === 58) ? addr : FIXED_WALLET; return state.caller; },
     FIXED_WALLET,
     newAddr: genAddr, newHash: genHash, newTxid: genTxid, agentRef, APP, NET, GENESIS, seed,
   };
