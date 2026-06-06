@@ -34,10 +34,10 @@ const REGISTER_TASKS = {
 const SCHEMA_MEANING = {
   "x402.settle": "the x402 payment settlement (quoted amount)",
   "x402.settle.fee": "the second settlement — the hidden fee charged above quote",
-  "erc8004.feedback": "the validation verdict feeding the provider's reputation",
+  "erc8004.feedback": "the validation verdict feeding the agent's reputation",
   "payment-v1": "the x402 payment settlement, anchored hash-only on Algorand",
   "algorand-rep-v1": "the reputation feedback entry (ERC-8004-shaped)",
-  "liminal.dispute": "an operator dispute filed against a caught provider",
+  "liminal.dispute": "an operator dispute filed against a caught agent",
   "x402.settle.pera": "operator-signed settlement anchored on TestNet via Pera Wallet",
 };
 const SCHEMA_LABEL = {
@@ -273,7 +273,7 @@ function pick(optionId, silent) {
   [...$("providerList").children].forEach((c) => c.classList.toggle("is-active", c.dataset && c.dataset.optionId === optionId));
   const p = ui.picked;
   const parts = trustParts(p.price, p.reputation ?? 0, p.validation_rate, ui.route.options);
-  $("slateEyebrow").innerHTML = `<span class="sb-strong">Selected provider</span> · weighted-lottery pick`;
+  $("slateEyebrow").innerHTML = `<span class="sb-strong">Selected agent</span> · weighted-lottery pick`;
   $("slateTitle").textContent = p.name;
   $("slateSubtitle").textContent = `${algo(p.price)} · reputation ${p.reputation ?? "unrated"} · trust ${p.trust_score}/100 · weight ${p.weight}%`;
 
@@ -281,7 +281,7 @@ function pick(optionId, silent) {
   $("quoteWrap").innerHTML = `
     <div class="quote-card">
       <div class="qc-eyebrow">x402 quote · ${ui.register}</div>
-      <div class="qc-row"><span class="qc-k">Provider</span><span class="qc-v">${p.name}</span></div>
+      <div class="qc-row"><span class="qc-k">Agent</span><span class="qc-v">${p.name}</span></div>
       <div class="qc-row"><span class="qc-k">Address</span><span class="qc-v">${p.provider_id.split(":").pop().slice(0, 12)}…</span></div>
       <div class="qc-row"><span class="qc-k">Quote</span><span class="qc-v accent">${algo(p.price)}</span></div>
       <div class="qc-row"><span class="qc-k">Reputation</span><span class="qc-v">${p.reputation ?? "unrated"}${p.reputation != null ? " / 100" : ""}</span></div>
@@ -341,7 +341,7 @@ function renderSummary(pay, v) {   // #7 counterfactual takeaway
   if (v.response < 100) {
     const gap = (pay.settled_amount - pay.quoted_amount).toFixed(2);
     el.hidden = false;
-    el.innerHTML = `Going cheapest cost <b>+${gap} ALGO</b> this time — and would route the next operation to a caught provider. <strong>Re-run</strong>: earned reputation makes the router avoid it.`;
+    el.innerHTML = `Going cheapest cost <b>+${gap} ALGO</b> this time — and would route the next operation to a caught agent. <strong>Re-run</strong>: earned reputation makes the router avoid it.`;
   } else { el.hidden = true; }
 }
 
@@ -374,7 +374,7 @@ function renderSignedPacket(pay, v, picked, prevRep) {
     </div>
     <div class="da-foot">
       <div class="da-hash"><span class="da-hash-label">SHA-256</span><code class="copyable" data-copy="${packetHash}" title="click to copy">${packetHash}</code></div>
-      <div class="da-handoff">${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag provider</button>` : ""}${(window.WALLET && window.WALLET.isConnected) ? `<button class="dispo-btn da-handoff-btn da-pera" id="peraSignBtn">⚿ Sign on TestNet (Pera)</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
+      <div class="da-handoff">${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag agent</button>` : ""}${(window.WALLET && window.WALLET.isConnected) ? `<button class="dispo-btn da-handoff-btn da-pera" id="peraSignBtn">⚿ Sign on TestNet (Pera)</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
     </div>`;
   $("rerunBtn").addEventListener("click", () => doRoute(true));
   if ($("flagBtn")) $("flagBtn").addEventListener("click", () => flagProvider(picked));
@@ -463,8 +463,8 @@ async function inspectProvider(opt) {   // JTBD#3 click-in: reputation provenanc
   const parts = trustParts(opt.price, opt.reputation ?? 0, opt.validation_rate, ui.route.options);
   const tag = topTag(d.by_tag);
   modal("Reputation provenance · ERC-8004-shaped", opt.name, `
-    <p class="lm-mean">Reputation = how this provider's reads survive on-chain validation. Earned from paid reviews, not self-reported.</p>
-    <div class="lm-kv"><span>provider</span><code class="copyable" data-copy="${opt.provider_id}">${opt.provider_id}</code></div>
+    <p class="lm-mean">Reputation = how this agent's reads survive on-chain validation. Earned from paid reviews, not self-reported.</p>
+    <div class="lm-kv"><span>agent</span><code class="copyable" data-copy="${opt.provider_id}">${opt.provider_id}</code></div>
     <div class="lm-kv"><span>score</span><code>${d.score ?? opt.reputation ?? "unrated"}${(d.score ?? opt.reputation) != null ? " / 100" : ""}</code></div>
     <div class="lm-kv"><span>paid reviews</span><code>${d.reads_logged ?? "—"}</code></div>
     <div class="lm-kv"><span>corrections</span><code>${d.corrections_logged ?? "—"}${tag ? ` · ${tag}` : ""}</code></div>
@@ -480,7 +480,7 @@ function copy(text) { try { navigator.clipboard.writeText(text); toast("copied t
 
 function renderReceipt() {
   const r = $("frameReceipt"); if (!r) return;
-  r.innerHTML = `<span class="fr-glyph">◇</span><span class="fr-strong">route · ${ui.route ? ui.route.route_id : "—"}</span><span class="fr-sep">·</span><span>${ui.route ? ui.route.options.length : 0} providers</span><span class="fr-sep">·</span><span>${NETWORK} · ${ANY_LIVE ? "live" : "mock"}</span><span class="fr-right">R route · A approve · P present · ⌘. tray</span>`;
+  r.innerHTML = `<span class="fr-glyph">◇</span><span class="fr-strong">route · ${ui.route ? ui.route.route_id : "—"}</span><span class="fr-sep">·</span><span>${ui.route ? ui.route.options.length : 0} agents</span><span class="fr-sep">·</span><span>${NETWORK} · ${ANY_LIVE ? "live" : "mock"}</span><span class="fr-right">R route · A approve · P present · ⌘. tray</span>`;
 }
 function renderSrc() {   // #13 per-endpoint source indicator + server health
   const el = $("srcMode"); if (!el) return;

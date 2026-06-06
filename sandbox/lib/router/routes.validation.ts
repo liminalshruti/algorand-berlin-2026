@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Ctx } from './contract.js';
 import { validate } from './validation.js';
 import { createRepState } from './reputation-state.js';
+import { maybeWriteReputation } from './onchain.js';
 
 /**
  * Wires the frozen API:
@@ -58,6 +59,13 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
       // LocalNet/algod not reachable → skip the anchor; the verdict still returns.
     }
 
+    // one REAL on-chain reputation write (env-gated, best-effort): verdict → giveFeedback
+    // on the deployed Reputation registry. null when not configured — loop unaffected.
+    const onchain = await maybeWriteReputation(ctx, pay.provider_id, v.response);
+    if (onchain) {
+      ctx.ledger.push({ txid: onchain.txid, schema: 'erc8004.giveFeedback', ref_id: pay.provider_id, hash: '', round: onchain.round ?? 0, network: ctx.net });
+    }
+
     return c.json({
       validation_id: uuidv4(),
       price_match: v.price_match,
@@ -65,6 +73,7 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
       response: v.response,
       new_reputation: newRep.score,
       verdict_txid,
+      on_chain_feedback_txid: onchain ? onchain.txid : null,
     });
   });
 

@@ -22,14 +22,24 @@ export function makeProviderRoutes(ctx: Ctx): Hono {
     const body: RouteBody = await c.req.json<RouteBody>().catch(() => ({}));
     const register = body.register ?? 'Diligence';
     const task = body.task ?? '';
-    const providers = discover(ctx.providers.values(), register);
+    const allProviders = discover(ctx.providers.values(), register);
 
-    if (providers.length === 0) {
+    // Exclude providers whose reputation has dropped to 0 (caught cheating)
+    const live = allProviders.filter(p => {
+      const r = ctx.repState.getReputation(p.id);
+      return r === null || r.score > 0;
+    });
+
+    if (live.length === 0) {
       return c.json({ error: `No providers for register: ${register}` }, 400);
     }
 
     const route_id = uuidv4();
-    const options = discoveryOptions(providers, route_id);
+    // Reflect live reputation scores so ranking is reroute-aware
+    const options = discoveryOptions(live, route_id).map(opt => {
+      const r = ctx.repState.getReputation(opt.provider_id);
+      return r !== null ? { ...opt, reputation: r.score } : opt;
+    });
 
     ctx.routeStore.set(route_id, { route_id, task, options });
 
