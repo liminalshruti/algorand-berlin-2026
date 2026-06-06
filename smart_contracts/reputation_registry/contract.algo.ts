@@ -10,6 +10,7 @@ import {
   emit,
   Global,
   GlobalState,
+  op,
   Txn,
   uint64,
 } from '@algorandfoundation/algorand-typescript'
@@ -337,6 +338,10 @@ export class ReputationRegistry extends arc4.Contract {
   }
 
   private rcKey(agentId: uint64, client: bytes, index: uint64, responder: bytes): bytes {
-    return new arc4.Uint64(agentId).bytes.concat(client).concat(new arc4.Uint64(index).bytes).concat(responder)
+    // agentId(8)+client(32)+index(8)+responder(32) = 80B exceeds the 64B AVM box-key limit,
+    // so hash it to a fixed 32 bytes.
+    return op.sha256(
+      new arc4.Uint64(agentId).bytes.concat(client).concat(new arc4.Uint64(index).bytes).concat(responder),
+    )
   }
 }
