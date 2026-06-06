@@ -259,3 +259,12 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 /* cross-nav link */
 .cross-nav { color: var(--p-accent); text-decoration: none; }
 .cross-nav:hover { color: var(--text); }
+
+/* admin-operator affordances */
+.prov-inspect { margin-left: 6px; font-size: 12px; color: var(--text-faint); cursor: pointer; transition: color var(--tx-base) var(--ease); }
+.prov-inspect:hover { color: var(--p-accent); }
+.copyable { cursor: copy; }
+.copyable:hover { color: var(--p-accent); }
+.copy-ic { margin-left: 6px; color: var(--text-faint); cursor: copy; }
+.copy-ic:hover { color: var(--p-accent); }
+.lm-sub { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); margin: 14px 0 8px; }

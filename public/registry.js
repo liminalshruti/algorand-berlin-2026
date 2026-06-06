@@ -14,6 +14,8 @@ let callerRole = "admin";
 let evtFilter = "all";
 let toastTimer = null;
 function toast(msg, bad) { const t = $("toast"), m = $("toast-msg"); m.textContent = msg; t.classList.toggle("is-bad", !!bad); t.classList.add("is-shown"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("is-shown"), 3400); }
+function copy(text) { try { navigator.clipboard.writeText(text); toast("copied to clipboard"); } catch (_) { toast("copy failed", true); } }
+const cp = (v) => `class="copyable" data-copy="${esc(v)}" title="click to copy"`;   // JTBD#4
 function guard(fn) { try { return fn(); } catch (e) { toast(e.message, true); return null; } }
 
 /* ── score helpers ─────────────────────────────────────────────────── */
@@ -40,7 +42,7 @@ function renderAgents() {
 }
 
 /* ── center · agent drill-in ───────────────────────────────────────── */
-function selectAgent(id) { sel = id; renderAgents(); renderAgentDetail(); $("classification").textContent = `AGENT #${id} · ${A.agentRef(id)}`; }
+function selectAgent(id) { sel = id; renderAgents(); renderAgentDetail(); renderEvents(); $("classification").textContent = `AGENT #${id} · ${A.agentRef(id)}`; }
 
 function renderAgentDetail() {
   if (sel == null) return;
@@ -54,9 +56,9 @@ function renderAgentDetail() {
     <!-- IDENTITY -->
     <section class="card">
       <div class="card-h"><span class="card-eyebrow">Identity Registry · ARC-72</span><span class="card-meta">#${sel}</span></div>
-      <div class="kv"><span>agentRegistry</span><code>${esc(A.agentRef(sel))}</code></div>
-      <div class="kv"><span>owner</span><code>${esc(a.owner)}</code></div>
-      <div class="kv"><span>agentWallet</span><code>${a.agentWallet ? esc(a.agentWallet) : "— (cleared)"}</code></div>
+      <div class="kv"><span>agentRegistry</span><code ${cp(A.agentRef(sel))}>${esc(A.agentRef(sel))}</code></div>
+      <div class="kv"><span>owner</span><code ${cp(a.owner)}>${esc(a.owner)}</code></div>
+      <div class="kv"><span>agentWallet</span><code ${a.agentWallet ? cp(a.agentWallet) : ""}>${a.agentWallet ? esc(a.agentWallet) : "— (cleared)"}</code></div>
       <div class="kv"><span>agentURI</span><code>${esc(a.agentURI) || "—"}</code></div>
       <div class="meta-table">
         <div class="mt-h">metadata <span>(owner/operator)</span></div>
@@ -130,7 +132,7 @@ function wireDetail() {
 /* ── modals · click-in detail ──────────────────────────────────────── */
 function modal(eyebrow, title, html) { $("detailEyebrow").textContent = eyebrow; $("detailTitle").textContent = title; $("detailModalBody").innerHTML = html; $("detailModal").classList.add("is-open"); }
 function closeModal() { $("detailModal").classList.remove("is-open"); }
-function kvRows(obj) { return Object.entries(obj).map(([k, v]) => `<div class="lm-kv"><span>${esc(k)}</span><code>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</code></div>`).join(""); }
+function kvRows(obj) { return Object.entries(obj).map(([k, v]) => { const val = typeof v === "object" ? JSON.stringify(v) : v; return `<div class="lm-kv"><span>${esc(k)}</span><code ${cp(val)}>${esc(val)}</code></div>`; }).join(""); }
 
 function openScore(id) {   // the transactions behind a reputation score
   const evs = A.state.events.filter((e) => (e.registry === "reputation" || e.registry === "validation") && e.args.agentId === id);
@@ -170,7 +172,7 @@ function eventCardHTML(e) {
 
 /* ── right rail · transaction log ──────────────────────────────────── */
 function renderEvents() {
-  const list = A.state.events.filter((e) => evtFilter === "all" || e.registry === evtFilter);
+  const list = A.state.events.filter((e) => evtFilter === "all" ? true : evtFilter === "agent" ? (e.args.agentId === sel) : e.registry === evtFilter);
   $("eventLog").innerHTML = list.length ? list.slice(0, 40).map((e, i) => `<button class="evt-card" data-i="${A.state.events.indexOf(e)}"><div class="evt-top"><span class="evt-name">${e.registry}.${e.name}</span><span class="evt-tx">${short(e.txid)}</span></div><div class="evt-args">${esc(JSON.stringify(e.args))}</div></button>`).join("") : `<div class="reg-empty">no transactions yet</div>`;
   [...$("eventLog").children].forEach((el) => el.dataset && el.dataset.i != null && (el.onclick = () => { const e = A.state.events[+el.dataset.i]; modal(`${e.registry} · ${e.name}`, "ARC-28 event", kvRows({ ...e.args }) + `<div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorer(e.txid)}" target="_blank" rel="noopener">${e.txid} ↗</a></div><div class="lm-kv"><span>round</span><code>r${e.round} · ${A.NET}</code></div>`); }));
 }
@@ -258,6 +260,7 @@ function boot() {
 
   $("detailModalClose").onclick = closeModal;
   $("detailModal").addEventListener("click", (e) => { if (e.target.id === "detailModal") closeModal(); });
+  document.addEventListener("click", (e) => { const c = e.target.closest("[data-copy]"); if (c) { e.preventDefault(); copy(c.dataset.copy); } });   // JTBD#4 copy
   $("presentToggle").onclick = () => document.body.classList.toggle("present");
   $("agentsPill").onclick = () => { const t = document.querySelector('.console-tab[data-view="methods"]'); t.click(); };
   document.addEventListener("keydown", (e) => { if (e.target.matches("input,textarea")) return; if (e.key === "Escape") closeModal(); else if (e.key === "p" || e.key === "P") document.body.classList.toggle("present"); });

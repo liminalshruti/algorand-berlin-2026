@@ -208,10 +208,11 @@ function renderProviders(route, prevById) {
         <span class="prov-name">${opt.name}</span>
         ${dropped ? `<span class="prov-flag caught">caught${tag ? " · " + tag : ""}</span>` : ""}
         <span class="prov-rank">#${i + 1}</span>
+        <span class="prov-inspect" data-act="inspect" role="button" title="Inspect reputation provenance">ⓘ</span>
       </div>
       <div class="prov-stats"><span><b>${algo(opt.price)}</b></span><span>rep <b>${opt.reputation ?? "—"}</b></span><span>val <b>${Math.round(opt.validation_rate * 100)}%</b></span><span>trust <b>${opt.trust_score}</b> · w ${opt.weight}%</span></div>
       <div class="prov-trust"><i style="width:0%"></i></div>`;
-    b.addEventListener("click", () => pick(opt.option_id));
+    b.addEventListener("click", (e) => { if (e.target.closest('[data-act="inspect"]')) inspectProvider(opt); else pick(opt.option_id); });
     list.appendChild(b);
     requestAnimationFrame(() => { const f = b.querySelector(".prov-trust > i"); if (f) f.style.width = `${opt.trust_score}%`; });
   });
@@ -327,6 +328,7 @@ function renderSignedPacket(pay, v, picked, prevRep) {
   const over = pay.settled_amount > pay.quoted_amount + 1e-9;
   const down = prevRep != null && v.new_reputation != null && v.new_reputation < prevRep;
   const outTxt = v.output_pass === null ? "n/a" : (v.output_pass ? "pass" : "below threshold");
+  const packetHash = hashHex(40);
   const art = $("dispoArtifact"); art.hidden = false;
   art.innerHTML = `
     <div class="da-bar"><span class="da-stamp">${over ? "Contested" : "Settled"}</span><span class="da-title">${picked.name} · validated</span><span class="da-time">${NETWORK}</span></div>
@@ -337,7 +339,7 @@ function renderSignedPacket(pay, v, picked, prevRep) {
       <div class="da-section"><div class="da-label">Committed to ledger</div><div class="da-text">${pay.txids.length + 1} anchors · hash-only</div></div>
     </div>
     <div class="da-foot">
-      <div class="da-hash"><span class="da-hash-label">SHA-256</span><code>${hashHex(40)}</code></div>
+      <div class="da-hash"><span class="da-hash-label">SHA-256</span><code class="copyable" data-copy="${packetHash}" title="click to copy">${packetHash}</code></div>
       <div class="da-handoff"><button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
     </div>`;
   $("rerunBtn").addEventListener("click", () => doRoute(true));
@@ -382,20 +384,43 @@ async function renderLedger() {
   [...$("auditRows").children].forEach((el) => el.addEventListener("click", () => openLedger(+el.dataset.anchor)));
 }
 
+function modal(eyebrow, title, html) {   // generic modal (ledger + provider inspect)
+  $("ledgerModalEyebrow").textContent = eyebrow;
+  $("ledgerModalTitle").textContent = title;
+  $("ledgerModalBody").innerHTML = html;
+  $("ledgerModal").classList.add("is-open");
+}
 function openLedger(focusIdx) {   // #5 explorable ledger
   const anchors = ui.anchors || [];
-  const m = $("ledgerModal");
-  $("ledgerModalBody").innerHTML = anchors.length ? anchors.map((a, i) => `
+  const html = anchors.length ? anchors.map((a, i) => `
     <div class="lm-row ${i === focusIdx ? "is-focus" : ""}">
       <div class="lm-top"><span class="lm-schema">${a.schema}</span><span class="lm-round">round r${a.round} · ${a.network}</span></div>
       <div class="lm-mean">${SCHEMA_MEANING[a.schema] || "anchored record"}</div>
-      <div class="lm-kv"><span>ref</span><code>${a.ref_id}</code></div>
-      <div class="lm-kv"><span>hash</span><code>${a.hash}</code></div>
-      <div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorer(a.txid)}" target="_blank" rel="noopener">${a.txid} ↗</a></div>
+      <div class="lm-kv"><span>ref</span><code class="copyable" data-copy="${a.ref_id}">${a.ref_id}</code></div>
+      <div class="lm-kv"><span>hash</span><code class="copyable" data-copy="${a.hash}">${a.hash}</code></div>
+      <div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorer(a.txid)}" target="_blank" rel="noopener">${a.txid} ↗</a> <span class="copy-ic copyable" data-copy="${a.txid}">⧉</span></div>
     </div>`).join("") : `<p class="panel-placeholder">No anchors yet.</p>`;
-  m.classList.add("is-open");
+  modal("On-chain ledger · hash-only · verifiable by anyone", "Anchored records", html);
+}
+async function inspectProvider(opt) {   // JTBD#3 click-in: reputation provenance from the router
+  const d = ui.repDetail[opt.provider_id] || await api.reputation(opt.provider_id) || {};
+  const parts = trustParts(opt.price, opt.reputation ?? 0, opt.validation_rate, ui.route.options);
+  const tag = topTag(d.by_tag);
+  modal("Reputation provenance · ERC-8004-shaped", opt.name, `
+    <p class="lm-mean">Reputation = how this provider's reads survive on-chain validation. Earned from paid reviews, not self-reported.</p>
+    <div class="lm-kv"><span>provider</span><code class="copyable" data-copy="${opt.provider_id}">${opt.provider_id}</code></div>
+    <div class="lm-kv"><span>score</span><code>${d.score ?? opt.reputation ?? "unrated"}${(d.score ?? opt.reputation) != null ? " / 100" : ""}</code></div>
+    <div class="lm-kv"><span>paid reviews</span><code>${d.reads_logged ?? "—"}</code></div>
+    <div class="lm-kv"><span>corrections</span><code>${d.corrections_logged ?? "—"}${tag ? ` · ${tag}` : ""}</code></div>
+    <div class="lm-kv"><span>validation</span><code>${Math.round(opt.validation_rate * 100)}%</code></div>
+    <div class="lm-kv"><span>quote</span><code>${algo(opt.price)}</code></div>
+    <div class="lm-sub">trust score · ${opt.trust_score}/100</div>
+    <div class="qcb-bar"><i class="qcb-price" style="width:${parts.price * 100}%"></i><i class="qcb-rep" style="width:${parts.reputation * 100}%"></i><i class="qcb-val" style="width:${parts.validation * 100}%"></i></div>
+    <div class="qcb-legend"><span><i class="dot price"></i>price ${Math.round(parts.price * 100)}</span><span><i class="dot rep"></i>reputation ${Math.round(parts.reputation * 100)}</span><span><i class="dot val"></i>validation ${Math.round(parts.validation * 100)}</span></div>
+    ${d.uri ? `<div class="lm-kv" style="margin-top:10px"><span>off-chain uri</span><code class="copyable" data-copy="${d.uri}">${d.uri}</code></div>` : ""}`);
 }
 function closeLedger() { $("ledgerModal").classList.remove("is-open"); }
+function copy(text) { try { navigator.clipboard.writeText(text); toast("copied to clipboard"); } catch (_) { toast("copy failed", true); } }
 
 function renderReceipt() {
   const r = $("frameReceipt"); if (!r) return;
@@ -517,6 +542,9 @@ function boot() {
     else if (e.key === "p" || e.key === "P") document.body.classList.toggle("present");
     else if (e.key === "." && (e.metaKey || e.ctrlKey)) { e.preventDefault(); stage.classList.toggle("tray-open"); }
   });
+
+  // JTBD#4 — click any address/txid/hash to copy
+  document.addEventListener("click", (e) => { const c = e.target.closest("[data-copy]"); if (c) { e.preventDefault(); copy(c.dataset.copy); } });
 
   setBanner(); setStep("request"); renderReceipt(); renderSrc();
   requestAnimationFrame(() => document.body.classList.add("ready"));
