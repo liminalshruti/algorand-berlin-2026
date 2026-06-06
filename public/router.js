@@ -2,120 +2,171 @@
  * trust-router.js · Liminal x402 Trust Router · UI lane (Shruti)
  * ════════════════════════════════════════════════════════════════════
  * Drives the router flow inside the Liminal desktop-app shell (cut-shell.css).
- * Mock-first: renders the full loop with the backend OFF.
+ * Mock-first; renders the full loop with the backend OFF.
  *   route → rank (left rail) → pick → approve gate (brief) → pay/validate
  *   → signed packet (dispo-artifact) → ledger (audit ribbon) → RE-RUN reroutes.
  *
- * Going live: set API_BASE to the router-server origin (one const). Every call
- * already routes through `api.*`, which fetches the frozen endpoints
- * (TEAM_SWIMLANES_2026-06-06.md) when API_BASE is set, mock otherwise.
+ * Live wiring (per INTEGRATION_HANDOFF.md): server on :3001; /api/pay + /api/ledger
+ * are live, the rest mocked until teammates land them. Flip LIVE → true to use it.
+ * The UI codes strictly to the frozen response shapes (contract.ts):
+ *   /api/pay      → { payment_id, txids, quoted_amount, settled_amount, read }   (no settle_txid/name/provider_id)
+ *   /api/validate → { validation_id, price_match, output_pass(bool|null), response, new_reputation, verdict_txid }  (no prev_reputation)
+ *   /api/reputation → { provider_id, score(bool→null ok), reads_logged, corrections_logged, by_tag, uri, hash }
+ * Provider identity + "before" reputation are sourced client-side from the picked
+ * RouteOption — never from pay/validate — so the live flip is a one-liner.
  */
 
 /* ───────────────────────────── config ─────────────────────────────── */
-const API_BASE = null;                 // null = MOCK. Set to "http://127.0.0.1:8787" for live.
+const BASE_URL = "http://localhost:3001";   // Navid's router-server
+const LIVE     = false;                      // ← single flip: false = mock, true = live
+const API_BASE = LIVE ? BASE_URL : null;
 const NETWORK  = "localnet";
 const TRUST_WEIGHTS = { price: 0.3, reputation: 0.4, validation: 0.3 };
+const MOCK_LATENCY = { route: 260, pay: 460, validate: 620 };   // makes pending states visible
 const EXPLORER = {
   localnet: (tx) => `https://lora.algokit.io/localnet/transaction/${tx}`,
   testnet:  (tx) => `https://lora.algokit.io/testnet/transaction/${tx}`,
   mainnet:  (tx) => `https://lora.algokit.io/mainnet/transaction/${tx}`,
 };
+const REGISTER_TASKS = {
+  Diligence:  "Diligence read: partner email says rejected; dashboard says in-review",
+  Outreach:   "Draft a follow-up to the warm intro from last week",
+  Judgment:   "Verdict: is this LOI worth countersigning as written?",
+  Operations: "Reconcile the June invoice batch against the ledger",
+};
 
 /* ──────────────────────── mock backend state ──────────────────────── */
 const mock = {
   seq: 0, routes: new Map(), payments: new Map(), ledger: [],
+  // reads/corrections drive the score (score = round(100*(reads-corrections)/reads));
+  // Nimbus has no history → excluded from ranking (bounded-refusal guard).
   providers: [
-    { id: `algorand:${NETWORK}:HELIOSXDILIGENCE`, name: "Helios Diligence",   register: "Diligence", price: 0.45, reputation: 82, validation_rate: 0.97, dishonest: false },
-    { id: `algorand:${NETWORK}:BOREALISANALYTIQ`, name: "Borealis Analytics", register: "Diligence", price: 0.38, reputation: 76, validation_rate: 0.95, dishonest: false },
-    { id: `algorand:${NETWORK}:VEGAQUOTESCHEAPZ`, name: "Vega Quotes",        register: "Diligence", price: 0.22, reputation: 71, validation_rate: 0.90, dishonest: true  },
+    pv("Helios Diligence",   "Diligence",  0.38, 20, 3,  0.97, 0.92, false),
+    pv("Borealis Analytics", "Diligence",  0.34, 20, 5,  0.95, 0.86, false),
+    pv("Vega Quotes",        "Diligence",  0.30, 8,  1,  0.90, 0.55, true),
+    pv("Nimbus Newcomer",    "Diligence",  0.28, 0,  0,  0.00, 0.50, false),
+    pv("Comet Outreach",     "Outreach",   0.20, 15, 2,  0.93, 0.88, false),
+    pv("Orion Drafts",       "Outreach",   0.26, 18, 6,  0.90, 0.70, true),
+    pv("Arbiter Prime",      "Judgment",   0.50, 30, 4,  0.98, 0.91, false),
+    pv("Verdict Labs",       "Judgment",   0.42, 22, 7,  0.92, 0.74, true),
+    pv("Atlas Ops",          "Operations", 0.18, 25, 3,  0.96, 0.89, false),
+    pv("Forge Runners",      "Operations", 0.24, 12, 5,  0.88, 0.66, true),
   ],
 };
-const rand32 = (n = 52) => { const a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"; let s = ""; for (let i = 0; i < n; i++) s += a[Math.floor(Math.random() * a.length)]; return s; };
-const hashHex = (n = 64) => { const a = "0123456789abcdef"; let s = ""; for (let i = 0; i < n; i++) s += a[Math.floor(Math.random() * a.length)]; return s; };
-let mockRound = 41000000 + Math.floor(Math.random() * 1000);
+function pv(name, register, price, reads, corrections, validation_rate, quality, dishonest) {
+  const addr = name.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 16).padEnd(16, "X");
+  return { id: `algorand:${NETWORK}:${addr}`, name, register, price, reads, corrections,
+           by_tag: corrections > 0 ? { quality_drift: corrections } : {}, validation_rate, quality, dishonest };
+}
+const scoreOf = (p) => (p.reads > 0 ? Math.round(100 * (p.reads - p.corrections) / p.reads) : null);
+const rand32 = (n = 52) => { const a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"; let s = ""; for (let i = 0; i < n; i++) s += a[(Math.random() * 32) | 0]; return s; };
+const hashHex = (n = 64) => { const a = "0123456789abcdef"; let s = ""; for (let i = 0; i < n; i++) s += a[(Math.random() * 16) | 0]; return s; };
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+let mockRound = 41000000 + ((Math.random() * 1000) | 0);
 
-function trustScore(p, all) {
+function trustScore(price, reputation, validation_rate, all) {
   const prices = all.map((x) => x.price);
   const min = Math.min(...prices), max = Math.max(...prices);
-  const priceScore = max === min ? 1 : (max - p.price) / (max - min);
-  return priceScore * TRUST_WEIGHTS.price + (p.reputation / 100) * TRUST_WEIGHTS.reputation + p.validation_rate * TRUST_WEIGHTS.validation;
+  const priceScore = max === min ? 1 : (max - price) / (max - min);
+  return priceScore * TRUST_WEIGHTS.price + (reputation / 100) * TRUST_WEIGHTS.reputation + validation_rate * TRUST_WEIGHTS.validation;
 }
 
 const mockApi = {
-  route({ task, register }) {
-    const pool = mock.providers.filter((p) => p.register === register && p.reputation > 0);
-    const scored = pool.map((p) => ({ p, t: trustScore(p, pool) }));
+  async route({ task, register }) {
+    await delay(MOCK_LATENCY.route);
+    const inReg = mock.providers.filter((p) => p.register === register);
+    const ranked = inReg.filter((p) => scoreOf(p) != null && scoreOf(p) > 0);   // zero/no-history excluded
+    const excluded = inReg.filter((p) => scoreOf(p) == null || scoreOf(p) === 0)
+      .map((p) => ({ provider_id: p.id, name: p.name, reason: "no validated history" }));
+    const scored = ranked.map((p) => ({ p, t: trustScore(p.price, scoreOf(p), p.validation_rate, ranked) }));
     const sum = scored.reduce((a, s) => a + s.t, 0) || 1;
     const options = scored.map(({ p, t }) => ({
       option_id: `opt_${p.id.split(":").pop().slice(0, 6)}`,
-      provider_id: p.id, name: p.name, price: p.price, reputation: p.reputation,
+      provider_id: p.id, name: p.name, price: p.price, reputation: scoreOf(p),
       validation_rate: p.validation_rate,
       trust_score: Math.round(t * 1000) / 10, weight: Math.round((t / sum) * 1000) / 10,
-      _dishonest: p.dishonest,
     })).sort((a, b) => b.trust_score - a.trust_score);
     const route_id = `rt_${++mock.seq}`;
     mock.routes.set(route_id, { task, register, options });
-    return Promise.resolve({ route_id, task, register, options });
+    return { route_id, task, register, options, excluded };   // `excluded` is a mock-only extra; live UI ignores if absent
   },
-  pay({ route_id, option_id }) {
+  async pay({ route_id, option_id }) {
+    await delay(MOCK_LATENCY.pay);
     const route = mock.routes.get(route_id);
     const opt = route && route.options.find((o) => o.option_id === option_id);
-    if (!opt) return Promise.reject(new Error("unknown route/option"));
+    if (!opt) { const e = new Error("unknown route/option"); e.status = 400; throw e; }
+    const prov = mock.providers.find((p) => p.id === opt.provider_id);
     const quoted = opt.price;
-    const hiddenFee = opt._dishonest ? Math.round(quoted * 0.82 * 100) / 100 : 0;
+    const hiddenFee = prov.dishonest ? Math.round(quoted * 0.82 * 100) / 100 : 0;
     const settled = Math.round((quoted + hiddenFee) * 100) / 100;
     const txids = [rand32()]; if (hiddenFee > 0) txids.push(rand32());
     const payment_id = `pay_${++mock.seq}`;
-    mock.payments.set(payment_id, { route_id, option_id, provider_id: opt.provider_id, quoted, settled, dishonest: opt._dishonest, name: opt.name });
+    const nonce = (Math.random() * 1e6) | 0;
+    mock.payments.set(payment_id, { route_id, option_id, provider_id: opt.provider_id, quoted, settled, dishonest: prov.dishonest });
     txids.forEach((tx, i) => mock.ledger.unshift({ txid: tx, schema: i === 0 ? "x402.settle" : "x402.settle.fee", ref_id: payment_id, hash: hashHex(), round: ++mockRound, network: NETWORK }));
-    return Promise.resolve({ payment_id, route_id, option_id, settle_txid: txids[0], txids, quoted_amount: quoted, settled_amount: settled, read: opt._dishonest ? "Delivered read (charged above quote)." : "Delivered read." });
+    // frozen shape + an OPTIONAL x402 proof-of-payment (ARC-8004 x402 profile); live UI renders it only if present
+    return {
+      payment_id, txids, quoted_amount: quoted, settled_amount: settled,
+      read: prov.dishonest ? "Delivered read (charged above quote)." : "Delivered read.",
+      proof_of_payment: { from: "OPERATOR…WALLET", to: prov.id.split(":").pop(), asset: 0, amount: Math.round(settled * 1e6), txid: txids[0], round: mockRound, nonce },
+    };
   },
-  validate({ payment_id }) {
+  async validate({ payment_id }) {
+    await delay(MOCK_LATENCY.validate);
     const pay = mock.payments.get(payment_id);
-    if (!pay) return Promise.reject(new Error("unknown payment"));
-    const price_match = pay.settled <= pay.quoted + 1e-9;
-    const output_pass = true;
-    const response = price_match ? (output_pass ? 100 : 60) : 0;
+    if (!pay) { const e = new Error("unknown payment"); e.status = 400; throw e; }
     const prov = mock.providers.find((p) => p.id === pay.provider_id);
-    const prev = prov.reputation;
-    if (response === 0) { prov.reputation = Math.max(0, Math.round(prev * 0.58)); prov.validation_rate = Math.max(0.1, Math.round(prov.validation_rate * 0.5 * 100) / 100); }
-    else { prov.reputation = Math.min(100, prev + 1); }
+    const price_match = pay.settled <= pay.quoted + 1e-9;
+    const output_pass = prov.quality >= 0.6;                 // output check (fuzzy); may be reported null by backend
+    const response = !price_match ? 0 : (output_pass ? 100 : 60);
+    if (response < 100) {                                    // correction recorded → reputation drops
+      prov.reads += 1; prov.corrections += 1;
+      const tag = !price_match ? "missed_compensation" : "quality_drift";
+      prov.by_tag[tag] = (prov.by_tag[tag] || 0) + 1;
+      prov.validation_rate = Math.max(0.05, Math.round(prov.validation_rate * 0.33 * 100) / 100);
+    } else { prov.reads += 1; prov.validation_rate = Math.min(0.99, Math.round((prov.validation_rate + 0.01) * 100) / 100); }
     const verdict_txid = rand32();
     mock.ledger.unshift({ txid: verdict_txid, schema: "erc8004.feedback", ref_id: payment_id, hash: hashHex(), round: ++mockRound, network: NETWORK });
-    return Promise.resolve({ validation_id: `val_${++mock.seq}`, price_match, output_pass, response, new_reputation: prov.reputation, prev_reputation: prev, provider_id: pay.provider_id, verdict_txid });
+    // frozen shape — NO prev_reputation, NO provider_id (UI sources those from the picked option)
+    return { validation_id: `val_${++mock.seq}`, price_match, output_pass, response, new_reputation: scoreOf(prov), verdict_txid };
   },
-  reputation(provider) {
+  async reputation(provider) {
     const p = mock.providers.find((x) => x.id === provider);
-    return Promise.resolve(p ? { provider_id: p.id, score: p.reputation, reads_logged: 1, corrections_logged: p.dishonest ? 1 : 0, by_tag: {}, uri: `liminal://corrections/${p.id}`, hash: hashHex() } : null);
+    if (!p) return null;
+    return { provider_id: p.id, score: scoreOf(p), reads_logged: p.reads, corrections_logged: p.corrections, by_tag: p.by_tag, uri: `liminal://corrections/${p.id}`, hash: hashHex() };
   },
-  ledgerAll() { return Promise.resolve({ anchors: mock.ledger.slice() }); },
+  async ledgerAll() { return { anchors: mock.ledger.slice() }; },
 };
 
 /* ───────────────────────── api wrapper (mock ↔ live) ──────────────── */
-const post = (path, body) => fetch(API_BASE + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
-const get = (path) => fetch(API_BASE + path).then((r) => r.json());
+async function http(method, path, body) {
+  const res = await fetch(API_BASE + path, body ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { method });
+  if (!res.ok) { const e = new Error(`${path} → ${res.status}`); e.status = res.status; throw e; }
+  return res.json();
+}
 const api = {
-  route: (b) => API_BASE ? post("/api/route", b) : mockApi.route(b),
-  pay: (b) => API_BASE ? post("/api/pay", b) : mockApi.pay(b),
-  validate: (b) => API_BASE ? post("/api/validate", b) : mockApi.validate(b),
-  reputation: (p) => API_BASE ? get(`/api/reputation?provider=${encodeURIComponent(p)}`) : mockApi.reputation(p),
-  ledger: () => API_BASE ? get("/api/ledger") : mockApi.ledgerAll(),
+  route: (b) => API_BASE ? http("POST", "/api/route", b) : mockApi.route(b),
+  pay: (b) => API_BASE ? http("POST", "/api/pay", b) : mockApi.pay(b),
+  validate: (b) => API_BASE ? http("POST", "/api/validate", b) : mockApi.validate(b),
+  reputation: (p) => API_BASE ? http("GET", `/api/reputation?provider=${encodeURIComponent(p)}`).catch(() => null) : mockApi.reputation(p),
+  ledger: () => API_BASE ? http("GET", "/api/ledger") : mockApi.ledgerAll(),
 };
 
 /* ──────────────────────────── helpers ─────────────────────────────── */
 const $ = (id) => document.getElementById(id);
 const algo = (n) => `${Number(n).toFixed(2)} ALGO`;
-const shortTx = (tx) => `${tx.slice(0, 6)}…${tx.slice(-4)}`;
+const shortTx = (tx) => (tx ? `${tx.slice(0, 6)}…${tx.slice(-4)}` : "—");
 const explorer = (tx) => (EXPLORER[NETWORK] || EXPLORER.localnet)(tx);
+const topTag = (by_tag) => { const e = Object.entries(by_tag || {}); return e.length ? e.sort((a, b) => b[1] - a[1])[0][0] : null; };
 let toastTimer = null;
-function toast(msg) {
-  const t = $("toast"); const m = $("toast-msg"); if (!t || !m) return;
-  m.textContent = msg; t.classList.add("is-shown");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("is-shown"), 3200);
+function toast(msg, bad) {
+  const t = $("toast"), m = $("toast-msg"); if (!t || !m) return;
+  m.textContent = msg; t.classList.toggle("is-bad", !!bad); t.classList.add("is-shown");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("is-shown"), 3400);
 }
 
 /* ──────────────────────────── ui state ────────────────────────────── */
-const ui = { route: null, picked: null, register: "Diligence", runs: 0 };
+const ui = { route: null, picked: null, register: "Diligence", runs: 0, repDetail: {}, names: {} };
 
 /* ──────────────────────────── rendering ───────────────────────────── */
 function renderProviders(route, prevById) {
@@ -123,6 +174,7 @@ function renderProviders(route, prevById) {
   const list = $("providerList"); list.innerHTML = "";
   route.options.forEach((opt, i) => {
     const dropped = prevById && prevById[opt.provider_id] != null && opt.reputation < prevById[opt.provider_id];
+    const tag = dropped ? topTag(ui.repDetail[opt.provider_id] && ui.repDetail[opt.provider_id].by_tag) : null;
     const b = document.createElement("button");
     b.type = "button";
     b.className = "case-item provider" + (i === 0 ? " is-active" : "") + (dropped ? " is-dropped" : "");
@@ -130,84 +182,107 @@ function renderProviders(route, prevById) {
     b.innerHTML = `
       <div class="prov-head">
         <span class="prov-name">${opt.name}</span>
-        ${dropped ? '<span class="prov-flag caught">caught</span>' : ""}
+        ${dropped ? `<span class="prov-flag caught">caught${tag ? " · " + tag : ""}</span>` : ""}
         <span class="prov-rank">#${i + 1}</span>
       </div>
-      <div class="prov-stats"><span><b>${algo(opt.price)}</b></span><span>rep <b>${opt.reputation}</b></span><span>trust <b>${opt.trust_score}</b></span><span>w <b>${opt.weight}%</b></span></div>
+      <div class="prov-stats"><span><b>${algo(opt.price)}</b></span><span>rep <b>${opt.reputation ?? "—"}</b></span><span>val <b>${Math.round(opt.validation_rate * 100)}%</b></span><span>trust <b>${opt.trust_score}</b> · w ${opt.weight}%</span></div>
       <div class="prov-trust"><i style="width:0%"></i></div>`;
     b.addEventListener("click", () => pick(opt.option_id));
     list.appendChild(b);
     requestAnimationFrame(() => { const f = b.querySelector(".prov-trust > i"); if (f) f.style.width = `${opt.trust_score}%`; });
   });
-  $("railMeta").textContent = `${route.options.length} ranked`;
+  // excluded providers (mock-only `excluded`; bounded-refusal guard made visible)
+  (route.excluded || []).forEach((ex) => {
+    const d = document.createElement("div");
+    d.className = "case-item provider is-excluded";
+    d.innerHTML = `<div class="prov-head"><span class="prov-name">${ex.name}</span><span class="prov-flag excluded">excluded</span></div>
+      <div class="prov-excluded-note">unrated — ${ex.reason}; held out of routing</div>`;
+    list.appendChild(d);
+  });
+  $("railMeta").textContent = `${route.options.length} ranked${route.excluded && route.excluded.length ? ` · ${route.excluded.length} held` : ""}`;
   pick(route.options[0].option_id, true);
 }
 
 function pick(optionId, silent) {
   ui.picked = ui.route.options.find((o) => o.option_id === optionId);
-  [...$("providerList").children].forEach((c) => c.classList.toggle("is-active", c.dataset.optionId === optionId));
+  [...$("providerList").children].forEach((c) => c.classList.toggle("is-active", c.dataset && c.dataset.optionId === optionId));
   const p = ui.picked;
   $("slateEyebrow").innerHTML = `<span class="sb-strong">Selected provider</span> · weighted-lottery pick`;
   $("slateTitle").textContent = p.name;
-  $("slateSubtitle").textContent = `${algo(p.price)} · reputation ${p.reputation} · trust ${p.trust_score}/100 · weight ${p.weight}%`;
+  $("slateSubtitle").textContent = `${algo(p.price)} · reputation ${p.reputation ?? "unrated"} · trust ${p.trust_score}/100 · weight ${p.weight}%`;
 
-  // quote card in canvas
   const canvas = $("slateCanvas"); canvas.dataset.empty = "0";
   $("quoteWrap").innerHTML = `
     <div class="quote-card">
       <div class="qc-eyebrow">x402 quote · ${ui.register}</div>
       <div class="qc-row"><span class="qc-k">Provider</span><span class="qc-v">${p.name}</span></div>
-      <div class="qc-row"><span class="qc-k">Address</span><span class="qc-v">${p.provider_id.split(":").pop().slice(0, 10)}…</span></div>
+      <div class="qc-row"><span class="qc-k">Address</span><span class="qc-v">${p.provider_id.split(":").pop().slice(0, 12)}…</span></div>
       <div class="qc-row"><span class="qc-k">Quote</span><span class="qc-v accent">${algo(p.price)}</span></div>
-      <div class="qc-row"><span class="qc-k">Reputation</span><span class="qc-v">${p.reputation} / 100</span></div>
+      <div class="qc-row"><span class="qc-k">Reputation</span><span class="qc-v">${p.reputation ?? "unrated"}${p.reputation != null ? " / 100" : ""}</span></div>
       <div class="qc-row"><span class="qc-k">Validation rate</span><span class="qc-v">${Math.round(p.validation_rate * 100)}%</span></div>
     </div>`;
 
-  // pre-pay brief + disposition gate
   $("metricBand").hidden = true;
   $("dispoArtifact").hidden = true;
-  const brief = $("briefArea"); brief.hidden = false;
+  $("briefArea").hidden = false;
   $("briefBody").innerHTML = `<span class="brief-opener"><em>${p.name}</em> leads the route at ${algo(p.price)} — ${p.weight}% of the weighted lottery. Approve to settle over x402 on Algorand, then validate the delivery against this quote on-chain.</span>`;
   $("disposition").hidden = false;
   if (!silent) toast(`Picked ${p.name}`);
 }
 
-function renderMetricBand(pay, v) {
-  const over = pay.settled_amount > pay.quoted_amount + 1e-9;
+function renderMetricBand(quoted, settled, response) {
   const band = $("metricBand"); band.hidden = false;
-  band.innerHTML = `
-    <div class="metric-cell"><div class="metric-label">Quoted</div><div class="metric-number">${pay.quoted_amount.toFixed(2)}</div><div class="metric-caption">ALGO · x402</div></div>
-    <div class="metric-cell"><div class="metric-label">Settled</div><div class="metric-number ${over ? "bad" : "good"}">${pay.settled_amount.toFixed(2)}</div><div class="metric-caption ${over ? "bad" : ""}">${over ? `+${(pay.settled_amount - pay.quoted_amount).toFixed(2)} hidden fee` : "matches quote"}</div></div>
-    <div class="metric-cell"><div class="metric-label">Validation</div><div class="metric-number ${v.response === 0 ? "bad" : "good"}">${v.response}</div><div class="metric-caption ${v.response === 0 ? "bad" : ""}">${v.response === 0 ? "price-vs-quote failed" : "verdict passed"}</div></div>`;
+  const over = settled != null && quoted != null && settled > quoted + 1e-9;
+  const cell = (label, val, cls, cap, capCls) =>
+    `<div class="metric-cell"><div class="metric-label">${label}</div><div class="metric-number ${val == null ? "pending" : cls || ""}">${val == null ? "··" : val}</div><div class="metric-caption ${capCls || ""}">${cap}</div></div>`;
+  band.innerHTML =
+    cell("Quoted", quoted == null ? null : quoted.toFixed(2), "", "ALGO · x402") +
+    cell("Settled", settled == null ? null : settled.toFixed(2), over ? "bad" : "good", settled == null ? "settling…" : (over ? `+${(settled - quoted).toFixed(2)} hidden fee` : "matches quote"), over ? "bad" : "") +
+    cell("Validation", response == null ? null : String(response), response == null ? "" : (response === 0 ? "bad" : "good"), response == null ? "validating…" : (response === 0 ? "price-vs-quote failed" : "verdict passed"), response === 0 ? "bad" : "");
+}
+
+function renderProof(pay) {
+  const pop = pay.proof_of_payment;
+  if (!pop) return "";
+  return `<div class="x402-badge">◇ x402 · payment-anchored</div>
+    <div class="proof">
+      <span>from ${pop.from}</span><span>to ${shortTx(pop.to)}</span>
+      <span>${(pop.amount / 1e6).toFixed(2)} ${pop.asset === 0 ? "ALGO" : "ASA:" + pop.asset}</span>
+      <span>round r${pop.round}</span><span>nonce ${pop.nonce}</span>
+    </div>`;
 }
 
 function renderBriefVerdict(pay, v) {
+  const txid = pay.txids[0];
   const over = pay.settled_amount > pay.quoted_amount + 1e-9;
+  const outTxt = v.output_pass === null ? "n/a (output check skipped)" : (v.output_pass ? "passed" : "below threshold");
   $("briefBody").innerHTML = `
     <span class="brief-opener"><em>${pay.read}</em></span>
     On-chain validation compared the settled amount to the quote.
-    ${over ? `<div class="gap-flag">⚠ settled ${pay.settled_amount.toFixed(2)} &gt; quoted ${pay.quoted_amount.toFixed(2)} ALGO — hidden fee caught from chain data.</div>` : ` Settlement matched the quote.`}
-    <div style="margin-top:10px;font-family:var(--mono);font-size:var(--fs-mono-xs);color:var(--text-faint)">
-      settle <a class="txid-link" href="${explorer(pay.settle_txid)}" target="_blank" rel="noopener">${shortTx(pay.settle_txid)} ↗</a>
+    ${over ? `<div class="gap-flag">⚠ settled ${pay.settled_amount.toFixed(2)} &gt; quoted ${pay.quoted_amount.toFixed(2)} ALGO — hidden fee caught from chain data.</div>` : ` Settlement matched the quote; output ${outTxt}.`}
+    ${renderProof(pay)}
+    <div class="brief-txids">
+      settle <a class="txid-link" href="${explorer(txid)}" target="_blank" rel="noopener">${shortTx(txid)} ↗</a>
       · verdict <a class="txid-link" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">${shortTx(v.verdict_txid)} ↗</a>
     </div>`;
   $("disposition").hidden = true;
 }
 
-function renderSignedPacket(pay, v) {
+function renderSignedPacket(pay, v, picked, prevRep) {
   const over = pay.settled_amount > pay.quoted_amount + 1e-9;
-  const down = v.new_reputation < v.prev_reputation;
+  const down = prevRep != null && v.new_reputation != null && v.new_reputation < prevRep;
+  const outTxt = v.output_pass === null ? "n/a" : (v.output_pass ? "pass" : "below threshold");
   const art = $("dispoArtifact"); art.hidden = false;
   art.innerHTML = `
     <div class="da-bar">
       <span class="da-stamp">${over ? "Contested" : "Settled"}</span>
-      <span class="da-title">${pay.name} · validated</span>
+      <span class="da-title">${picked.name} · validated</span>
       <span class="da-time">${NETWORK}</span>
     </div>
     <div class="da-body">
       <div class="da-section"><div class="da-label">Disposition</div><div class="da-text">Paid <em>${pay.quoted_amount.toFixed(2)}</em> → settled <em>${pay.settled_amount.toFixed(2)}</em> ALGO</div></div>
-      <div class="da-section"><div class="da-label">Verdict</div><div class="da-text">${v.price_match ? "price match" : "price-vs-quote FAILED"} · response ${v.response}/100</div></div>
-      <div class="da-section"><div class="da-label">Reputation</div><div class="da-text"><span class="rep-line"><span class="rep-from">${v.prev_reputation}</span>→<span class="rep-to ${down ? "down" : "up"}">${v.new_reputation}</span></span></div></div>
+      <div class="da-section"><div class="da-label">Verdict</div><div class="da-text">${v.price_match ? "price match" : "price-vs-quote FAILED"} · output ${outTxt} · response ${v.response}/100</div></div>
+      <div class="da-section"><div class="da-label">Reputation</div><div class="da-text"><span class="rep-line"><span class="rep-from">${prevRep ?? "—"}</span>→<span class="rep-to ${down ? "down" : "up"}">${v.new_reputation ?? "—"}</span></span></div></div>
       <div class="da-section"><div class="da-label">Committed to ledger</div><div class="da-text">${pay.txids.length + 1} anchors · hash-only</div></div>
     </div>
     <div class="da-foot">
@@ -220,36 +295,52 @@ function renderSignedPacket(pay, v) {
   $("rerunBtn").addEventListener("click", () => doRoute(true));
 }
 
-function renderRegistry(prevById) {
-  const pool = mock.providers.filter((p) => p.register === ui.register);
+function renderRegistry(prevScores) {
+  const opts = (ui.route && ui.route.options) || [];
+  const excl = (ui.route && ui.route.excluded) || [];
   const list = $("registryList"); list.innerHTML = "";
-  pool.slice().sort((a, b) => b.reputation - a.reputation).forEach((p) => {
-    const caught = prevById && prevById[p.id] != null && p.reputation < prevById[p.id];
-    const delta = prevById && prevById[p.id] != null ? p.reputation - prevById[p.id] : 0;
+  const rows = [
+    ...opts.map((o) => ({ id: o.provider_id, name: o.name })),
+    ...excl.map((e) => ({ id: e.provider_id, name: e.name, excluded: true })),
+  ];
+  rows.forEach((r) => {
+    const d = ui.repDetail[r.id] || null;
+    const score = d ? d.score : null;
+    const reads = d ? d.reads_logged : 0, corr = d ? d.corrections_logged : 0;
+    const tag = d ? topTag(d.by_tag) : null;
+    const prev = prevScores ? prevScores[r.id] : undefined;
+    const delta = prev != null && score != null ? score - prev : 0;
+    const caught = delta < 0;
     const row = document.createElement("div");
-    row.className = "reg-row" + (caught ? " is-caught" : "");
+    row.className = "reg-row" + (caught ? " is-caught" : "") + (r.excluded ? " is-excluded" : "");
     row.innerHTML = `
       <div class="rr-head">
-        <span class="rr-name">${p.name}</span>
-        <span><span class="rr-score ${caught ? "down" : ""}">${p.reputation}</span>${delta < 0 ? `<span class="rr-delta down">${delta}</span>` : ""}</span>
+        <span class="rr-name">${r.name}</span>
+        <span>${score == null ? '<span class="rr-score unrated">unrated</span>'
+          : `<span class="rr-score ${caught ? "down" : ""}">${score}</span>${delta < 0 ? `<span class="rr-delta down">${delta}</span>` : ""}`}</span>
       </div>
-      <div class="rr-bar"><i style="width:0%"></i></div>`;
+      <div class="rr-bar"><i style="width:0%"></i></div>
+      <div class="rr-prov">${r.excluded ? "no validated history" : `${reads} reads · ${corr} corrections${tag ? ` · <span class="rr-tag">${tag}</span>` : ""}`}</div>`;
     list.appendChild(row);
-    requestAnimationFrame(() => { const f = row.querySelector(".rr-bar > i"); if (f) f.style.width = `${p.reputation}%`; });
+    if (score != null) requestAnimationFrame(() => { const f = row.querySelector(".rr-bar > i"); if (f) f.style.width = `${score}%`; });
   });
+}
+
+async function loadRepDetail(route) {
+  const ids = [...route.options.map((o) => o.provider_id), ...((route.excluded || []).map((e) => e.provider_id))];
+  ui.repDetail = {};
+  await Promise.all(ids.map(async (id) => { ui.repDetail[id] = await api.reputation(id); }));
 }
 
 async function renderLedger() {
   const { anchors } = await api.ledger();
   $("ledgerCount").textContent = anchors.length;
-  const rows = $("auditRows");
-  rows.innerHTML = anchors.slice(0, 6).map((a) => `
-    <span class="ar-row"><span class="ar-time">r${a.round}</span><span class="ar-event ${a.schema.includes("fee") ? "refused" : ""}">${a.schema} ${shortTx(a.txid)}</span></span>`).join("");
+  $("auditRows").innerHTML = anchors.slice(0, 6).map((a) =>
+    `<span class="ar-row"><span class="ar-time">r${a.round}</span><a class="ar-event txid-link ${a.schema.includes("fee") ? "refused" : ""}" href="${explorer(a.txid)}" target="_blank" rel="noopener">${a.schema} ${shortTx(a.txid)}</a></span>`).join("");
 }
 
 function renderReceipt() {
-  const r = $("frameReceipt");
-  r.innerHTML = `
+  $("frameReceipt").innerHTML = `
     <span class="fr-glyph">◇</span>
     <span class="fr-strong">route · ${ui.route ? ui.route.route_id : "—"}</span>
     <span class="fr-sep">·</span><span>${ui.route ? ui.route.options.length : 0} providers</span>
@@ -259,44 +350,65 @@ function renderReceipt() {
 
 /* ─────────────────────────── flow control ─────────────────────────── */
 async function doRoute(isRerun) {
-  $("routeBtn").disabled = true;
-  const prevById = isRerun && ui.route ? Object.fromEntries(ui.route.options.map((o) => [o.provider_id, o.reputation])) : null;
-  const route = await api.route({ task: ($("taskInput").value || "").trim() || "Diligence read", register: ui.register });
-  ui.runs += 1;
-  $("breadcrumb").textContent = `${ui.register} route`;
-  $("crumb-sep").hidden = false;
+  $("routeBtn").disabled = true; $("rerunBtn") && ($("rerunBtn").disabled = true);
+  try {
+    const prevById = isRerun && ui.route ? Object.fromEntries(ui.route.options.map((o) => [o.provider_id, o.reputation])) : null;
+    const route = await api.route({ task: ($("taskInput").value || "").trim() || REGISTER_TASKS[ui.register], register: ui.register });
+    ui.runs += 1;
+    $("breadcrumb").textContent = `${ui.register} route`; $("crumb-sep").hidden = false;
+    await loadRepDetail(route);
 
-  if (isRerun && prevById) {
-    const top = route.options[0];
-    const dropped = route.options.find((o) => prevById[o.provider_id] != null && o.reputation < prevById[o.provider_id]);
-    $("classification").textContent = dropped
-      ? `REROUTED · ${dropped.name} dropped to #${route.options.indexOf(dropped) + 1} · ${top.name} now leads`
-      : `RE-RANKED · ${top.name} leads`;
-    if (dropped) toast(`Rerouted: ${dropped.name} dropped after validation — ${top.name} now leads.`);
-  } else {
-    $("classification").textContent = `ROUTE · ${ui.register.toUpperCase()} · ${NETWORK.toUpperCase()}`;
+    if (isRerun && prevById) {
+      const top = route.options[0];
+      const dropped = route.options.find((o) => prevById[o.provider_id] != null && o.reputation < prevById[o.provider_id]);
+      $("classification").textContent = dropped
+        ? `REROUTED · ${dropped.name} dropped to #${route.options.indexOf(dropped) + 1} · ${top.name} now leads`
+        : `RE-RANKED · ${top.name} leads`;
+      if (dropped) toast(`Rerouted: ${dropped.name} dropped after validation — ${top.name} now leads.`);
+    } else {
+      $("classification").textContent = `ROUTE · ${ui.register.toUpperCase()} · ${NETWORK.toUpperCase()}`;
+    }
+
+    renderProviders(route, prevById);
+    renderRegistry(prevById);
+    await renderLedger();
+    renderReceipt();
+  } catch (e) {
+    toast(`Route failed: ${e.message}`, true);
+  } finally {
+    $("routeBtn").disabled = false;
   }
-
-  renderProviders(route, prevById);
-  renderRegistry(prevById);
-  await renderLedger();
-  renderReceipt();
-  $("routeBtn").disabled = false;
 }
 
 async function doApprove() {
   if (!ui.route || !ui.picked) return;
+  const picked = ui.picked, prevRep = picked.reputation;     // sourced client-side (live-safe)
   $("dispoPrimary").disabled = true; $("dispoDefer").disabled = true;
-  const pay = await api.pay({ route_id: ui.route.route_id, option_id: ui.picked.option_id });
-  const v = await api.validate({ payment_id: pay.payment_id });
-  renderMetricBand(pay, v);
-  renderBriefVerdict(pay, v);
-  renderSignedPacket(pay, v);
-  renderRegistry({ [v.provider_id]: v.prev_reputation });
-  await renderLedger();
-  renderReceipt();
-  toast(v.response === 0 ? `${pay.name} charged above quote — reputation ${v.prev_reputation}→${v.new_reputation}, anchored.` : `${pay.name} validated — reputation held.`);
-  $("dispoPrimary").disabled = false; $("dispoDefer").disabled = false;
+  $("slateCanvas").setAttribute("aria-busy", "true");
+  renderMetricBand(picked.price, null, null);                // pending: settling…
+  $("briefBody").innerHTML = `<span class="brief-opener">Settling <em>${picked.name}</em> over x402 on Algorand…</span>`;
+  $("disposition").hidden = true;
+  try {
+    const pay = await api.pay({ route_id: ui.route.route_id, option_id: picked.option_id });
+    renderMetricBand(pay.quoted_amount, pay.settled_amount, null);   // settled known, validating…
+    const v = await api.validate({ payment_id: pay.payment_id });
+    renderMetricBand(pay.quoted_amount, pay.settled_amount, v.response);
+    renderBriefVerdict(pay, v);
+    renderSignedPacket(pay, v, picked, prevRep);
+    await loadRepDetail(ui.route);                            // refresh scores after write-back
+    renderRegistry({ [picked.provider_id]: prevRep });
+    await renderLedger();
+    renderReceipt();
+    toast(v.response === 0
+      ? `${picked.name} charged above quote — reputation ${prevRep ?? "—"}→${v.new_reputation ?? "—"}, anchored.`
+      : `${picked.name} validated — reputation held.`, v.response === 0);
+  } catch (e) {
+    toast(`Payment/validation failed: ${e.message}`, true);
+    $("disposition").hidden = false;
+  } finally {
+    $("dispoPrimary").disabled = false; $("dispoDefer").disabled = false;
+    $("slateCanvas").removeAttribute("aria-busy");
+  }
 }
 
 function doDeny() { $("briefArea").hidden = true; toast("Denied — no settlement."); }
@@ -309,20 +421,23 @@ function boot() {
   $("taskInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doRoute(false); } });
 
   [...document.querySelectorAll(".reg-tab")].forEach((tab) => tab.addEventListener("click", () => {
+    if (tab.classList.contains("is-active")) return;
     [...document.querySelectorAll(".reg-tab")].forEach((t) => t.classList.remove("is-active"));
     tab.classList.add("is-active");
     ui.register = tab.dataset.register;
-    $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${API_BASE ? "LIVE" : "MOCK"}`;
+    $("taskInput").value = REGISTER_TASKS[ui.register] || "";
+    setBanner();
+    doRoute(false);                                          // lane switch re-routes (no stale data)
   }));
 
-  // tray toggle · cut-shell opens via .stage.tray-open
   const pill = $("tray-pill"), stage = document.querySelector(".stage");
   if (pill && stage) pill.addEventListener("click", () => stage.classList.toggle("tray-open"));
 
-  $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${API_BASE ? "LIVE" : "MOCK"}`;
+  setBanner();
   renderReceipt();
   requestAnimationFrame(() => document.body.classList.add("ready"));
 }
+function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${API_BASE ? "LIVE :3001" : "MOCK"}`; }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();

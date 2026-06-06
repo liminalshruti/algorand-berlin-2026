@@ -109,3 +109,35 @@ body.ready { opacity: 1; }
 .tr-tile { border: 1px solid var(--card-border); border-radius: var(--radius-3); background: var(--frame-bg-3); padding: 10px 12px; margin-bottom: 8px; }
 .tr-tile .tt-app { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px; }
 .tr-tile .tt-text { font-size: var(--fs-xs); color: var(--text-dim); line-height: 1.4; }
+
+/* ── pending state (metric band while settling/validating) ──────────── */
+.metric-number.pending { color: var(--text-faint); animation: pend-pulse 1.2s ease-in-out infinite; }
+@keyframes pend-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.9; } }
+
+/* ── x402 payment-anchored badge + proof-of-payment (ARC-8004 profile) ─ */
+.x402-badge {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase;
+  color: var(--good); background: var(--connection-bg); border: 1px solid var(--connection-edge);
+  border-radius: var(--radius-2); padding: 3px 8px;
+}
+.proof { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
+  font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
+.brief-txids { margin-top: 10px; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
+
+/* ── left-rail excluded provider (bounded-refusal guard, visible) ───── */
+.case-item.provider.is-excluded { cursor: default; opacity: 0.7; }
+.case-item.provider.is-excluded:hover { background: transparent; }
+.prov-flag.excluded { color: var(--text-dim); background: var(--frame-bg-3); border: 1px solid var(--card-border-2); }
+.prov-excluded-note { font-family: var(--serif); font-size: var(--fs-xs); font-style: italic; color: var(--text-faint); margin-top: 4px; }
+
+/* ── registry provenance + tags + unrated ───────────────────────────── */
+.reg-row .rr-prov { margin-top: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em; color: var(--text-faint); }
+.reg-row .rr-tag { color: var(--red); }
+.reg-row .rr-score.unrated { font-family: var(--mono); font-size: var(--fs-mono-sm); color: var(--text-faint); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
+.reg-row.is-excluded { opacity: 0.66; }
+.reg-row.is-excluded .rr-bar { display: none; }
+
+/* ── error toast accent ─────────────────────────────────────────────── */
+.toast.is-bad { border-left: 3px solid var(--red); }
+.toast.is-bad .t-glyph { color: var(--red); }
