@@ -811,3 +811,24 @@ body[data-product="business"] {
   letter-spacing: 0 !important;
   color: var(--text) !important;
 }
+
+/* ══ PRESENT / STAGE MODE ═══════════════════════════════════════════════
+   A projector-ready demo mode (toggle: P, or the bottom-left button), shared
+   by every page. It does three things: quiets dev chrome so only the story is
+   left, lifts secondary ink a notch for a screen across the room, and frames
+   the stage with a faint accent. Per-page enlargements live in each page CSS. */
+body.present { --text-dim: #C2BEB6; --text-faint: #95918A; }      /* lift secondary ink for a projector */
+body.present .lights,
+body.present .breadcrumb, body.present .crumb-sep,
+body.present .tray-pop,
+body.present .sb-tag,
+body.present .live-indicator,
+body.present .frame-receipt { opacity: 0; pointer-events: none; }
+body.present .titlebar { opacity: 0.5; transition: opacity var(--tx-base) var(--ease); }
+body.present .titlebar:hover { opacity: 1; }
+body.present .frame { box-shadow: 0 0 0 1px var(--p-accent-edge) inset, var(--shadow-card-lifted, var(--shadow-card)); }
+/* the toggle announces its own state instead of looking like idle chrome */
+body.present .present-toggle { color: var(--p-accent); border-color: var(--p-accent-edge); }
+body.present .present-toggle::after { content: " · on"; opacity: 0.7; }
+.present-toggle::after { content: " ▸"; opacity: 0.5; }
+@media print { body.present .present-toggle, body.present .chain-ctx { display: none; } }

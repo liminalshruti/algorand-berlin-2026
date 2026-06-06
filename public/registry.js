@@ -33,12 +33,14 @@ function repOf(id) {
 }
 function renderChainCtx() {
   const net = (A.NET || 'testnet');
+  const appUrl = (id) => `https://lora.algokit.io/${net}/application/${id}`;
+  const row = (label, id) => `<div class="cc-app"><span>${label}</span><a class="cc-link" href="${appUrl(id)}" target="_blank" rel="noopener" title="app ${id} · open in explorer">app ${id}</a></div>`;
   $('chainCtx').innerHTML = `
-    <div class="cc-net cc-${net}"><span class="cc-dot"></span>ALGORAND · ${net.toUpperCase()} <span class="cc-mode">mock</span></div>
+    <div class="cc-net cc-${net} is-mock"><span class="cc-dot"></span>ALGORAND · ${net.toUpperCase()} <span class="cc-mode">MOCK</span></div>
     <div class="cc-apps">
-      <div class="cc-app"><span>Identity</span><code ${cp(String(A.APP.identity))}>app ${A.APP.identity}</code></div>
-      <div class="cc-app"><span>Reputation</span><code ${cp(String(A.APP.reputation))}>app ${A.APP.reputation}</code></div>
-      <div class="cc-app"><span>Validation</span><code ${cp(String(A.APP.validation))}>app ${A.APP.validation}</code></div>
+      ${row('Identity', A.APP.identity)}
+      ${row('Reputation', A.APP.reputation)}
+      ${row('Validation', A.APP.validation)}
     </div>`;
 }
 const allAgents = () => [...A.state.agents.keys()];
@@ -180,7 +182,15 @@ function renderManage() {
   const list = state.sel != null && owned.includes(state.sel) ? [state.sel] : owned;
   $('center').innerHTML = `
     <div class="view-head"><h1 class="big-title">Manage</h1><p class="big-sub">Agents owned by <em>${short(focusOwner)}</em>${isMe ? ' (you)' : ''} — identity, metadata, and reviews received.</p></div>
-    ${list.length ? list.map(manageCard).join('') : `<div class="empty-note">This owner has no agents. Register one on the left, or pick another owner.</div>`}`;
+    ${list.length ? list.map(manageCard).join('') : `
+      <div class="studio-empty">
+        <div class="se-mark">▤</div>
+        <h2 class="se-title">${isMe ? 'No agents yet — register your first.' : 'This owner has no agents.'}</h2>
+        <p class="se-copy">${isMe
+          ? 'An agent gets an on-chain identity (ARC-72), a register it serves, and a reputation it can only <em>earn</em> — every review it receives is tied to an x402 payment.'
+          : 'Pick another owner on the left, or switch to your own wallet to register one.'}</p>
+        ${isMe ? '<button class="disc-btn primary" data-toggle="registerForm">＋ Register a new agent</button>' : ''}
+      </div>`}`;
 
   const recvd = owned.reduce((n, id) => n + repOf(id).count, 0);
   $('railRight').innerHTML = `

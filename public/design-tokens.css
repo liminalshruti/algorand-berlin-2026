@@ -809,11 +809,13 @@
     transparent 70%);
 
   /* ─── 4 · ink (5 tiers) ─────────────────────────────────── */
+  /* dim/faint/mute lifted ~1 step up the luminance ramp so secondary
+     mono labels stay legible on a projector (no longer a whisper). */
   --text:         #F4F2EE;
   --text-mid:     #C9C5BD;
-  --text-dim:     #8A8780;
-  --text-faint:   #5A5852;
-  --text-mute:    #3A3833;
+  --text-dim:     #A6A29A;
+  --text-faint:   #7C7972;
+  --text-mute:    #56534D;
 
   /* ─── 5 · type families ─────────────────────────────────── */
   --display: "Nineties Headliner", "Perfectly Nineties", "Iowan Old Style", Georgia, serif;
@@ -823,9 +825,9 @@
   --hand:    "Caveat", "Patrick Hand", cursive;
 
   /* ─── 6 · type scale (18 sizes) ─────────────────────────── */
-  --fs-eyebrow:    9px;     /* small uppercase mono labels  */
-  --fs-mono-xs:   10px;     /* mono labels, source tags     */
-  --fs-mono-sm:   11px;     /* masthead, bar metadata       */
+  --fs-eyebrow:   10px;     /* small uppercase mono labels  */
+  --fs-mono-xs:   11px;     /* mono labels, source tags     */
+  --fs-mono-sm: 11.5px;     /* masthead, bar metadata       */
   --fs-mono:      12px;     /* default mono body            */
   --fs-mono-lg:   13px;     /* mono code/prompt             */
   --fs-xs:        12px;     /* small body                   */

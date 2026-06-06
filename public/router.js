@@ -18,11 +18,16 @@ const NETWORK  = "testnet";   // pinned to TestNet — matches wallet.js + route
 const OPERATOR_WALLET = "NDX7OC2VNQIDKH7BHE5IVUH75GAZ4ZWKL2BNHM6G3ZWQTQDFDN2AHVUCIQ"; // one consistent operator wallet — no impersonation
 const TRUST_WEIGHTS = { price: 0.3, reputation: 0.4, validation: 0.3 };
 const MOCK_LATENCY = { route: 260, pay: 460, validate: 620 };
+const BEAT = 460;   // reveal pacing — lets the gap land, then the verdict, then the score-drop
 const EXPLORER = {
   localnet: (tx) => `https://lora.algokit.io/localnet/transaction/${tx}`,
   testnet:  (tx) => `https://lora.algokit.io/testnet/transaction/${tx}`,
   mainnet:  (tx) => `https://lora.algokit.io/mainnet/transaction/${tx}`,
 };
+// deployed ARC-8004 registries (public/deployed.testnet.json) — shown in the
+// chain-state HUD, same ids the registry pages surface, clickable to explorer.
+const REGISTRY_APPS = { identity: 764031067, reputation: 764031363, validation: 764031094 };
+const EXPLORER_APP = (id) => `https://lora.algokit.io/${NETWORK}/application/${id}`;
 const REGISTER_TASKS = {
   Diligence:  "Diligence read: partner email says rejected; dashboard says in-review",
   Outreach:   "Draft a follow-up to the warm intro from last week",
@@ -309,11 +314,11 @@ function pick(optionId, silent) {
 function renderMetricBand(quoted, settled, response) {
   const band = $("metricBand"); band.hidden = false;
   const over = settled != null && quoted != null && settled > quoted + 1e-9;
-  const cell = (label, val, cls, cap, capCls) =>
-    `<div class="metric-cell"><div class="metric-label">${label}</div><div class="metric-number ${val == null ? "pending" : cls || ""}">${val == null ? "··" : val}</div><div class="metric-caption ${capCls || ""}">${cap}</div></div>`;
+  const cell = (label, val, cls, cap, capCls, cellCls) =>
+    `<div class="metric-cell ${cellCls || ""}"><div class="metric-label">${label}</div><div class="metric-number ${val == null ? "pending" : cls || ""}">${val == null ? "··" : val}</div><div class="metric-caption ${capCls || ""}">${cap}</div></div>`;
   band.innerHTML =
     cell("Quoted", quoted == null ? null : quoted.toFixed(2), "", "ALGO · x402") +
-    cell("Settled", settled == null ? null : settled.toFixed(2), over ? "bad" : "good", settled == null ? "settling…" : (over ? `+${(settled - quoted).toFixed(2)} hidden fee` : "matches quote"), over ? "bad" : "") +
+    cell("Settled", settled == null ? null : settled.toFixed(2), over ? "bad" : "good", settled == null ? "settling…" : (over ? `+${(settled - quoted).toFixed(2)} hidden fee` : "matches quote"), over ? "bad" : "", over ? "over" : "") +
     cell("Validation", response == null ? null : String(response), response == null ? "" : (response === 0 ? "bad" : "good"), response == null ? "validating…" : (response === 0 ? "price-vs-quote failed" : "verdict passed"), response === 0 ? "bad" : "");
 }
 
@@ -537,17 +542,21 @@ async function doApprove() {
   try {
     const pay = await api.pay({ route_id: ui.route.route_id, option_id: picked.option_id });
     ui.lastPay = pay; ui.lastPicked = picked;   // for the optional Pera on-chain signature
+    const over = pay.settled_amount > pay.quoted_amount + 1e-9;   // the cheat — settled exceeded quote
     renderMetricBand(pay.quoted_amount, pay.settled_amount, null);
+    $("metricBand").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (over) await wait(BEAT);                                   // let the red gap land before the verdict
     setStep("validate");
     const v = await api.validate({ payment_id: pay.payment_id });
     renderMetricBand(pay.quoted_amount, pay.settled_amount, v.response);
     $("slateCanvas").classList.add("is-collapsed");          // #10 progressive disclosure
-    renderCausal(pay, v, prevRep);
     renderBriefVerdict(pay, v);
     renderSignedPacket(pay, v, picked, prevRep);
     renderSummary(pay, v);
     await loadRepDetail(ui.route);
-    renderRegistry({ [picked.provider_id]: prevRep });
+    if (over) await wait(BEAT);                                   // beat before the consequence: "because…" + the score-drop
+    renderCausal(pay, v, prevRep);                               // the plain-language proof
+    renderRegistry({ [picked.provider_id]: prevRep });           // right rail: reputation drops + row flashes
     await renderLedger();
     setStep("reputation");
     renderReceipt();
@@ -614,13 +623,16 @@ function boot() {
 function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${!ANY_LIVE ? "MOCK" : serverUp ? "LIVE :3001" : "SERVER OFFLINE"}`; renderChainCtx(); }
 function renderChainCtx() {
   const el = $("chainCtx"); if (!el) return;
-  const mode = !ANY_LIVE ? "mock" : serverUp ? "live :3001" : "offline";
+  const live = ANY_LIVE && serverUp;
+  const modeClass = !ANY_LIVE ? "is-mock" : serverUp ? "is-live" : "is-offline";
+  const modeLabel = !ANY_LIVE ? "MOCK" : serverUp ? "LIVE" : "OFFLINE";
+  const appRow = (label, id) => `<div class="cc-app"><span>${label}</span><a class="cc-link" href="${EXPLORER_APP(id)}" target="_blank" rel="noopener" title="app ${id} · open in explorer">app ${id}</a></div>`;
   el.innerHTML = `
-    <div class="cc-net cc-${NETWORK}"><span class="cc-dot"></span>ALGORAND · ${NETWORK.toUpperCase()} <span class="cc-mode">${mode}</span></div>
+    <div class="cc-net cc-${NETWORK} ${modeClass}"><span class="cc-dot"></span>ALGORAND · ${NETWORK.toUpperCase()} <span class="cc-mode">${modeLabel}</span></div>
     <div class="cc-apps">
-      <div class="cc-app"><span>settlement</span><code>x402 · note anchor</code></div>
-      <div class="cc-app"><span>server</span><code ${ANY_LIVE ? `class="copyable" data-copy="${BASE_URL}"` : ""}>${ANY_LIVE ? BASE_URL.replace(/^https?:\/\//, "") : "—"}</code></div>
-      <div class="cc-app"><span>explorer</span><code>lora · ${NETWORK}</code></div>
+      ${appRow("Reputation", REGISTRY_APPS.reputation)}
+      ${appRow("Identity", REGISTRY_APPS.identity)}
+      <div class="cc-app"><span>settlement</span><code>${live ? "x402 · live" : "x402 · note anchor"}</code></div>
     </div>`;
 }
 

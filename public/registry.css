@@ -165,6 +165,29 @@ body.ready { opacity: 1; }
 .m-out { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--good); background: var(--frame-bg); border: 1px solid var(--frame-border); border-radius: var(--radius-2); padding: 8px 10px; margin-top: 8px; white-space: pre-wrap; word-break: break-all; max-height: 160px; overflow: auto; }
 .m-out:empty { display: none; }
 .m-out.err { color: var(--red); }
+/* read vs write at a glance: write methods carry an amber rail, reads sit flush */
+.method:has(.m-write) { border-left: 2px solid var(--amber-orn-edge); padding-left: 13px; }
+.method:has(.m-read)  { border-left: 2px solid transparent; padding-left: 13px; }
+.method:hover { background: var(--frame-bg-2); }
+
+/* ── studio empty state · an invitation, not a dead end ─────────────── */
+.studio-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; max-width: 54ch; padding: 44px 4px 24px; animation: rise var(--tx-extended) var(--ease); }
+.studio-empty .se-mark { font-family: var(--mono); font-size: 32px; color: var(--p-accent); opacity: 0.55; }
+.studio-empty .se-title { font-family: var(--display); font-size: var(--fs-2xl); font-weight: 500; color: var(--text); letter-spacing: var(--ls-display); }
+.studio-empty .se-copy { font-family: var(--serif); font-size: var(--fs-md); line-height: var(--lh-relaxed); color: var(--text-mid); }
+.studio-empty .se-copy em { color: var(--text); font-style: italic; }
+.studio-empty .disc-btn { margin-top: 4px; }
+
+/* ── activity rail · event name leads, proof hash recedes ───────────── */
+.mini-evt { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--frame-border); }
+.mini-evt:last-child { border-bottom: none; }
+.mini-evt .me-name { font-family: var(--mono); font-size: 10px; color: var(--text-mid); }
+.mini-evt .me-tx { font-family: var(--mono); font-size: 9.5px; color: var(--text-faint); }
+
+/* ── admin table · event type leads, rows alternate for scanability ─── */
+.lm-table tr.evt-tr td:first-child { color: var(--text); }
+.lm-table tr.evt-tr:nth-child(even) td { background: color-mix(in srgb, var(--frame-bg-2) 55%, transparent); }
+.kpi-n.score-hi { color: var(--good); } .kpi-n.score-mid { color: var(--watch); } .kpi-n.score-lo { color: var(--red); }
 
 /* ── modal ──────────────────────────────────────────────────────────── */
 .ledger-modal { position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; background: var(--scrim-modal); padding: 32px; }
@@ -196,20 +219,36 @@ body.ready { opacity: 1; }
 .present-toggle:hover { color: var(--text-mid); }
 body.present .big-title { font-size: var(--fs-display); }
 body.present .ac-name, body.present .mc-name { font-size: var(--fs-2xl); }
+body.present .big-sub { font-size: var(--fs-lg); }
+body.present .ac-score { font-size: var(--fs-3xl); }       /* marketplace: the trust % is the hero */
+body.present .stat-n { font-size: var(--fs-3xl); }          /* admin / owner standing numbers */
+body.present .agent-card { padding: 18px 18px; }
 .toast.is-bad { border-left: 3px solid var(--red); }
 .toast.is-bad .t-glyph { color: var(--red); }
 
-/* ── chain context badge (bottom-right) ─────────────────────────────── */
-.chain-ctx { position: fixed; bottom: 16px; right: 16px; z-index: 500; background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-3); padding: 8px 11px; box-shadow: var(--shadow-card); min-width: 168px; }
-.cc-net { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-mid); margin-bottom: 7px; }
-.cc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--watch); }
+/* ── chain-state HUD (bottom-right) · the single "this is real" cluster ─
+   One confident status surface, identical on every page: network identity +
+   a bold live/mock mode pill + the deployed registry app-ids, each clickable
+   to the explorer. This is the credibility signal — it should read loudest. */
+.chain-ctx { position: fixed; bottom: 16px; right: 16px; z-index: 500; background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-3); padding: 10px 12px; box-shadow: var(--shadow-card); min-width: 204px; }
+.cc-net { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text); margin-bottom: 9px; }
+.cc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--watch); flex-shrink: 0; }
 .cc-testnet .cc-dot { background: var(--depth-500, #197EEB); }
 .cc-mainnet .cc-dot { background: var(--good); }
-.cc-mode { margin-left: auto; color: var(--watch); border: 1px solid var(--amber-orn-edge); border-radius: var(--radius-1); padding: 0 5px; font-size: 8px; }
-.cc-apps { display: flex; flex-direction: column; gap: 3px; }
-.cc-app { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 9px; }
-.cc-app span { color: var(--text-faint); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
+.cc-mode { margin-left: auto; font-size: 9px; font-weight: 600; letter-spacing: 0.08em; border-radius: var(--radius-1); padding: 1px 7px; border: 1px solid currentColor; }
+/* mode semantics: live is confident green, mock amber, offline red */
+.cc-net.is-mock    .cc-mode { color: var(--watch); }
+.cc-net.is-live    .cc-mode { color: var(--good); }
+.cc-net.is-live    .cc-dot  { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); animation: cc-pulse 2.4s ease-in-out infinite; }
+.cc-net.is-offline .cc-mode { color: var(--red); }
+@keyframes cc-pulse { 0%,100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--good) 8%, transparent); } }
+.cc-apps { display: flex; flex-direction: column; gap: 4px; }
+.cc-app { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-family: var(--mono); font-size: 10px; }
+.cc-app span { color: var(--text-dim); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
 .cc-app code { color: var(--p-accent); }
+.cc-app a.cc-link { color: var(--p-accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color var(--tx-base) var(--ease); }
+.cc-app a.cc-link:hover { border-bottom-color: var(--p-accent); }
+.cc-app a.cc-link::after { content: " ↗"; color: var(--text-faint); }
 
 /* ── trust note + score tooltip cue ─────────────────────────────────── */
 .trust-note { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-dim); background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-2); padding: 8px 11px; line-height: 1.5; }

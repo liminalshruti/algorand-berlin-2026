@@ -13,7 +13,7 @@
 .sb-brand { display: flex; align-items: center; gap: 8px; padding: 2px 9px 12px; }
 .sb-brand .diamond { color: var(--clarity); font-family: var(--mono); font-size: 15px; }
 .sb-brand .sb-word { font-family: var(--display); font-size: 18px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
-.sb-tag { font-family: var(--mono); font-size: 8px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); padding: 0 9px 12px; }
+.sb-tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-dim); padding: 0 9px 12px; }
 
 .sb-nav { display: flex; flex-direction: column; gap: 2px; }
 .sb-link {
