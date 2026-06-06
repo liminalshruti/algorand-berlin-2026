@@ -1,5 +1,5 @@
 import { AlgorandClient } from '@algorandfoundation/algokit-utils'
-import { HelloWorldFactory } from '../artifacts/hello_world/HelloWorldClient'
+import { HelloWorldFactory } from '../artifacts/hello_world/HelloWorldClient.js'
 
 // Below is a showcase of various deployment options you can use in TypeScript Client
 export async function deploy() {

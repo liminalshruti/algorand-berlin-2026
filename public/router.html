@@ -3,37 +3,21 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Cut 09 · x402 Trust Router · Liminal</title>
+<title>Liminal · x402 Trust Router</title>
 
 <!--
-  Cut 09 · x402 Trust Router · the trust router as a flow in the Liminal desktop app
-  ──────────────────────────────────────────────────────────────────────
-  ICP        · operator routing agent-to-agent commerce over x402 on Algorand
-  Surface    · Liminal desktop app (slate-tray shell · cut-shell.css)
-  Spec ref   · algorand-berlin-2026/TEAM_SWIMLANES_2026-06-06.md (Shruti lane)
-               + END_TO_END_HACK_SCOPE_2026-06-06.md §5/§8
-  Status     · sketch · mock-first (renders with backend OFF)
-  ──────────────────────────────────────────────────────────────────────
-  Adopts the canonical desktop-app shell from cut-shell.css. The router flow
-  maps onto the slate surface:
-    left rail  · Route box + ranked providers (case-items)
-    center     · selected provider → brief (approve gate) → signed packet → ledger
-    right rail · Trust Registry (earned reputation; the caught provider drops)
-  Canonical shippable copy: algorand-berlin-2026/public/router.{html,css,js}.
-  trust-router.{css,js} here are the catalog mirror for design-system review.
-  ──────────────────────────────────────────────────────────────────────
+  x402 Trust Router · UI lane (Shruti) · a flow inside the Liminal desktop app
+  Shell: cut-shell.css (slate-tray). Spec: TEAM_SWIMLANES / END_TO_END / SPEC_shruti_ui_narrative.
+  Mock-first; per-endpoint LIVE switch with mock fallback (router.js top).
 -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet" />
 
-<!-- canon · 12-wheel tokens -->
 <link rel="stylesheet" href="design-tokens.css" />
-<!-- shared desktop-app shell · frame chrome + rails + slate + brief + dispo + audit -->
 <link rel="stylesheet" href="cut-shell.css" />
 <link rel="stylesheet" href="brand-upgrade.css" />
-<!-- per-cut overrides only -->
 <link rel="stylesheet" href="router.css" />
 </head>
 <body data-product="personal">
@@ -43,44 +27,60 @@
 
     <!-- titlebar -->
     <header class="titlebar">
-      <div class="lights">
-        <span class="light red"></span><span class="light yellow"></span><span class="light green"></span>
-      </div>
+      <div class="lights"><span class="light red"></span><span class="light yellow"></span><span class="light green"></span></div>
       <div class="title-row">
         <span class="diamond">◇</span>
         <span class="tb-wedge">A trust router over x402 on Algorand · reputation is earned, not self-reported.</span>
         <span class="crumb-sep" id="crumb-sep" hidden>·</span>
         <span class="breadcrumb" id="breadcrumb"></span>
+        <span class="crumb-sep">·</span>
+        <a class="breadcrumb cross-nav" href="registry.html" title="ARC-8004 registry & admin console">Registry ↗</a>
       </div>
-      <div class="vault-pill" id="ledgerPill"><span class="diamond">◇</span>ledger: <strong id="ledgerCount">0</strong></div>
+      <button class="vault-pill" id="ledgerPill" title="Open the on-chain ledger"><span class="diamond">◇</span>ledger: <strong id="ledgerCount">0</strong></button>
     </header>
 
     <!-- product row · register lanes -->
     <nav class="product-row">
       <button class="product-tab reg-tab is-active" data-register="Diligence"><span class="pt-glyph"></span>diligence<span class="pt-shape">read</span></button>
-      <button class="product-tab reg-tab" data-register="Outreach"><span class="pt-glyph"></span>outreach<span class="pt-shape">draft</span></button>
-      <button class="product-tab reg-tab" data-register="Judgment"><span class="pt-glyph"></span>judgment<span class="pt-shape">verdict</span></button>
-      <button class="product-tab reg-tab" data-register="Operations"><span class="pt-glyph"></span>operations<span class="pt-shape">run</span></button>
-      <div class="surface-meta"><span class="sm-banner" id="netBanner">ALGORAND · LOCALNET · MOCK</span></div>
+      <button class="product-tab reg-tab" data-register="Outreach" data-secondary><span class="pt-glyph"></span>outreach<span class="pt-shape">draft</span></button>
+      <button class="product-tab reg-tab" data-register="Judgment" data-secondary><span class="pt-glyph"></span>judgment<span class="pt-shape">verdict</span></button>
+      <button class="product-tab reg-tab" data-register="Operations" data-secondary><span class="pt-glyph"></span>operations<span class="pt-shape">run</span></button>
+      <div class="surface-meta"><span class="sm-src" id="srcMode">—</span><span class="sm-banner" id="netBanner">ALGORAND · LOCALNET · MOCK</span></div>
     </nav>
 
     <!-- main · three pane -->
     <main class="main">
 
-      <!-- left rail · route + ranked providers -->
+      <!-- left rail · route + ranked candidates -->
       <aside class="rail-left">
         <div class="rail-header"><span>Route</span><span class="rh-meta" id="railMeta">·</span></div>
         <div class="route-box">
           <span class="rb-label">Operator request</span>
           <textarea id="taskInput" class="rb-input" rows="2" aria-label="Task to route">Diligence read: partner email says rejected; dashboard says in-review</textarea>
           <button id="routeBtn" class="dispo-btn is-primary">Route →</button>
+          <div class="scenario-chips">
+            <span class="sc-label">Scenarios</span>
+            <button class="scenario-chip" data-register="Diligence" data-task="Diligence read: partner email says rejected; dashboard says in-review">▶ Routing-mismatch read</button>
+            <button class="scenario-chip" data-register="Judgment" data-task="Verdict: is this LOI worth countersigning as written?">▶ LOI verdict</button>
+          </div>
         </div>
-        <div class="rail-subhead"><span>Providers</span><span class="rs-meta" id="railSub">price · rep · trust</span></div>
+        <div class="rail-subhead"><span>Ranked candidates · this route</span><span class="rs-meta" id="railSub">price · rep · trust</span></div>
         <div id="providerList" aria-live="polite"></div>
       </aside>
 
       <!-- center · slate -->
       <section class="slate-area">
+
+        <!-- loop spine -->
+        <div class="loop-spine" id="loopSpine" role="navigation" aria-label="Trust loop">
+          <span class="ls-step" data-step="request"><i>1</i>Request</span>
+          <span class="ls-step" data-step="rank"><i>2</i>Rank</span>
+          <span class="ls-step" data-step="pay"><i>3</i>Pay</span>
+          <span class="ls-step" data-step="validate"><i>4</i>Validate</span>
+          <span class="ls-step" data-step="reputation"><i>5</i>Reputation</span>
+          <span class="ls-step" data-step="rerun"><i>↻</i>Re-run</span>
+        </div>
+
         <div class="classification" id="classification" role="status" aria-live="polite">ROUTE · DILIGENCE · LOCALNET</div>
 
         <header class="slate-header">
@@ -89,6 +89,8 @@
           <p class="slate-subtitle" id="slateSubtitle">Collect competing quotes; rank by price + earned reputation + validation; pay the winner; validate against the quote on-chain.</p>
         </header>
 
+        <div class="causal-line" id="causalLine" role="status" aria-live="polite" hidden></div>
+
         <div class="metric-band" id="metricBand" aria-live="polite" hidden></div>
 
         <div class="slate-canvas" id="slateCanvas" data-empty="1" data-layout="freeform">
@@ -96,7 +98,7 @@
             <div class="se-glyph">◇</div>
             <div class="se-eyebrow">Agentic commerce</div>
             <h2 class="se-headline">Route a request to collect competing on-chain quotes.</h2>
-            <p class="se-helper">The router ranks providers by price, earned reputation, and validation — then catches the ones that quote low and charge high.</p>
+            <p class="se-helper">The router ranks providers by price, earned reputation, and validation — then catches the ones that quote low and charge high. Hit a scenario to start.</p>
           </div>
           <div id="quoteWrap"></div>
         </div>
@@ -111,17 +113,18 @@
         </div>
 
         <div class="dispo-artifact" id="dispoArtifact" hidden></div>
+        <div class="summary-line" id="summaryLine" hidden></div>
 
         <div class="audit-ribbon" id="auditRibbon">
           <span class="ar-label">Ledger</span>
-          <div id="auditRows" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
+          <div id="auditRows" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
         </div>
       </section>
 
       <!-- right rail · trust registry -->
       <aside class="rail-right">
         <div class="rail-right-header">
-          <span class="agency-label" title="ERC-8004-shaped reputation. Score = how a provider's reads survive validation. Caught once → routed around.">◇ REGISTRY · ERC-8004-SHAPED</span>
+          <span class="agency-label" title="ERC-8004-shaped reputation. Score = how a provider's reads survive validation. Caught once → routed around.">◇ TRUST REGISTRY · EARNED OVER TIME</span>
           <span class="live-indicator">live</span>
         </div>
         <div class="registry-list" id="registryList" aria-live="polite"></div>
@@ -129,17 +132,13 @@
       </aside>
     </main>
 
-    <!-- frame receipt · provenance strip -->
     <div class="frame-receipt" id="frameReceipt"></div>
 
   </div><!-- /.frame -->
 
   <!-- tray · context dropped into the app -->
   <div class="tray-pop" id="tray-pop">
-    <button class="tray-pill" id="tray-pill" aria-label="Toggle tray">
-      <span class="tp-chevron"></span><span class="tp-glyph">◇</span>
-      <span class="tp-count">context <strong>2</strong></span><span class="tp-dot"></span>
-    </button>
+    <button class="tray-pill" id="tray-pill" aria-label="Toggle tray"><span class="tp-chevron"></span><span class="tp-glyph">◇</span><span class="tp-count">context <strong>2</strong></span><span class="tp-dot"></span></button>
     <div class="tray-panel" id="tray-panel" aria-hidden="true">
       <div class="tray-panel-head"><span class="tpa-title">Context</span><span class="tpa-meta">2 dropped</span></div>
       <div class="tray-tiles" style="padding:12px 14px;">
@@ -151,8 +150,23 @@
 
 </div><!-- /.stage -->
 
+<!-- present-mode toggle -->
+<button class="present-toggle" id="presentToggle" title="Present mode (P)">present</button>
+
 <!-- toast -->
 <div class="toast" id="toast"><span class="t-glyph">◇</span><span id="toast-msg">·</span></div>
+
+<!-- ledger modal -->
+<div class="ledger-modal" id="ledgerModal" role="dialog" aria-modal="true" aria-label="On-chain ledger">
+  <div class="lm-card">
+    <header class="lm-head">
+      <span class="lm-eyebrow" id="ledgerModalEyebrow">On-chain ledger · hash-only · verifiable by anyone</span>
+      <h3 class="lm-title" id="ledgerModalTitle">Anchored records</h3>
+      <button class="lm-close" id="ledgerModalClose" aria-label="Close">×</button>
+    </header>
+    <div class="lm-body" id="ledgerModalBody"></div>
+  </div>
+</div>
 
 <script src="router.js"></script>
 </body>

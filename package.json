@@ -5,12 +5,20 @@
   "main": "smart_contracts/index.ts",
   "scripts": {
     "build": "algokit compile ts smart_contracts --output-source-map --out-dir artifacts && algokit generate client smart_contracts/artifacts --output {app_spec_dir}/{contract_name}Client.ts",
-    "deploy": "ts-node-dev --transpile-only --watch .env -r dotenv/config smart_contracts/index.ts",
-    "deploy:ci": "ts-node --transpile-only -r dotenv/config smart_contracts/index.ts",
+    "compile:deploy": "tsc -p tsconfig.deploy.json",
+    "deploy": "npm run deploy:ci",
+    "deploy:ci": "npm run compile:deploy && node dist/index.js",
+    "deploy:localnet": "npm run deploy:ci -- hello_world",
+    "localnet:start": "docker compose -f docker-compose.localnet.yml up -d",
+    "localnet:stop": "docker compose -f docker-compose.localnet.yml down",
+    "localnet:reset": "docker compose -f docker-compose.localnet.yml down -v && docker compose -f docker-compose.localnet.yml up -d",
+    "localnet:status": "docker compose -f docker-compose.localnet.yml ps",
+    "localnet:logs": "docker compose -f docker-compose.localnet.yml logs -f --tail=100",
     "check-types": "tsc --noEmit",
     "start": "tsx sandbox/bin/router-server.ts",
     "dev": "tsx watch sandbox/bin/router-server.ts",
-    "test": "tsx --test sandbox/lib/router/pay.test.ts"
+    "test": "tsx --test sandbox/lib/router/pay.test.ts",
+    "test:contracts": "vitest run"
   },
   "engines": {
     "node": ">=22.0",
@@ -26,15 +34,18 @@
     "@algorandfoundation/algokit-client-generator": "^6.0.0",
     "@algorandfoundation/algokit-utils": "^9.0.0",
     "@algorandfoundation/algokit-utils-debug": "^1.0.4",
+    "@algorandfoundation/algorand-typescript-testing": "^1.1.0",
     "@algorandfoundation/puya-ts": "^1.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
     "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^25.9.2",
+    "@types/uuid": "^9.0.0",
     "algosdk": "^3.0.0",
     "dotenv": "^16.4.7",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.7.0",
     "typescript": "^5.7.3",
-    "@types/uuid": "^9.0.0"
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "esbuild": "0.25.0"

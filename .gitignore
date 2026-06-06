@@ -31,6 +31,7 @@ node_modules/
 !.idea/
 .idea/*
 !.idea/runConfigurations/
+.vscode/
 
 # yarn v2
 .yarn/cache
@@ -60,3 +61,7 @@ coverage
 debug_traces/
 .algokit/static-analysis/ # Replace with .algokit/static-analysis/tealer/ to enable snapshot checks in CI
 .algokit/sources
+
+# Repo-owned LocalNet runtime output
+docker/localnet/goal_mount/*
+!docker/localnet/goal_mount/.gitkeep

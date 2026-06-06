@@ -141,3 +141,141 @@ body.ready { opacity: 1; }
 /* ── error toast accent ─────────────────────────────────────────────── */
 .toast.is-bad { border-left: 3px solid var(--red); }
 .toast.is-bad .t-glyph { color: var(--red); }
+
+/* ── #1 loop spine ──────────────────────────────────────────────────── */
+.loop-spine {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 32px 10px; border-bottom: 1px solid var(--frame-border); background: var(--frame-bg);
+  flex-wrap: wrap;
+}
+.ls-step {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono-sm);
+  text-transform: uppercase; color: var(--text-faint);
+  padding: 4px 10px 4px 4px; border-radius: 999px; transition: color var(--tx-base) var(--ease), background var(--tx-base) var(--ease);
+}
+.ls-step i {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--card-border-2); font-style: normal; font-size: 10px; color: var(--text-faint);
+  transition: all var(--tx-base) var(--ease);
+}
+.ls-step:not(:last-child)::after { content: "→"; margin-left: 4px; color: var(--card-border-2); }
+.ls-step.is-done { color: var(--text-dim); }
+.ls-step.is-done i { border-color: var(--good); color: var(--good); }
+.ls-step.is-active { color: var(--p-accent); background: var(--p-accent-bg); }
+.ls-step.is-active i { border-color: var(--p-accent); background: var(--p-accent); color: var(--bg); box-shadow: 0 0 0 4px var(--p-accent-bg); }
+
+/* ── #4 scenario chips ──────────────────────────────────────────────── */
+.scenario-chips { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.sc-label { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); }
+.scenario-chip {
+  text-align: left; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--p-accent);
+  background: var(--p-accent-bg); border: 1px solid var(--p-accent-edge); border-radius: var(--radius-2);
+  padding: 6px 9px; transition: background var(--tx-base) var(--ease), color var(--tx-base) var(--ease);
+}
+.scenario-chip:hover { background: var(--p-accent-soft); color: var(--bg); }
+
+/* ── #6 trust-score breakdown (in quote card) ───────────────────────── */
+.qc-breakdown { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--frame-border); }
+.qcb-label { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+.qcb-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--card-border); }
+.qcb-bar > i { display: block; height: 100%; }
+.qcb-price { background: var(--clarity); } .qcb-rep { background: var(--good); } .qcb-val { background: var(--amber-orn-500, #FDC237); }
+.qcb-legend { display: flex; gap: 14px; margin-top: 7px; font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); }
+.qcb-legend .dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; }
+.qcb-legend .dot.price { background: var(--clarity); } .qcb-legend .dot.rep { background: var(--good); } .qcb-legend .dot.val { background: var(--amber-orn-500, #FDC237); }
+
+/* ── #3 causal "because" line ───────────────────────────────────────── */
+.causal-line {
+  margin: 0 32px 14px; padding: 12px 16px; border-radius: var(--radius-4);
+  font-family: var(--serif); font-size: var(--fs-md); line-height: 1.45; color: var(--text);
+  border: 1px solid var(--card-border); background: var(--frame-bg-2); animation: rise var(--tx-extended) var(--ease);
+}
+.causal-line.bad { border-color: var(--stability-edge); background: var(--stability-bg); }
+.causal-line.good { border-color: var(--connection-edge); background: var(--connection-bg); }
+.causal-line .cl-key { font-family: var(--mono); font-size: var(--fs-mono); letter-spacing: var(--ls-mono-sm); }
+.causal-line .cl-because { font-style: italic; color: var(--text-mid); }
+.causal-line.bad .cl-tag { color: var(--red); font-family: var(--mono); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── #7 counterfactual summary line ─────────────────────────────────── */
+.summary-line {
+  margin: 0 32px 14px; padding: 11px 16px; border-left: 3px solid var(--p-accent);
+  background: var(--p-accent-bg); border-radius: var(--radius-2);
+  font-family: var(--serif); font-size: var(--fs-sm); color: var(--text-mid); line-height: 1.5;
+}
+.summary-line strong { color: var(--p-accent); } .summary-line b { color: var(--red); }
+
+/* ── #8 verified-purchaser ──────────────────────────────────────────── */
+.rr-verified { color: var(--good); }
+
+/* ── #10 progressive disclosure ─────────────────────────────────────── */
+.slate-canvas.is-collapsed #quoteWrap { display: none; }
+
+/* ── #11 secondary register lanes ───────────────────────────────────── */
+.reg-tab[data-secondary]:not(.is-active) { opacity: 0.5; }
+.reg-tab[data-secondary]:not(.is-active):hover { opacity: 0.8; }
+
+/* ── #13 source-mode indicator ──────────────────────────────────────── */
+.sm-src { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-faint); }
+.sm-src.has-fallback { color: var(--watch); }
+
+/* clickable audit rows */
+.audit-ribbon .ar-row { background: transparent; border: 1px solid transparent; border-radius: var(--radius-2); padding: 2px 6px; cursor: pointer; transition: border-color var(--tx-base) var(--ease); }
+.audit-ribbon .ar-row:hover { border-color: var(--card-border-2); }
+
+/* ── #5 ledger modal ────────────────────────────────────────────────── */
+.ledger-modal { position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; background: var(--scrim-modal); padding: 32px; }
+.ledger-modal.is-open { display: flex; }
+.lm-card { width: 100%; max-width: 640px; max-height: 80vh; display: flex; flex-direction: column; background: var(--frame-bg); border: 1px solid var(--frame-border); border-radius: var(--radius-5); box-shadow: var(--shadow-card-lifted); overflow: hidden; }
+.lm-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--frame-border); position: relative; }
+.lm-eyebrow { font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--p-accent); }
+.lm-title { font-family: var(--display); font-size: var(--fs-xl); font-weight: 500; margin-top: 4px; }
+.lm-close { position: absolute; top: 14px; right: 16px; font-size: 22px; color: var(--text-faint); background: none; border: none; line-height: 1; }
+.lm-close:hover { color: var(--text); }
+.lm-body { padding: 14px 22px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.lm-row { border: 1px solid var(--card-border); border-radius: var(--radius-3); padding: 12px 14px; background: var(--frame-bg-2); }
+.lm-row.is-focus { border-color: var(--p-accent); box-shadow: 0 0 0 1px var(--p-accent-edge) inset; }
+.lm-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.lm-schema { font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--p-accent); }
+.lm-round { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
+.lm-mean { font-family: var(--serif); font-size: var(--fs-sm); font-style: italic; color: var(--text-mid); margin-bottom: 8px; }
+.lm-kv { display: flex; gap: 10px; align-items: baseline; font-family: var(--mono); font-size: var(--fs-mono-xs); margin-top: 3px; }
+.lm-kv span { color: var(--text-faint); min-width: 38px; text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
+.lm-kv code { color: var(--text-dim); word-break: break-all; }
+
+/* ── #12 present mode + toggle ───────────────────────────────────────── */
+.present-toggle { position: fixed; bottom: 16px; left: 16px; z-index: 500; font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); background: var(--frame-bg-2); border: 1px solid var(--card-border); border-radius: var(--radius-2); padding: 5px 10px; }
+.present-toggle:hover { color: var(--text-mid); }
+body.present .frame { box-shadow: var(--shadow-card-lifted), 0 0 0 1px var(--p-accent-edge) inset; }
+body.present .slate-title { font-size: 30px; }
+body.present .metric-number { font-size: 30px; }
+body.present .prov-name { font-size: var(--fs-lg); }
+body.present .loop-spine { padding-top: 16px; padding-bottom: 14px; }
+body.present .ls-step { font-size: var(--fs-mono); }
+body.present .causal-line { font-size: var(--fs-lg); }
+body.present .present-toggle { color: var(--p-accent); border-color: var(--p-accent-edge); }
+
+/* cross-nav link */
+.cross-nav { color: var(--p-accent); text-decoration: none; }
+.cross-nav:hover { color: var(--text); }
+
+/* admin-operator affordances */
+.prov-inspect { margin-left: 6px; font-size: 12px; color: var(--text-faint); cursor: pointer; transition: color var(--tx-base) var(--ease); }
+.prov-inspect:hover { color: var(--p-accent); }
+.copyable { cursor: copy; }
+.copyable:hover { color: var(--p-accent); }
+.copy-ic { margin-left: 6px; color: var(--text-faint); cursor: copy; }
+.copy-ic:hover { color: var(--p-accent); }
+.lm-sub { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); margin: 14px 0 8px; }
+
+/* #2 flag / dispute + #4 schema raw */
+.prov-flag.flagged { color: var(--watch); background: var(--amber-orn-bg); border: 1px solid var(--amber-orn-edge); }
+.dispo-btn.da-flag { color: var(--red); border-color: var(--stability-edge); }
+.dispo-btn.da-flag:hover { background: var(--stability-bg); }
+.dispo-btn.da-flag[disabled] { opacity: 0.6; color: var(--watch); }
+.lm-raw { color: var(--text-faint); font-family: var(--mono); font-size: 9px; }
+
+/* server health indicator */
+.sm-src { cursor: pointer; }
+.sm-src.is-up { color: var(--good); }
