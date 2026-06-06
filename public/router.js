@@ -38,10 +38,12 @@ const SCHEMA_MEANING = {
   "payment-v1": "the x402 payment settlement, anchored hash-only on Algorand",
   "algorand-rep-v1": "the reputation feedback entry (ERC-8004-shaped)",
   "liminal.dispute": "an operator dispute filed against a caught provider",
+  "x402.settle.pera": "operator-signed settlement anchored on TestNet via Pera Wallet",
 };
 const SCHEMA_LABEL = {
   "x402.settle": "x402 settle", "x402.settle.fee": "hidden fee", "erc8004.feedback": "verdict",
   "payment-v1": "x402 settle", "algorand-rep-v1": "reputation", "liminal.dispute": "dispute",
+  "x402.settle.pera": "pera settle",
 };
 const schemaLabel = (s) => SCHEMA_LABEL[s] || s;
 const isFeeSchema = (s) => s.includes("fee");
@@ -184,6 +186,7 @@ const $ = (id) => document.getElementById(id);
 const algo = (n) => `${Number(n).toFixed(2)} ALGO`;
 const shortTx = (tx) => (tx ? `${tx.slice(0, 6)}…${tx.slice(-4)}` : "—");
 const explorer = (tx) => (EXPLORER[NETWORK] || EXPLORER.localnet)(tx);
+const explorerOn = (net, tx) => (EXPLORER[net] || EXPLORER[NETWORK] || EXPLORER.localnet)(tx);   // per-anchor network (Pera txns are testnet)
 const topTag = (by_tag) => { const e = Object.entries(by_tag || {}); return e.length ? e.sort((a, b) => b[1] - a[1])[0][0] : null; };
 const reduceMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let toastTimer = null;
@@ -206,7 +209,7 @@ function setStep(active) {
 }
 
 /* ──────────────────────────── ui state ────────────────────────────── */
-const ui = { route: null, picked: null, register: "Diligence", runs: 0, repDetail: {}, flagged: new Set() };
+const ui = { route: null, picked: null, register: "Diligence", runs: 0, repDetail: {}, flagged: new Set(), operator: null, lastPay: null, lastPicked: null };
 function flagProvider(opt) {   // #2 operator dispute on a caught provider
   if (ui.flagged.has(opt.provider_id)) return toast(`${opt.name} already flagged`);
   ui.flagged.add(opt.provider_id);
@@ -315,8 +318,9 @@ function renderMetricBand(quoted, settled, response) {
 
 function renderProof(pay) {
   const pop = pay.proof_of_payment; if (!pop) return "";
+  const from = ui.operator ? `${ui.operator.slice(0, 4)}…${ui.operator.slice(-4)}` : pop.from;   // connected Pera wallet, when present
   return `<div class="x402-badge">◇ x402 · payment-anchored</div>
-    <div class="proof"><span>from ${pop.from}</span><span>to ${shortTx(pop.to)}</span><span>${(pop.amount / 1e6).toFixed(2)} ${pop.asset === 0 ? "ALGO" : "ASA:" + pop.asset}</span><span>round r${pop.round}</span><span>nonce ${pop.nonce}</span></div>`;
+    <div class="proof"><span>from ${from}</span><span>to ${shortTx(pop.to)}</span><span>${(pop.amount / 1e6).toFixed(2)} ${pop.asset === 0 ? "ALGO" : "ASA:" + pop.asset}</span><span>round r${pop.round}</span><span>nonce ${pop.nonce}</span></div>`;
 }
 
 function renderCausal(pay, v, prevRep) {   // #3 causal "because" line
@@ -370,10 +374,31 @@ function renderSignedPacket(pay, v, picked, prevRep) {
     </div>
     <div class="da-foot">
       <div class="da-hash"><span class="da-hash-label">SHA-256</span><code class="copyable" data-copy="${packetHash}" title="click to copy">${packetHash}</code></div>
-      <div class="da-handoff">${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag provider</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
+      <div class="da-handoff">${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag provider</button>` : ""}${(window.WALLET && window.WALLET.isConnected) ? `<button class="dispo-btn da-handoff-btn da-pera" id="peraSignBtn">⚿ Sign on TestNet (Pera)</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
     </div>`;
   $("rerunBtn").addEventListener("click", () => doRoute(true));
   if ($("flagBtn")) $("flagBtn").addEventListener("click", () => flagProvider(picked));
+  if ($("peraSignBtn")) $("peraSignBtn").addEventListener("click", peraSettleOnChain);
+}
+
+// Real operator signature: sign a 0-ALGO self-anchor on TestNet via Pera carrying the
+// settlement reference, then add the real txid to the ledger. Self-contained — it proves
+// the operator wallet authorized this settlement without touching the backend pay lane.
+async function peraSettleOnChain() {
+  const w = window.WALLET, pay = ui.lastPay, picked = ui.lastPicked;
+  if (!w || !w.isConnected || !pay) return;
+  const btn = $("peraSignBtn"); if (btn) { btn.disabled = true; btn.textContent = "⚿ awaiting Pera signature…"; }
+  try {
+    const note = `liminal/x402 settle ${pay.payment_id} ${picked.provider_id} ${pay.settled_amount.toFixed(2)} ALGO`;
+    const r = await w.payment({ to: w.account, amountAlgo: 0, note });   // 0-ALGO self-anchor — real TestNet txn
+    mock.ledger.unshift({ txid: r.txid, schema: "x402.settle.pera", ref_id: pay.payment_id, hash: hashHex(), round: ++mockRound, network: r.network });
+    await renderLedger();
+    if (btn) { btn.textContent = "⚿ signed on TestNet ✓"; btn.parentElement.insertAdjacentHTML("beforeend", `<a class="dispo-btn da-handoff-btn" href="${r.explorer}" target="_blank" rel="noopener">Pera txn ↗</a>`); }
+    toast(`Operator signature anchored on TestNet · ${shortTx(r.txid)}`);
+  } catch (e) {
+    toast(`Pera signing failed: ${e.message}`, true);
+    if (btn) { btn.disabled = false; btn.textContent = "⚿ Sign on TestNet (Pera)"; }
+  }
 }
 
 function renderRegistry(prevScores) {
@@ -429,7 +454,7 @@ function openLedger(focusIdx) {   // #5 explorable ledger
       <div class="lm-mean">${SCHEMA_MEANING[a.schema] || "anchored record"} <span class="lm-raw">· schema ${a.schema}</span></div>
       <div class="lm-kv"><span>ref</span><code class="copyable" data-copy="${a.ref_id}">${a.ref_id}</code></div>
       <div class="lm-kv"><span>hash</span><code class="copyable" data-copy="${a.hash}">${a.hash}</code></div>
-      <div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorer(a.txid)}" target="_blank" rel="noopener">${a.txid} ↗</a> <span class="copy-ic copyable" data-copy="${a.txid}">⧉</span></div>
+      <div class="lm-kv"><span>txid</span><a class="txid-link" href="${explorerOn(a.network, a.txid)}" target="_blank" rel="noopener">${a.txid} ↗</a> <span class="copy-ic copyable" data-copy="${a.txid}">⧉</span></div>
     </div>`).join("") : `<p class="panel-placeholder">No anchors yet.</p>`;
   modal("On-chain ledger · hash-only · verifiable by anyone", "Anchored records", html);
 }
@@ -510,6 +535,7 @@ async function doApprove() {
   $("disposition").hidden = true;
   try {
     const pay = await api.pay({ route_id: ui.route.route_id, option_id: picked.option_id });
+    ui.lastPay = pay; ui.lastPicked = picked;   // for the optional Pera on-chain signature
     renderMetricBand(pay.quoted_amount, pay.settled_amount, null);
     setStep("validate");
     const v = await api.validate({ payment_id: pay.payment_id });
@@ -596,6 +622,19 @@ function renderChainCtx() {
       <div class="cc-app"><span>explorer</span><code>lora · ${NETWORK}</code></div>
     </div>`;
 }
+
+/* ── Pera wallet → operator wallet ──────────────────────────────────── */
+let peraActiveR = false;
+function applyPeraOperator() {
+  const w = window.WALLET; if (!w) return;
+  if (w.account) { peraActiveR = true; ui.operator = w.account; }
+  else if (peraActiveR) { peraActiveR = false; ui.operator = null; }
+  else return;
+  toast(w.account ? `Pera connected · operator ${w.account.slice(0, 4)}…${w.account.slice(-4)}` : "Pera disconnected");
+}
+window.addEventListener("wallet:change", applyPeraOperator);
+window.addEventListener("wallet:ready", applyPeraOperator);
+window.addEventListener("wallet:error", (e) => toast((e.detail && e.detail.message) || "Pera wallet error", true));
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();

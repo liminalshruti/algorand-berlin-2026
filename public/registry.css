@@ -245,3 +245,18 @@ body.present .ac-name, body.present .mc-name { font-size: var(--fs-2xl); }
 .uri-link { font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--p-accent); text-decoration: none; border-bottom: 1px dotted var(--p-accent-edge); word-break: break-all; }
 .uri-link:hover { color: var(--text); }
 .mc-uri, .kv-uri { font-family: var(--mono); font-size: var(--fs-mono-xs); }
+
+/* ── Pera Wallet · connect pill (wallet.js) ─────────────────────────── */
+.pera-btn {
+  justify-self: end;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+  background: var(--p-accent-bg); border: 1px solid var(--p-accent-edge);
+  padding: 5px 12px; border-radius: 4px; cursor: pointer;
+  transition: all 180ms; white-space: nowrap;
+}
+.pera-btn:hover { color: var(--text); border-color: var(--p-accent); }
+.pera-btn:disabled { opacity: 0.55; cursor: progress; }
+.pera-btn .pera-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); transition: background 180ms, box-shadow 180ms; }
+.pera-btn.is-connected { color: var(--text); border-color: #ffd400; }
+.pera-btn.is-connected .pera-dot { background: #ffd400; box-shadow: 0 0 8px rgba(255, 212, 0, 0.6); }

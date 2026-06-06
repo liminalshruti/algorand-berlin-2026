@@ -357,4 +357,17 @@ function boot() {
   renderChainCtx();
   requestAnimationFrame(() => document.body.classList.add('ready'));
 }
+/* ── Pera wallet → acting caller ────────────────────────────────────── */
+let peraActive = false;
+function applyPeraCaller() {
+  const w = window.WALLET; if (!w) return;
+  if (w.account) { peraActive = true; A.setCaller(w.account); toast(`Pera connected · acting as ${short(w.account)}`); }
+  else if (peraActive) { peraActive = false; A.setCaller(A.newAddr()); toast('Pera disconnected · acting as a fresh wallet'); }
+  else return;                                   // never connected → leave the demo caller alone
+  if (document.body.classList.contains('ready')) render();   // pre-boot connects are picked up by boot's first render
+}
+window.addEventListener('wallet:change', applyPeraCaller);
+window.addEventListener('wallet:ready', applyPeraCaller);
+window.addEventListener('wallet:error', (e) => toast((e.detail && e.detail.message) || 'Pera wallet error', true));
+
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
