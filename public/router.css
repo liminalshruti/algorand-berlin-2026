@@ -210,6 +210,10 @@ body.ready { opacity: 1; }
 .rr-verified { color: var(--good); }
 
 /* ── #10 progressive disclosure ─────────────────────────────────────── */
+/* When collapsed the quote is hidden; don't let the canvas keep reserving
+   flex:1 + min-height:360px (cut-shell.css) — that leaves a tall blank band
+   between the metric band and the brief. Collapse its height too. */
+.slate-canvas.is-collapsed { flex: 0 0 auto; min-height: 0; padding-top: 0; padding-bottom: 0; }
 .slate-canvas.is-collapsed #quoteWrap { display: none; }
 
 /* ── #11 secondary register lanes ───────────────────────────────────── */
