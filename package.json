@@ -36,12 +36,13 @@
     "@algorandfoundation/puya-ts": "^1.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
     "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^25.9.2",
+    "@types/uuid": "^9.0.0",
     "algosdk": "^3.0.0",
     "dotenv": "^16.4.7",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.7.3",
-    "@types/uuid": "^9.0.0"
+    "typescript": "^5.7.3"
   },
   "overrides": {
     "esbuild": "0.25.0"
