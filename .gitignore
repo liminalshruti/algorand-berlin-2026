@@ -1,57 +1,62 @@
-# Dependencies
-node_modules/
-.pnp/
-.pnp.js
-
-# Build / output
-dist/
-build/
-out/
-*.tsbuildinfo
-
-# Environment & secrets
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-mnemonic.txt
-*.mnemonic
-.algokit/
-.algokit.env
-
-# Algorand / AlgoKit artifacts
-artifacts/
-*.teal.tok
-*.approval.teal
-*.clear.teal
-.algokit/sources/
-
 # Logs
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# Caches
-.cache/
-.npm/
+# Dependency directories
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
 .eslintcache
-.parcel-cache/
 
-# Coverage / test output
-coverage/
-.nyc_output/
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
 
-# OS files
+# Editor/OS directories and files
 .DS_Store
-Thumbs.db
+*.suo
 
-# Editor / IDE
-.idea/
-.vscode/
-!.vscode/settings.json
-!.vscode/extensions.json
-*.swp
-*.swo
+# IntelliJ family
+.idea
+!.idea/
+.idea/*
+!.idea/runConfigurations/
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Compiled code
+dist/
+build/
+
+# Coverage report
+coverage
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Received approval test files
+*.received.*
+
+# AlgoKit
+debug_traces/
+.algokit/static-analysis/ # Replace with .algokit/static-analysis/tealer/ to enable snapshot checks in CI
+.algokit/sources

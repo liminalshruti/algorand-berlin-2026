@@ -12,14 +12,12 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": false,
     "allowSyntheticDefaultImports": true,
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"]
   },
   "include": ["smart_contracts/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
