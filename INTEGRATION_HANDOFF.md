@@ -57,13 +57,20 @@ npm start                # funds providers automatically, prints option_ids on b
 
 ## Reza — Identity Registry + Discovery + Ranking
 
-**What's ready for you to consume:**
+**Live endpoints:**
 
-- `ctx.repState.getReputation(provider_id)` → `{ score, reads_logged, corrections_logged } | null` — Shayaun writes this, read it for ranking
+```
+GET  /api/providers?register=Diligence → { register, providers:[{ provider_id, agent_uri, address, quote, asset }] }
+POST /api/route { task, register } → { route_id, task, register, options:[RouteOption] }
+```
 
-**What Navid needs from you:**
+**What teammates can consume:**
 
-- When `/api/route` runs, store your result in `ctx.routeStore` like this:
+- `providerId(net,address)` → `algorand:{net}:{address}`
+- `registerProvider(ctx,input)` stores `Provider.agent_uri` in `ctx.providers`
+- `discover(ctx.providers.values(), register)` returns identity matches
+- `/api/route` is discovery-compatible only; no `ctx.repState` ranking yet
+- `/api/route` stores:
 
 ```ts
 ctx.routeStore.set(route_id, {
@@ -78,9 +85,7 @@ ctx.routeStore.set(route_id, {
 **Where to write your code:**
 
 - Routes → `sandbox/lib/router/routes.providers.ts` → inside `makeProviderRoutes(ctx)`
-- Logic → `sandbox/lib/router/providers.ts` and `sandbox/lib/router/ranking.ts`
-
-**When you're done, update this section with your live endpoint.**
+- Logic → `sandbox/lib/router/providers.ts`
 
 ---
 

@@ -30,7 +30,7 @@ Ethereum standard; **not deployed on Algorand** — ours are ERC-8004-*shaped*, 
 
 | ERC-8004 registry (Solidity RI) | Our Algorand-native equivalent | Owner |
 |---|---|---|
-| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | Provider = Algorand **address** (no NFT); `register(address, card_uri, card_hash)`; id `algorand:{net}:{address}` | Reza |
+| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | Provider = Algorand **address** (no NFT); `register(address, agent_uri)`; id `algorand:{net}:{address}` | Reza |
 | **Reputation** — `giveFeedback(agentId, value:int128, valueDecimals, …, feedbackURI, feedbackHash)`, `getSummary`; self-feedback prevented | feedback `{provider, response:0–100, uri, hash}` anchored hash-only; `score=(landed−corrected)/landed`; submitter≠provider | Shayaun |
 | **Validation** — `validationRequest/Response(response:uint8 0–100, responseHash)`; self-validation prevented | `validate(payment)→{response:0–100, verdict_hash}` = price-vs-quote + output; validator≠provider | Shayaun |
 | *(payment — out of ERC-8004 scope)* | x402 settle on Algorand = the on-chain evidence; ranking = our trust aggregate | Navid / Reza |
@@ -42,7 +42,7 @@ Ethereum standard; **not deployed on Algorand** — ours are ERC-8004-*shaped*, 
 | **Shruti** | UI + Narrative | `public/router.html`, `public/router.js`, `public/router.css` + demo video, pitch deck, pitch script |
 | **Shayaun** | Reputation + Validation registries | `lib/router/validation.js`, `lib/router/reputation-state.js`, `lib/router/routes.validation.js` |
 | **Navid** | Payment + Integration harness *(integration owner)* | `bin/router-server.js`, `lib/router/pay.js`, `lib/router/context.js`, `lib/router/contract.js` *(H0)* |
-| **Reza** | Identity + Discovery + Ranking | `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js` |
+| **Reza** | Identity + Discovery *(ranking follow-up)* | `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js` |
 
 ## Conflict model
 
@@ -56,7 +56,7 @@ Ethereum standard; **not deployed on Algorand** — ours are ERC-8004-*shaped*, 
 
 ```js
 // types-as-comments + shared constants. READ-ONLY after H0.
-// Provider:      { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, card_uri, card_hash }
+// Provider:      { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, agent_uri }
 // RouteOption:   { option_id, provider_id, name, price, reputation, validation_rate, trust_score, weight }
 // PaymentResult: { payment_id, provider_id, quoted, settled, txids:[], read }
 // Verdict:       { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
@@ -80,7 +80,7 @@ GET  /api/ledger    → { anchors:[{txid,schema,ref_id,hash,round,network}] }
 
 ## Dependency chain
 
-`Reza ranks → Navid pays → Shayaun validates + scores → Shruti surfaces it → re-run, Reza re-ranks (cheater drops)`
+`Reza discovers → Navid pays → Shayaun validates + scores → Shruti surfaces it → ranking reroutes away from the cheater`
 
 Everyone builds against **mocks** for what they consume, so no lane blocks another.
 

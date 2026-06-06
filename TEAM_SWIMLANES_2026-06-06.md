@@ -21,7 +21,7 @@
 | **Shruti** | UI + Narrative | `public/router.html`, `public/router.js`, `public/router.css` + demo video, pitch deck, pitch script |
 | **Shayaun** | Reputation Registry + Validation Registry | `lib/router/validation.js`, `lib/router/reputation-state.js`, `lib/router/routes.validation.js` |
 | **Navid** | Payment + Integration harness *(integration owner)* | `bin/router-server.js`, `lib/router/pay.js`, `lib/router/context.js`, `lib/router/contract.js` *(H0 only)* |
-| **Reza** | Identity Registry + Discovery + Ranking | `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js` |
+| **Reza** | Identity Registry + Discovery *(ranking follow-up)* | `lib/router/providers.js`, `lib/router/ranking.js`, `lib/router/routes.providers.js` |
 
 ## ERC-8004 → Algorand mapping (basis for the specs)
 
@@ -29,7 +29,7 @@ Reference: `erc-8004/erc-8004-contracts` (3 upgradeable contracts) + `ChaosChain
 
 | ERC-8004 RI (Ethereum, Solidity) | Our Algorand-native equivalent | Owner |
 |---|---|---|
-| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | Provider = Algorand **address** (no NFT); `register(address, card_uri, card_hash)`; id `algorand:{net}:{address}` | Reza |
+| **Identity** — ERC-721 `register(agentURI,meta)→agentId`; id `{ns}:{chainId}:{registry}:{agentId}` | Provider = Algorand **address** (no NFT); `register(address, agent_uri)`; id `algorand:{net}:{address}` | Reza |
 | **Reputation** — `giveFeedback(agentId, value:int128, valueDecimals, …, feedbackURI, feedbackHash)`, `getSummary`; self-feedback prevented | feedback `{provider, response:0–100, uri, hash}` anchored hash-only; `score=(landed−corrected)/landed`; submitter≠provider | Shayaun |
 | **Validation** — `validationRequest/Response(response:uint8 0–100, responseHash)`; self-validation prevented | `validate(payment)→{response:0–100, verdict_hash}` = price-vs-quote + output; validator≠provider | Shayaun |
 | *(payment — out of ERC-8004 scope)* | x402 settle on Algorand = the on-chain evidence; ranking = our trust aggregate | Navid / Reza |
@@ -58,11 +58,11 @@ Reference: `erc-8004/erc-8004-contracts` (3 upgradeable contracts) + `ChaosChain
 - **Accountable for:** server boots on LocalNet; `/api/pay` returns real txids; `berlin-server.js` untouched; **owns `contract.js`, frozen at H0**.
 - **Consumes:** Reza's `routeStore`. **Produces:** `ctx.paymentStore` (read by Shayaun). Pairs with anyone during H3–H4 wiring.
 
-### Reza — Identity Registry + Discovery + Ranking
-- **Mission:** find the providers and rank them so cheap-but-dishonest can't win — the anti-race-to-bottom logic.
-- **Builds:** `registerProvider`/`discover` (3 seeded providers + a flagged live adapter), pure `trustScore` + `weightedPick`, the `/api/route` route.
-- **Accountable for:** `/api/route` returns ranked options with trust score + weight; zero-reputation excluded; cheapest-but-low-rep is **not** #1; ranking is pure and offline-testable.
-- **Consumes:** `ctx.repState.getReputation` (from Shayaun). **Produces:** `ctx.routeStore` (read by Navid).
+### Reza — Identity Registry + Discovery
+- **Mission:** give providers an ERC-8004-shaped Algorand identity and expose discovery so downstream payment/ranking can consume stable provider IDs.
+- **Builds:** `providerId`/`registerProvider`/`discover` (3 seeded Diligence providers), `GET /api/providers`, and discovery-compatible `POST /api/route`.
+- **Accountable for:** `providerId` = `algorand:{net}:{address}`; `agent_uri` is preserved; `discover('Diligence')` returns only Diligence; `/api/route` stores options in `ctx.routeStore` without reputation ranking.
+- **Consumes:** `ctx.providers`. **Produces:** `ctx.routeStore` (read by Navid).
 
 ---
 
@@ -70,7 +70,7 @@ Reference: `erc-8004/erc-8004-contracts` (3 upgradeable contracts) + `ChaosChain
 
 ```js
 // lib/router/contract.js  — types-as-comments + shared constants.
-// Provider:     { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, card_uri, card_hash }
+// Provider:     { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, agent_uri }
 // RouteOption:  { option_id, provider_id, name, price, reputation, validation_rate, trust_score, weight }
 // PaymentResult:{ payment_id, provider_id, quoted, settled, txids:[], read }
 // Verdict:      { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
@@ -104,7 +104,7 @@ GET  /api/ledger    → { anchors:[{txid,schema,ref_id,hash,round,network}] }
 
 **Navid (Payment + Integration):** honest → `settled==quoted`, 1 txid · dishonest → `settled>quoted`, 2 txids confirmed · unknown route/option → 400, no settlement · replay rejected · ledger entry has `{txid,schema,hash,round}` only · `git diff berlin-server.js` empty · `contract.js` unchanged since H0.
 
-**Reza (Identity + Discovery + Ranking):** zero-reputation provider excluded · cheapest-but-low-rep not #1 when an honest mid-price exists · `trustScore` pure (same inputs→same output) · `weightedPick` deterministic per seed · `providerId` = `algorand:{net}:{address}` · `discover('Diligence')` returns only Diligence · ranking module has no chain imports (offline unit test).
+**Reza (Identity + Discovery):** `providerId` = `algorand:{net}:{address}` · `agent_uri` preserved · `discover('Diligence')` returns only Diligence · `GET /api/providers` returns identities · `POST /api/route` stores `route_id` in `ctx.routeStore` · no `ctx.repState` dependency in the identity-only slice.
 
 ---
 
@@ -118,6 +118,6 @@ GET  /api/ledger    → { anchors:[{txid,schema,ref_id,hash,round,network}] }
 
 ## Dependency chain
 
-`Reza ranks → Navid pays → Shayaun validates + scores → Shruti surfaces it → re-run, Reza re-ranks (cheater drops)`
+`Reza discovers → Navid pays → Shayaun validates + scores → Shruti surfaces it → ranking reroutes away from the cheater`
 
 Everyone builds against **mocks** for what they consume, so no lane blocks another. Shruti's UI is the only lane consuming all of them — mock-first is what lets her start immediately.

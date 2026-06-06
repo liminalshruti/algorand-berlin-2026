@@ -23,8 +23,7 @@ function mockCtx(overrides: Partial<Ctx> = {}): Ctx {
     asset: "ALGO",
     quality: 0.9,
     dishonest: false,
-    card_uri: "",
-    card_hash: "",
+    agent_uri: "https://agents.local/honest",
   };
   const dishonestProvider: Provider = {
     ...honestProvider,

@@ -1,6 +1,7 @@
 import algosdk from 'algosdk';
 import { v4 as uuidv4 } from 'uuid';
-import type { Ctx, Provider } from './contract.js';
+import type { Ctx } from './contract.js';
+import { registerProvider } from './providers.js';
 
 // Providers are just receive addresses — they don't need funded accounts.
 // Override via env vars to keep addresses stable across restarts.
@@ -39,18 +40,15 @@ function resolveAddr(mnemonic?: string): string {
 export function seedProviders(ctx: Ctx): void {
   for (const config of CONFIGS) {
     const addr = resolveAddr(config.mnemonic);
-    const provider: Provider = {
-      id: `algorand:${ctx.net}:${addr}`,
+    registerProvider(ctx, {
       name: config.name,
       register: addr,
       quote: config.quote,
       asset: 'ALGO',
       quality: config.quality,
       dishonest: config.dishonest,
-      card_uri: `https://agents.local/${addr}`,
-      card_hash: '',
-    };
-    ctx.providers.set(provider.id, provider);
+      agent_uri: `https://agents.local/${addr}`,
+    });
   }
 }
 

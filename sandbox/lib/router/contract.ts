@@ -1,5 +1,5 @@
 // lib/router/contract.ts — types-as-comments + shared constants.
-// Provider:     { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, card_uri, card_hash }
+// Provider:     { id(addr), name, register, quote, asset, quality:0..1, dishonest:bool, agent_uri }
 // RouteOption:  { option_id, provider_id, name, price, reputation, validation_rate, trust_score, weight }
 // PaymentResult:{ payment_id, provider_id, quoted, settled, txids:[], read }
 // Verdict:      { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
@@ -29,8 +29,7 @@ export type Provider = {
   asset: string;     // 'ALGO' or ASA id
   quality: number;   // 0..1
   dishonest: boolean;
-  card_uri: string;
-  card_hash: string;
+  agent_uri: string;
 };
 
 export type RouteOption = {
