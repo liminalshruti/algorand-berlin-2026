@@ -34,8 +34,7 @@ body.ready { opacity: 1; }
 .id-chip { justify-self: end; display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
 .id-chip .idc-role { text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
 .id-chip code { color: var(--text-mid); }
-.idc-switch { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: var(--ls-mono-sm); color: var(--text-dim); background: var(--frame-bg-3); border: 1px solid var(--card-border); border-radius: var(--radius-1); padding: 2px 7px; }
-.idc-switch:hover { color: var(--text); border-color: var(--p-accent-edge); }
+.idc-fixed { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: var(--ls-mono-sm); color: var(--text-dim); background: var(--frame-bg-3); border: 1px solid var(--card-border); border-radius: var(--radius-1); padding: 2px 7px; }
 
 /* ── panes ──────────────────────────────────────────────────────────── */
 .slate-area { display: flex; flex-direction: column; overflow-y: auto; padding: 18px 24px 28px; gap: 14px; }

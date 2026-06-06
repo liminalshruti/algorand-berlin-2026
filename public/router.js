@@ -15,6 +15,7 @@ const BASE_URL = "http://localhost:3001";   // Navid's router-server (INTEGRATIO
 const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
 const ANY_LIVE = Object.values(LIVE).some(Boolean);
 const NETWORK  = "testnet";   // pinned to TestNet — matches wallet.js + router-server; never switch
+const OPERATOR_WALLET = "NDX7OC2VNQIDKH7BHE5IVUH75GAZ4ZWKL2BNHM6G3ZWQTQDFDN2AHVUCIQ"; // one consistent operator wallet — no impersonation
 const TRUST_WEIGHTS = { price: 0.3, reputation: 0.4, validation: 0.3 };
 const MOCK_LATENCY = { route: 260, pay: 460, validate: 620 };
 const EXPLORER = {
@@ -123,7 +124,7 @@ const mockApi = {
     return {
       payment_id, txids, quoted_amount: quoted, settled_amount: settled,
       read: prov.dishonest ? "Delivered read (charged above quote)." : "Delivered read.",
-      proof_of_payment: { from: "OPERATOR…WALLET", to: prov.id.split(":").pop(), asset: 0, amount: Math.round(settled * 1e6), txid: txids[0], round: mockRound, nonce },
+      proof_of_payment: { from: OPERATOR_WALLET, to: prov.id.split(":").pop(), asset: 0, amount: Math.round(settled * 1e6), txid: txids[0], round: mockRound, nonce },
     };
   },
   async validate({ payment_id }) {
