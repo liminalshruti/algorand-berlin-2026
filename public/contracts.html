@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Liminal · Contracts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="design-tokens.css" />
+<link rel="stylesheet" href="cut-shell.css" />
+<link rel="stylesheet" href="brand-upgrade.css" />
+<link rel="stylesheet" href="nav.css" />
+<link rel="stylesheet" href="registry.css" />
+</head>
+<body data-product="business" data-page="contracts" data-view="methods">
+<div class="stage">
+  <div class="frame">
+    <header class="titlebar">
+      <div class="lights"><span class="light red"></span><span class="light yellow"></span><span class="light green"></span></div>
+      <div class="title-row"><span class="diamond">◇</span><span class="tb-wedge">Contracts · the ARC-8004 on-chain surface — call every method.</span></div>
+      <div class="surface-meta"><span class="role-hint" id="roleHint">developer</span><span class="id-chip" id="identityChip"></span></div>
+    </header>
+    <main class="main">
+      <aside class="rail-left" id="railLeft"></aside>
+      <section class="slate-area" id="center"></section>
+      <aside class="rail-right" id="railRight"></aside>
+    </main>
+    <div class="frame-receipt" id="frameReceipt"></div>
+  </div>
+</div>
+<button class="present-toggle" id="presentToggle" title="Present mode (P)">present</button>
+<div class="chain-ctx" id="chainCtx"></div>
+<div class="toast" id="toast"><span class="t-glyph">◇</span><span id="toast-msg">·</span></div>
+<div class="ledger-modal" id="detailModal" role="dialog" aria-modal="true" aria-label="Detail">
+  <div class="lm-card">
+    <header class="lm-head"><span class="lm-eyebrow" id="detailEyebrow">detail</span><h3 class="lm-title" id="detailTitle">Detail</h3><button class="lm-close" id="detailModalClose" aria-label="Close">×</button></header>
+    <div class="lm-body" id="detailModalBody"></div>
+  </div>
+</div>
+<script src="arc8004.js"></script>
+<script src="registry.js"></script>
+<script src="nav.js"></script>
+</body>
+</html>
