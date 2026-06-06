@@ -1,0 +1,24 @@
+{
+  "name": "algorand-berlin-2026",
+  "version": "1.0.0",
+  "description": "Liminal's entry for **Algorand Builders Berlin: Agentic Commerce x402**. Two layers on one Algorand substrate, plus a correction loop on top:",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liminalshruti/algorand-berlin-2026.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/liminalshruti/algorand-berlin-2026/issues"
+  },
+  "homepage": "https://github.com/liminalshruti/algorand-berlin-2026#readme",
+  "dependencies": {
+    "@algorandfoundation/algokit-utils": "^9.2.0"
+  }
+}
