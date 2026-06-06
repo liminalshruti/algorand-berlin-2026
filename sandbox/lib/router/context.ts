@@ -2,10 +2,17 @@ import algosdk from 'algosdk';
 import crypto from 'crypto';
 import type { AlgoAccount, Ctx, RepState } from './contract.js';
 
-const ALGOD_URL   = process.env.ALGOD_URL   ?? 'http://localhost';
-const ALGOD_PORT  = Number(process.env.ALGOD_PORT  ?? 4001);
-const ALGOD_TOKEN = process.env.ALGOD_TOKEN ?? 'a'.repeat(64);
-const NETWORK     = process.env.ALGO_NETWORK ?? 'localnet';
+// --- TestNet by default, zero setup ------------------------------------------
+// Shared THROWAWAY TestNet payer, hardcoded so anyone can `npm start` and settle
+// real on-chain txns with no .env and no per-user funding. TestNet ALGO is valueless,
+// so this key is public on purpose. NEVER reuse it on MainNet.
+// To run on LocalNet instead, set ALGO_NETWORK/ALGOD_URL/PAYER_MNEMONIC in a .env.
+const SHARED_PAYER_MNEMONIC = 'vacuum major sort slide sister traffic average noble board boss yellow labor measure resource current sniff bamboo meat federal metal other almost atom abandon document';
+
+const ALGOD_URL   = process.env.ALGOD_URL   ?? 'https://testnet-api.algonode.cloud';
+const ALGOD_PORT  = Number(process.env.ALGOD_PORT  ?? 443);
+const ALGOD_TOKEN = process.env.ALGOD_TOKEN ?? '';
+const NETWORK     = process.env.ALGO_NETWORK ?? 'testnet';
 
 const MICROALGO = 1_000_000;
 
@@ -23,7 +30,7 @@ function loadAccount(mnemonic?: string): AlgoAccount {
 export async function buildContext(repState: RepState = stubRepState): Promise<Ctx> {
   const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_URL, ALGOD_PORT);
 
-  const payer       = loadAccount(process.env.PAYER_MNEMONIC);
+  const payer       = loadAccount(process.env.PAYER_MNEMONIC ?? SHARED_PAYER_MNEMONIC);
   const facilitator = loadAccount(process.env.FACILITATOR_MNEMONIC);
   const funded      = payer;
 
@@ -78,8 +85,10 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
       },
       explorerFor: (txid) =>
         NETWORK === 'mainnet'
-          ? `https://allo.info/tx/${txid}`
-          : `https://app.dappflow.org/explorer/transaction/${txid}`,
+          ? `https://lora.algokit.io/mainnet/transaction/${txid}`
+          : NETWORK === 'testnet'
+            ? `https://lora.algokit.io/testnet/transaction/${txid}`
+            : `https://lora.algokit.io/localnet/transaction/${txid}`,
     },
   };
 }
