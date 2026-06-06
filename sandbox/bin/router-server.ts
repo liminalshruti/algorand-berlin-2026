@@ -25,6 +25,8 @@ async function main() {
 
   // --- Navid: payment + ledger ---
 
+  const paidOptions = new Set<string>();
+
   app.post("/api/pay", async c => {
     const body = await c.req.json<{ route_id: string; option_id: string }>();
 
@@ -34,14 +36,10 @@ async function main() {
     const option = route.options.find(o => o.option_id === body.option_id);
     if (!option) return c.json({ error: "Unknown option_id" }, 400);
 
-    // replay guard — same option cannot be paid twice
-    const alreadyPaid = [...ctx.paymentStore.values()].some(
-      p =>
-        p.provider_id === option.provider_id && route.options.includes(option)
-    );
-    if (alreadyPaid) return c.json({ error: "Replay rejected" }, 400);
+    if (paidOptions.has(body.option_id)) return c.json({ error: "Replay rejected" }, 400);
 
     const result = await payProvider(ctx, option);
+    paidOptions.add(body.option_id);
 
     return c.json({
       payment_id: result.payment_id,
