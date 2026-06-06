@@ -12,6 +12,12 @@
 <link rel="stylesheet" href="brand-upgrade.css" />
 <link rel="stylesheet" href="nav.css" />
 <link rel="stylesheet" href="registry.css" />
+
+<!-- Pera Wallet pulls js-sha3 via esm.sh, whose build only default-exports; redirect the
+     one broken module to a local shim that re-exports the named bindings (see wallet.js). -->
+<script type="importmap">
+{ "imports": { "https://esm.sh/js-sha3@0.8.0/es2022/js-sha3.mjs": "/vendor/js-sha3-shim.js" } }
+</script>
 </head>
 <body data-product="business" data-page="admin" data-view="admin">
 <div class="stage">
@@ -41,5 +47,6 @@
 <script src="arc8004.js"></script>
 <script src="registry.js"></script>
 <script src="nav.js"></script>
+<script type="module" src="wallet.js"></script>
 </body>
 </html>

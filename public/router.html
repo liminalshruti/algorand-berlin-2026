@@ -20,6 +20,12 @@
 <link rel="stylesheet" href="brand-upgrade.css" />
 <link rel="stylesheet" href="nav.css" />
 <link rel="stylesheet" href="router.css" />
+
+<!-- Pera Wallet pulls js-sha3 via esm.sh, whose build only default-exports; redirect the
+     one broken module to a local shim that re-exports the named bindings (see wallet.js). -->
+<script type="importmap">
+{ "imports": { "https://esm.sh/js-sha3@0.8.0/es2022/js-sha3.mjs": "/vendor/js-sha3-shim.js" } }
+</script>
 </head>
 <body data-product="personal" data-page="router">
 
@@ -45,7 +51,7 @@
       <button class="product-tab reg-tab" data-register="Outreach" data-secondary><span class="pt-glyph"></span>outreach<span class="pt-shape">draft</span></button>
       <button class="product-tab reg-tab" data-register="Judgment" data-secondary><span class="pt-glyph"></span>judgment<span class="pt-shape">verdict</span></button>
       <button class="product-tab reg-tab" data-register="Operations" data-secondary><span class="pt-glyph"></span>operations<span class="pt-shape">run</span></button>
-      <div class="surface-meta"><span class="sm-src" id="srcMode">—</span><span class="sm-banner" id="netBanner">ALGORAND · LOCALNET · MOCK</span></div>
+      <div class="surface-meta"><span class="sm-src" id="srcMode">—</span><span class="sm-banner" id="netBanner">ALGORAND · TESTNET · MOCK</span></div>
     </nav>
 
     <!-- main · three pane -->
@@ -81,7 +87,7 @@
           <span class="ls-step" data-step="rerun"><i>↻</i>Re-run</span>
         </div>
 
-        <div class="classification" id="classification" role="status" aria-live="polite">ROUTE · DILIGENCE · LOCALNET</div>
+        <div class="classification" id="classification" role="status" aria-live="polite">ROUTE · DILIGENCE · TESTNET</div>
 
         <header class="slate-header">
           <div class="slate-eyebrow" id="slateEyebrow"><span class="sb-strong">Trust router</span></div>

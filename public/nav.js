@@ -11,7 +11,7 @@
     { page: "admin", href: "admin.html", ico: "◫", label: "Admin", sub: "observability" },
   ];
   const cur = document.body.dataset.page || "";
-  const net = (window.ARC8004 && window.ARC8004.NET) || "localnet";
+  const net = (window.ARC8004 && window.ARC8004.NET) || "testnet";
   const aside = document.createElement("aside");
   aside.className = "sidebar";
   aside.innerHTML = `

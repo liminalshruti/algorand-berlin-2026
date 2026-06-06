@@ -15,8 +15,8 @@
   const genAddr = () => { let s = ""; for (let i = 0; i < 58; i++) s += B32[(Math.random() * 32) | 0]; return s; };
   const genHash = (n = 64) => { const a = "0123456789abcdef"; let s = ""; for (let i = 0; i < n; i++) s += a[(Math.random() * 16) | 0]; return s; };
   const genTxid = () => { let s = ""; for (let i = 0; i < 52; i++) s += B32[(Math.random() * 32) | 0]; return s; };
-  const NET = "localnet";
-  // Genesis-hash prefix per network (CAIP-2). Swap NET → the right one when deployed.
+  const NET = "testnet";   // pinned to TestNet — matches wallet.js + router-server; never switch
+  // Genesis-hash prefix per network (CAIP-2).
   const GENESIS = { localnet: "localnet-v1", testnet: "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe", mainnet: "wGHE2Pwdvd7S12BL5FaOP20EGYesN73k" };
   // Deployed app ids (the contracts you're interacting with). Mock placeholders until deploy.
   const APP = { identity: 1001, reputation: 1002, validation: 1003 };

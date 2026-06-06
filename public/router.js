@@ -14,7 +14,7 @@ const BASE_URL = "http://localhost:3001";   // Navid's router-server (INTEGRATIO
 // per-endpoint: true = live server (mock fallback on failure), false = mock.
 const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
 const ANY_LIVE = Object.values(LIVE).some(Boolean);
-const NETWORK  = "localnet";
+const NETWORK  = "testnet";   // pinned to TestNet — matches wallet.js + router-server; never switch
 const TRUST_WEIGHTS = { price: 0.3, reputation: 0.4, validation: 0.3 };
 const MOCK_LATENCY = { route: 260, pay: 460, validate: 620 };
 const EXPLORER = {

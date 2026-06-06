@@ -23,7 +23,7 @@ const NETWORK = "testnet";
 const CHAIN_ID = 416002;                              // Algorand TestNet (mainnet = 416001)
 const ALGOD = "https://testnet-api.algonode.cloud";
 const LS_KEY = "liminal.pera.account";
-const PERA_CDN = "https://esm.sh/@perawallet/connect@1.4.1";
+const PERA_CDN = "https://esm.sh/@perawallet/connect@1.5.2";   // needs the js-sha3 import-map shim (see HTML head)
 // Match the algosdk major Pera bundles (v3) and the exact import specifier it uses, so the
 // browser dedupes to one module instance — same Transaction class on both sides of signing.
 const ALGOSDK_CDN = "https://esm.sh/algosdk@^3.0.0?target=es2022";
@@ -122,6 +122,17 @@ function paintButtons() {
       : `<span class="pera-dot"></span>Connect Pera`;
   });
 }
+// Pages that don't ship a static [data-pera-connect] button get one auto-mounted in the titlebar.
+function ensureButton() {
+  if (document.querySelector("[data-pera-connect]")) return;
+  const mount = document.querySelector(".surface-meta") || document.querySelector(".titlebar");
+  if (!mount) return;
+  const btn = document.createElement("button");
+  btn.className = "pera-btn";
+  btn.setAttribute("data-pera-connect", "");
+  btn.innerHTML = `<span class="pera-dot"></span>Connect Pera`;
+  mount.insertBefore(btn, mount.firstChild);
+}
 function wireButtons() {
   document.querySelectorAll("[data-pera-connect]").forEach((btn) => {
     if (btn.dataset.peraWired) return;
@@ -147,6 +158,7 @@ window.WALLET = {
 };
 
 function init() {
+  ensureButton();
   wireButtons();
   state.ready = true;
   emit("wallet:ready");

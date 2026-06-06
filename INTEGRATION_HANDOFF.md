@@ -155,6 +155,11 @@ const ctx = await buildContext(repState);
 - `public/router.js` top: `const LIVE = { route, pay, validate, reputation, ledger }` — per-endpoint mock↔live switch; `BASE_URL='http://localhost:3001'`. Currently **all true** (live). Flip any to `false` to mock that endpoint.
 - Needs from backend: live `/api/route` (mine sends its `route_id` to `/api/pay`); CORS allow-origin on the router-server if the page isn't served from `:3001`.
 - Failures surface as a red toast; provider identity + before-score are sourced from the picked RouteOption (never from pay/validate).
+- **Pera Wallet** (`public/wallet.js`, ESM module, no build): shared client across router + registry. Loads `@perawallet/connect` + `algosdk@3` from esm.sh. `window.WALLET.{account,isConnected,connect,disconnect,signAndSend,payment}`; fires `wallet:change`/`wallet:ready`/`wallet:error` on `window`; any `[data-pera-connect]` element is an auto-labelled connect/disconnect toggle. Connected address mirrored to `localStorage("liminal.pera.account")` so both pages share it.
+  - Router: connected wallet → operator wallet in `proof_of_payment.from`; signed-packet shows **⚿ Sign on TestNet (Pera)** → a real 0-ALGO self-anchor txn carrying the settlement ref, added to ledger as `x402.settle.pera`.
+  - Registry: connect → `ARC8004.setCaller(address)` (acts as that wallet; disconnect reverts to a fresh demo addr).
+  - **Network = TestNet, pinned everywhere — never switched.** `router.js NETWORK`, `arc8004.js NET`, and the `nav.js`/`registry.js` fallbacks are all hardcoded `"testnet"` (was `localnet`), matching `wallet.js` and `context.ts`'s TestNet default. Explorer/genesis/banner all resolve to TestNet. Real Pera signing needs the Pera mobile app paired + TestNet funds.
+  - **Required on every page that loads `wallet.js`:** an `<script type="importmap">` redirecting `https://esm.sh/js-sha3@0.8.0/es2022/js-sha3.mjs` → `/vendor/js-sha3-shim.js` (in `<head>`, before the module). esm.sh's `js-sha3` build only default-exports, so Pera's `import { keccak_256 }` fails without the shim. Wired into: `router.html`, `marketplace/studio/contracts/admin.html`. `wallet.js` auto-injects its Connect button into `.surface-meta`/titlebar if a page has no static `[data-pera-connect]`.
 
 **Live endpoints right now:**
 

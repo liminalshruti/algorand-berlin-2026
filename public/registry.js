@@ -32,7 +32,7 @@ function repOf(id) {
   return { count: t.total, satisfied: t.satisfied, score: t.score, valAvg, tip: trustTip(t) };
 }
 function renderChainCtx() {
-  const net = (A.NET || 'localnet');
+  const net = (A.NET || 'testnet');
   $('chainCtx').innerHTML = `
     <div class="cc-net cc-${net}"><span class="cc-dot"></span>ALGORAND · ${net.toUpperCase()} <span class="cc-mode">mock</span></div>
     <div class="cc-apps">
