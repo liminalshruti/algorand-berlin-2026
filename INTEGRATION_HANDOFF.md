@@ -37,7 +37,21 @@ GET  /api/ledger    → { anchors: [{ txid, schema, ref_id, hash, round, network
 - Cheat provider: `settled > quoted` (0.04 quoted → 0.06 settled, +50% hidden fee), 2 txids confirmed
 - Ledger: both payments anchored hash-only with real round numbers
 
-**To run:**
+**To run (TestNet — default, zero setup):**
+
+```bash
+# One-time: fund the shared payer (hardcoded in context.ts) via the dispenser:
+#   24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI
+# e.g.  algokit dispenser fund -r 24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI -a 10000000
+npm start                # boots on TestNet, funds the 3 providers, prints option_ids
+```
+
+- **Default network is TestNet.** `context.ts` hardcodes a shared throwaway payer mnemonic so anyone can `npm start` with no `.env` and get real on-chain txids. TestNet ALGO is valueless; the key is public on purpose — never reuse on MainNet.
+- Boot calls `fundProviders` (0.5 ALGO each, ~1.5 ALGO/restart), so **the payer must be funded first or boot fails.** Dispense ~10 ALGO; top up if it runs dry.
+- Explorer links resolve to `lora.algokit.io/testnet/transaction/<txid>`.
+- LocalNet still works: set `ALGO_NETWORK=localnet`, `ALGOD_URL=http://localhost`, `ALGOD_PORT=4001`, `ALGOD_TOKEN`, and a funded `PAYER_MNEMONIC` in a `.env`.
+
+**To run (LocalNet):**
 
 ```bash
 algokit localnet start   # Docker must be running
