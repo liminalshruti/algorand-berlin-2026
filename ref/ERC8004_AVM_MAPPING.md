@@ -4,9 +4,9 @@
 **Target:** Algorand Virtual Machine (AVM ≥ v10), ARC standards.
 **Date:** 2026-06-06 · **For:** Algorand Berlin hack day · **Status:** spec-port reference (build against this).
 
-This is a **construct-by-construct port**, not a positioning crosswalk (for the positioning story see
-`ERC8004_LIMINAL_CROSSWALK.md`). Goal: every EVM primitive in the spec has exactly one AVM counterpart,
-so the three Ethereum contracts become three Algorand applications with no semantic drift.
+This is a **construct-by-construct port**, not the positioning story. For the current product framing,
+use `README.md` and `pitch/`. Goal: every EVM primitive in the spec has exactly one AVM counterpart, so
+the three Ethereum contracts become three Algorand applications with no semantic drift.
 
 ---
 
@@ -290,9 +290,9 @@ x402 can enrich feedback."* Anyone may give feedback (only self-feedback is bloc
 no funds (incentives/slashing out of scope per §3.3). So this profile **never gates, escrows, or polices
 payment.** It makes the port **x402-ergonomic**: the payment proof rides along as optional enrichment and
 the trust-router reads/correlates it cheaply. The one AVM-native lever — x402 settles on the **same
-Algorand ledger** the registries live on (see `liminal-agents/sandbox/lib/x402/algorand.js`), so "proof
-of payment" stops being a foreign opaque hash (EVM `{chainId, txHash}`) and becomes a same-chain,
-natively-verifiable reference.
+Algorand ledger** the registries live on (see `sandbox/lib/router/context.ts` and
+`sandbox/lib/router/pay.ts`), so "proof of payment" stops being a foreign opaque hash (EVM
+`{chainId, txHash}`) and becomes a same-chain, natively-verifiable reference.
 
 ### 7.1 Reputation registry
 
@@ -355,11 +355,19 @@ validator; `0–100`; multi-call progressive finality), readonly summaries. **No
 | `tag` carries x402 / finality context | `tag="x402:settled"`, soft/hard finality stages | **none** (spec already allows `tag`) |
 | Optional emitted ref in `ValidationRequest` | same minimal additive choice as §7.1, so the router correlates paid-task → validation outcome | **+1 optional emitted field** |
 
+For the trust-router demo, hidden fees are **automatic validation**, not `giveFeedback`: discovery keeps
+minimal listing metadata (`service_id`, `provider_id`, `quote_id`, amount, asset, `payTo`,
+`observed_at`, `expires_at`), the quote policy layer pins a fresh listing into an active quote
+commitment, the x402 payment settles, and the router compares quote/challenge/settlement before
+anchoring a validation result. User satisfaction feedback remains separate and uses `giveFeedback` when
+enabled. Future active validation can let providers ask validators to test a service and earn
+reputation via attestations, including optional zero-knowledge proofs.
+
 ### 7.3 Cross-cutting — the x402 router loop
 
 | Concern | Realization (in-spirit) |
 |---|---|
-| Join payment ↔ validation ↔ feedback | the off-chain x402 `nonce`/`txid` is the **correlation key** the indexer stitches on — read-side only; nothing on-chain requires it |
+| Join payment ↔ automatic validation ↔ user feedback | the off-chain x402 `nonce`/`txid` is the **correlation key** the indexer stitches on — read-side only; nothing on-chain requires it |
 | Client needs no ALGO to leave feedback | **fee-pooling** (§4): the x402 atomic group sponsors the client's `giveFeedback` fee — maps to the ERC's EIP-7702 gas-sponsorship rationale |
 | Routing-time read | readonly `getSummary` (already in §2) filtered by the `x402` tag |
 | `value` type for money signals | x402 amounts (µALGO / USDC base units) fit `uint64` → for the x402 case prefer the uint64 path and sidestep the `int128`/`byte[16]` aggregation of §2.4 |

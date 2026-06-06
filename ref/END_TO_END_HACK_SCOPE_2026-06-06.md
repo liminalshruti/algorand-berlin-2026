@@ -1,197 +1,127 @@
-# End-to-end hack scope — x402 trust router on Algorand
+# End-to-End Scope - Current Demo Spine
 
-**Date:** 2026-06-06 (hack day 1) · **Category:** Infrastructure · **Problem:** agentic trust
-**Team:** 4 (Shruti + Shayaun + 2) · **Merge target:** midnight tonight
-**Status:** scoping — validate each layer (§4) before kicking off build
+**Date:** 2026-06-06 · **Category:** Infrastructure · **Problem:** agentic trust
 
----
+This is the active scope for the landed x402 Trust Router demo and the next integration moves.
 
-## 1. One sentence
+## One Sentence
 
-A **trust router** over x402 on Algorand: an operator asks for a service; we collect competing
-providers' on-chain price quotes, rank them by **price + earned reputation + validation**, pay the
-winner, then **validate the delivery against its quote on-chain** — so a provider that quotes low and
-charges high (or under-delivers) gets caught by the chain and loses the next route. Reputation is
-*earned*, not self-reported.
+A trust router over x402 on Algorand: discover agent services, group equivalent capabilities into a
+tool catalog, choose a concrete provider by price + earned reputation + validation, let the client pay
+that provider over x402, then use payment proof, user feedback, and automatic validation outcomes to
+update future routing.
 
-## 2. The value prop (do not lose this when scoping)
+## Value Prop
 
-Existing agent marketplaces (Agent.market, etc.) rank on price + **self-reported** reputation — which
-is gameable (the flight-provider pattern: always cheapest in the ranking, then hidden fees at
-checkout). The missing infrastructure is **validated reputation**: trust that the chain enforces.
-That validation layer is what we build. *"ERC-8004 gives agents a passport; we give the marketplace
-a conscience."*
+Agent marketplaces can rank on price plus self-reported reputation. That is gameable: the cheapest
+provider can win, add a hidden fee at checkout, and keep its reputation. This build makes reputation
+earned: payment evidence, validation, and reputation are joined on Algorand.
 
-## 3. Key finding — most of the stack already exists
+## What Runs Now
 
-| Capability | Where it already lives | State |
-|---|---|---|
-| x402 challenge (402) + lane guard | `liminal-agents-v1` `sandbox/lib/x402/{challenge,lane-guard}.js`; also `provenance/src/x402/gate.ts` | ✅ runs |
-| Verify → settle on Algorand | `liminal-agents-v1` `sandbox/lib/x402/{facilitator,algorand}.js`; `provenance/src/chain/algorand.ts` | ✅ runs (localnet 06-01) |
-| Hash-only provenance anchor | both repos; anchor fields excluded from hash | ✅ tested |
-| Reputation = correction survival (ERC-8004-shaped) | `liminal-agents-v1` `sandbox/lib/x402/reputation.js` + `/api/correct` | ✅ sandbox-stage |
-| 9-tag correction taxonomy | `liminal-agents-v1` `lib/corrections/index.ts` | ✅ |
-| Desktop anchor schema (txid/chain/network cols) | `liminal-desktop` `src-tauri/src/db/schema.rs` | ⚠️ stubbed (NULL) |
+| Layer | Current state |
+|---|---|
+| Provider discovery | 3 seeded Diligence providers; `GET /api/providers`; router alias `algorand:{net}:{address}`. Full MCP/A2A/ARC-8004 service discovery is still open. |
+| Routing | `POST /api/route`; ranks candidates in `providers.ts::discoveryOptions`; writes `ctx.routeStore`. |
+| Payment | `POST /api/pay`; current demo settles through the router's payer. Target flow forwards the selected provider's x402 challenge so the client pays the provider directly. |
+| Validation | `POST /api/validate`; current demo compares quoted vs settled. Target validation compares active quote commitment vs x402 challenge/settlement proof. |
+| Reputation | `GET /api/reputation`; in-memory state used by the next route; env-gated on-chain `giveFeedback` path exists. |
+| Ledger | `GET /api/ledger`; hash-only anchors with txid, schema, ref id, hash, round, network. |
+| Frontend | `public/router.html` live API flow with per-endpoint fallback; other console pages are mock-first for raw registries. |
+| Contracts | Identity, Reputation, and Validation registries built in Algorand TypeScript with generated clients and tests. |
 
-**The hack delta (what does NOT exist yet):** multi-provider **discovery/registry**, **quote
-collection across providers**, the **ranking / weighted-lottery** module, the **price-vs-quote
-validation**, and the **reputation write-back keyed per provider**. Plus a **UI**.
+## Dataflow
 
-## 4. Stack feasibility — validate each layer BEFORE building
-
-Bottom-up. Verdict legend: ✅ reuse · ⚠️ reuse+extend · 🔨 build · ❓ validate first.
-
-| # | Layer | Exists? | Build needed | Risk | Verdict |
-|---|---|---|---|---|---|
-| 1 | Algorand settlement (L1) | Yes (localnet verified 06-01) | none | testnet funding unfunded | ✅ |
-| 2 | x402 challenge/settle | Yes (both repos) | none | — | ✅ |
-| 3 | Hash-only anchor | Yes (tested) | none | — | ✅ |
-| 4 | Bounded refusal / lane guard | Yes | none | — | ✅ |
-| 5 | Reputation entry (score + URI + hash) | Yes (sandbox) | key per-provider; read at routing time | in-memory/pre-seeded today | ⚠️ |
-| 6 | Provider discovery / registry | No | list candidates per task | **Agent.market callability UNVALIDATED** | ❓🔨 |
-| 7 | Quote collection (price) | Partial | collect each provider's 402 (`amount/asset/payTo`) | external 402s may need auth | 🔨 |
-| 8 | Ranking / weighted lottery | No | pure fn: `f(price, reputation, validation)` | low — just math | 🔨 |
-| 9 | Validation — price-vs-quote | Partial | compare challenge.amount vs settled amount | low — both on-chain | 🔨 |
-| 9b | Validation — output check | No | evaluator (objective for scan; judged for inference) | fuzzy; do as stretch | 🔨 |
-| 10 | Reputation write-back loop | Partial | trigger `/api/correct`-style write from verdict | medium | ⚠️ |
-| 11 | UI (ranked list + approve + receipt) | No | standalone web UI vs desktop wiring | desktop = Rust+Solid, slower | 🔨 |
-
-**Two layers gate everything — validate in the first hour:**
-- **Layer 6 (❓):** confirm whether ≥2 Agent.market providers actually return a 402 to *our* funded
-  wallet today. If yes → live demo. If no → **3 local mock providers** (honest / hidden-fee /
-  low-quality) give identical mechanics on LocalNet. Decide this before building the registry.
-- **Layer 1 (testnet funding):** fund the dispenser, or commit to LocalNet (instant, real txids,
-  zero funding) as the demo surface. LocalNet is the safe default.
-
-## 5. Dataflow
-
-```
-                          ┌─────────────────────────────────────────────┐
-   Operator / agent       │            TRUST ROUTER (the build)          │
-   "I need <task>"  ─────▶│                                              │
-                          │  (6) discover providers for <task>           │
-                          │        │  Agent.market  OR  3 mock providers │
-                          │        ▼                                     │
-                          │  (7) collect quotes ── 402 from each ───────┐│
-                          │        │  {payTo, amount, asset, resource}  ││
-                          │        ▼                                     ││
-                          │  (5) read reputation per provider ◀─────────┼┼──┐
-                          │        │   (from on-chain rep log)          ││  │
-                          │        ▼                                     ││  │
-                          │  (8) RANK = f(price, reputation, validation) ││  │
-                          │        │   weighted lottery, zero-rep excl.  ││  │
-                          │        ▼                                     ││  │
-   approve / deny  ◀──────┤   operator gate (sovereignty)               ││  │
-        │                 │        ▼                                     ││  │
-        └────────────────▶│  (2) pay winner via x402                    ││  │
-                          │        ▼                                     ││  │
-                          │  (1) SETTLE on Algorand ──▶ txid            ││  │
-                          │        ▼                                     ││  │
-                          │     provider delivers result + settled $    ││  │
-                          │        ▼                                     ││  │
-                          │  (9) VALIDATE: settled $ == quoted $ ?       ││  │
-                          │        │  output passes ?                    ││  │
-                          │        ▼                                     ││  │
-                          │  (10) verdict ─▶ reputation write-back ──────┼┘  │
-                          │        ▼                                     │   │
-                          │  (3) anchor decision+payment+verdict ────────┼───┘
-                          │        (hash-only on Algorand)              │  on-chain
-                          └─────────────────────────────────────────────┘  rep log
-                                         │
-                                         ▼
-                          on-chain ledger: who paid whom, how much,
-                          quoted-vs-settled, verdict — verifiable, hash-only
+```txt
+operator task
+  -> discover/group services from ARC-8004 + MCP + A2A + local providers
+  -> quote policy pins fresh listing into active quote commitment
+  -> choose concrete provider by price + reputation + validation
+  -> forward selected provider's x402 challenge
+  -> record quote/challenge drift or wallet mismatch
+  -> client pays selected provider wallet directly
+  -> txid + nonce become proof
+  -> automatic validation or user feedback updates reputation
+  -> next route reads reputation and avoids caught provider
 ```
 
-Re-run after a bad verdict → the lottery routes *away* from the caught provider. **That self-correction
-is the demo centerpiece.**
+## Target Happy Flow
 
-## 6. Scope — in / out
+1. Provider registers an ARC-8004 identity with `agent_uri`, service metadata, x402 support, and a
+   provider wallet that can receive Algorand payments.
+2. Router discovers or accepts providers, resolves MCP/A2A descriptions, and extracts capability names
+   and descriptions.
+3. Router semantically groups equivalent capabilities into service/tool descriptions exposed by the
+   proxy.
+4. Quote policy checks minimal listing metadata: `service_id`, `provider_id`, `quote_id`, amount, asset,
+   `payTo`, `observed_at`, and `expires_at`. Fresh listings become active quote commitments.
+5. Client agent calls the proxy tool. Router selects the concrete provider by price, reputation,
+   validation rate, and availability.
+6. Router forwards the selected provider's x402 payment requirements. The client pays the provider
+   directly; the router does not custody or settle the payment.
+7. If the challenge amount, asset, or `payTo` differs from the active quote commitment, the router
+   records the mismatch but does not block the TestNet happy-flow payment.
+8. Client receives `paymentTxid`/nonce proof after settlement.
+9. Router triggers automatic validation for objective dishonesty such as quote drift, wrong `payTo`,
+   invalid challenge, replay, timeout, or provider unavailability.
+10. User feedback is separate: the client may submit satisfaction feedback tied to the same payment
+   proof, deduped by `paymentTxid` + `nonce`, and written through `giveFeedback` when the registry path
+   is enabled.
+11. Future active validations let providers ask validators to test their service and earn reputation
+    through attestations, including optional zero-knowledge proofs.
 
-**IN (MVP, must demo):**
-- Trust router: discovery (mock or live) → quote collection → ranking → operator gate → pay → settle.
-- **Price-vs-quote validation** (objective, on-chain) + reputation write-back per provider.
-- The closed loop: bad verdict → reputation drops → re-run routes differently.
-- Minimal standalone UI: ranked providers + trust score, payment txid, the "caught" moment, the ledger.
+## Demo Flow
 
-**STRETCH (only if MVP is green):**
-- Live Agent.market providers (vs mock). Output-quality validation. Public testnet (vs LocalNet).
-- `liminal-desktop` wiring (anchor fields → receipt display + approval gate in SlateView).
+1. Start `npm start` and serve `public/`.
+2. Route a diligence task.
+3. Show provider ranking with the cheap cheat provider selected.
+4. Approve payment.
+5. Show real txid(s), active quote amount, x402 challenge amount, and settled amount.
+6. Validate; show the quote-drift verdict and reputation drop.
+7. Re-run the route; show the honest provider now leading.
+8. Open the ledger and explorer link.
 
-**OUT (24h):**
-- Building a marketplace or providers. Network crawler. Decentralized inference hosting.
-- Multi-chain abstraction. Production TTL/DB (in-memory is fine). Zero-knowledge validation proofs.
+## In Scope
 
-## 7. Swimlanes (4 people)
+- TestNet or LocalNet x402 settlement with real txids.
+- Hash-only ledger anchors.
+- Automatic active-quote-vs-challenge validation after payment settlement.
+- Minimal quote policy layer for fresh listing -> active quote commitment.
+- Payment-backed user feedback as a separate signal.
+- Future active validation / attestation path.
+- Reputation write-back that affects the next route.
+- ARC-8004-shaped Algorand-native registry contracts.
+- Judge-facing demo, script, deck, and storyboard.
 
-**Hour 0 (all): freeze the router API contract** so FE/BE proceed in parallel. Minimum:
-`POST /route {task} → {options:[{provider, price, reputation, trust}]}` ·
-`POST /pay {provider, optionId} → {txid, settled}` · `POST /validate {txid} → {verdict, newReputation}`.
+## Out Of Scope
 
-| Member | Lane | Owns | Done = |
-|---|---|---|---|
-| **Shruti** | UX / front-end | Standalone web UI: ranked list + trust score, approve/deny gate, payment txid, the caught-cheating beat, on-chain ledger view. Storyboard + demo script. | UI PR'd 9pm, merged midnight |
-| **Shayaun** | Chain / x402 core | Stand up the spine server (berlin-server or provenance) on Algorand (LocalNet→testnet); the `/pay`→settle→anchor path; fund/verify wallets. | real txid from a router pay call |
-| **New A** | Registry / price | Provider discovery (validate Agent.market live in hour 1, else 3 mock providers) + quote collection + the ranking / weighted-lottery module. | `/route` returns ranked options |
-| **New B** | Validation / reputation | Price-vs-quote validator (+ output check if time); reputation write-back keyed per provider; ERC-8004-shaped anchoring. | bad verdict drops a provider's score on-chain |
+- Live Agent.market dependency.
+- Production DB, TTLs, or persistence beyond the demo state.
+- Desktop wiring.
+- General-purpose output oracle claims.
+- Reintroducing the prior Liminal-substrate demo or pre-Berlin logistics into active docs.
 
-Critical path: New A's `/route` depends on New B's reputation read + Shayaun's quotes; Shruti depends
-only on the frozen contract (mock the API until BE is live). Integration owner: Shayaun.
+## Next Moves
 
-## 8. Demo flow (~3 min, the winning beat)
+- Add mandatory x402 `paymentTxid` + `nonce` to on-chain `giveFeedback`.
+- Replace the router-settled demo payment path with no-custody x402 challenge forwarding.
+- Add service/tool discovery from ARC-8004 registration files, MCP metadata, and A2A agent cards.
+- Add minimal quote metadata and policy: `service_id`, `provider_id`, `quote_id`, amount, asset,
+  `payTo`, `observed_at`, `expires_at`; no signatures or dynamic pricing in demo scope.
+- Add feedback intake keyed by `paymentTxid` + `nonce`.
+- Add automatic validation for quote drift, wrong `payTo`, invalid challenge, replay, timeout, and
+  provider unavailability.
+- Add future active validation / attestation path for provider-earned reputation, including optional ZK
+  proof support.
+- Decide whether to wire or delete the unused `sandbox/lib/router/ranking.ts` stub.
+- Deploy registry app ids to TestNet if the pitch needs public app ids rather than LocalNet e2e proof.
+- Keep Marketplace/Studio/Contracts/Admin mock-first until raw registry backend endpoints are in scope.
 
-1. Operator: "I need `<task>`." Router shows **3 ranked providers** with price + trust score.
-   Provider C is cheapest.
-2. Weighted lottery picks C (or operator approves). **Pay via x402 → Algorand txid on screen.**
-3. C delivers — but **settled amount > quoted amount** (hidden fee). Validation catches the gap
-   *from on-chain data*.
-4. **Reputation write-back:** C's score drops, anchored on Algorand (show the entry).
-5. **Re-run the same request → router now routes to honest provider B.** The system self-corrected.
-6. Show the **on-chain ledger**: every decision + payment + verdict, hash-only, verifiable by anyone,
-   exposing no private substrate.
+## Honesty Register
 
-**Fallback:** if live providers/testnet slip, run all of it with mock providers on LocalNet — same
-loop, real txids, fully controlled.
-
-## 9. Pitch (~75s)
-
-- **Hook:** "Agent marketplaces rank by price. The cheapest provider wins — then adds hidden fees at
-  checkout. Self-reported reputation is gameable."
-- **Problem:** agentic commerce has no *earned* trust layer.
-- **Solution:** a trust router over x402 on Algorand — reputation earned through on-chain validation
-  (the chain catches the quote-vs-settled gap), not self-reported.
-- **Demo:** the caught-cheating self-correction loop.
-- **Why us:** we already run the substrate — bounded refusal, correction stream, hash-only anchoring —
-  the discipline that makes registry entries trustworthy. *"ERC-8004 gives agents a passport; we give
-  the marketplace a conscience."*
-- **Why Algorand:** cheap, instant finality, 1KB note as the anchor substrate; GoPlausible facilitator
-  is live.
-- **Vision:** the missing trust infrastructure for the agent economy.
-
-## 10. Open decisions (resolve before/at hour 0)
-
-1. **Which repo is the spine/submission?** `liminal-agents-v1` berlin-server already has reputation +
-   graph but is **private** (PPA gate to go public). The locked submission decision says the *judged*
-   repo is public `hackathons/algorand-berlin-2026` (MIT), citing liminal-agents as substrate.
-   → Recommend: build the router in the **public hackathons repo**, porting the reputation bits;
-   demo can run whichever is fastest. Confirm.
-2. **Live Agent.market vs mock providers?** Gated on hour-1 callability check.
-3. **Desktop in scope?** Recommend **stretch / post-hack** (Rust+Solid wiring is slower than a
-   standalone UI; the anchor schema is ready when you want it).
-4. **LocalNet vs testnet** for the live demo? Recommend LocalNet as the safe spine, testnet as bonus.
-
-## 11. Risks
-
-- **Layer 6 (live providers) unvalidated** — mock fallback removes the dependency. Decide hour 1.
-- **Testnet funding** still 0 µALGO — LocalNet is the safe demo.
-- **Two x402 codebases** (berlin-server vs provenance) — pick one spine hour 0; don't split effort.
-- **Latency** of per-call on-chain settle — LocalNet is instant; batch if needed.
-- **Output-quality validation is fuzzy** — lead with objective price-vs-quote; output check is stretch.
-
-## 12. Honesty (criterion 7)
-
-- We use Agent.market + its providers; we did not build the marketplace.
-- "Validated reputation" = the specific checks we run (price-vs-quote, output check) — not a general
-  validation registry. ERC-8004 "names the registries"; it is **not deployed on Algorand** — ours are
-  ERC-8004-*shaped*, Algorand-native.
-- LocalNet/mock is an honest demo surface; say so if testnet/live slip.
+- ERC-8004 is not deployed on Algorand; this project is ERC-8004-shaped and Algorand-native.
+- The trust router settlement and ledger anchors are live on Algorand.
+- Current ranking is router-side; it reads the reputation mirror and is not a fully on-chain ranking
+  algorithm.
+- "Validated reputation" means the specific checks we run: active quote vs x402 challenge,
+  challenge/settlement proof, optional output checks, and future validator attestations.

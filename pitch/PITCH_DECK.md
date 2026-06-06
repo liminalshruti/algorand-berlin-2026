@@ -31,10 +31,10 @@ Keep ≤12 words per line on screen.
 ## Slide 3 — The solution (one sentence + loop)
 **On slide:**
 - A **trust router** over x402 on Algorand.
-- request → **rank** (price + earned reputation + validation) → pay → **validate vs quote on-chain** → re-route.
+- request → **rank** (price + earned reputation + validation) → pay → **validate vs quote** → re-route.
 - *Caught once → routed around next time.*
 **Visual:** the 6-beat loop spine (Request · Rank · Pay · Validate · Reputation · Re-run) as a ring.
-**Note:** "Reputation is earned through on-chain validation. This is the whole product in one line — now watch it."
+**Note:** "Reputation is earned through payment-backed validation, not claims. This is the whole product in one line — now watch it."
 
 ---
 
@@ -43,7 +43,7 @@ Keep ≤12 words per line on screen.
 - **LIVE DEMO**
 - the caught-cheating self-correction
 **Visual:** switch to the app. (Fallback: pre-recorded clip — see DEMO_STORYBOARD.md.)
-**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **settled > quoted → reputation drops (written on-chain) → re-run reroutes to the honest provider.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (deployed registry app-ids + ABI).
+**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **x402 challenge > active quote → automatic validation drops reputation → re-run reroutes to the honest provider.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (registry app-ids + ABI).
 
 ---
 
@@ -64,7 +64,7 @@ L1  Algorand                   sub-cent · instant-final · 1KB note
 ## Slide 6 — Why Algorand
 **On slide:**
 - **Same-ledger x402** → proof-of-payment is native, not a foreign hash.
-- **Sub-cent + instant finality** → feedback is a routine side-effect; next route can trust it.
+- **Sub-cent + instant finality** → validation is a routine side-effect; next route can trust it.
 - **1KB note** → hash-only anchor: verifiable by anyone, exposes nothing.
 **Visual:** a ledger row → **TestNet** explorer link (`lora.algokit.io/testnet`); "hash-only" stamp.
 **Note:** "On Algorand the payment and its proof are on the same chain. That's the unlock for an agent-economy trust layer."
@@ -74,12 +74,13 @@ L1  Algorand                   sub-cent · instant-final · 1KB note
 ## Slide 7 — Honesty + ask (Criterion 7)
 **On slide:**
 - ERC-8004: Aug-2025 **draft**, not on Algorand → ours is **ERC-8004-shaped, Algorand-native**.
-- **Live on TestNet** (real txids): x402 settlement · hash-only anchoring · one on-chain `giveFeedback` per verdict.
+- **Live on TestNet** (real txids): x402 settlement · hash-only anchoring · automatic validation.
 - On-chain registries (Identity/Reputation/Validation) built + unit/e2e-tested; ranking math is an in-memory mirror today.
-- "Validated reputation" = price-vs-quote + output checks — not a general oracle.
+- `giveFeedback` is env-gated for payment-backed user feedback; x402 `paymentTxid` + `nonce` still TODO.
+- "Validated reputation" = active quote vs x402 challenge + future attestations — not a general oracle.
 - *ERC-8004 gives agents a passport. We give the marketplace a conscience.*
 **Visual:** tagline large; small repo/QR.
-**Note:** "We were deliberate about not faking the chain parts. Real today: settlement, anchoring, the reputation write. Next: full ranking on-chain. Thank you."
+**Note:** "We were deliberate about not faking the chain parts. Real today: settlement, anchoring, and automatic validation changing the next route. Next: x402-complete feedback and full ranking on-chain. Thank you."
 
 ---
 

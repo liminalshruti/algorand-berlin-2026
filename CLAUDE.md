@@ -5,9 +5,9 @@
   These are historical snapshots and are not relevant to the current build.
 
 ## Active build context
-- Primary scope doc: `TEAM_SWIMLANES_2026-06-06.md` (Navid's lane: Payment + Integration harness)
-- Companion scope: `END_TO_END_HACK_SCOPE_2026-06-06.md`
-- Navid owns: `sandbox/bin/router-server.ts`, `sandbox/lib/router/pay.ts`, `sandbox/lib/router/context.ts`, `sandbox/lib/router/contract.ts` (H0 only, frozen after)
+- Primary scope doc: `BUILD_CHECKLIST_2026-06-06.md` (current done/left tracker)
+- Companion scope: `ref/END_TO_END_HACK_SCOPE_2026-06-06.md`
+- Navid owns: `sandbox/bin/router-server.ts`, `sandbox/lib/router/pay.ts`, `sandbox/lib/router/context.ts`; `sandbox/lib/router/contract.ts` is frozen shared API
 - Do NOT touch `sandbox/bin/berlin-server.js` or any `sandbox/lib/x402/*` file.
 
 ## INTEGRATION_HANDOFF.md — keep it current

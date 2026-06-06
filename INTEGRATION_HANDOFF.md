@@ -3,19 +3,20 @@
 Live doc. Each engineer updates their section when they land code.
 Everyone's Claude should read this before writing anything.
 
-## Current state (origin/main) — all four lanes landed ✅
+## Current state (origin/main) — core loop landed ✅
 
 - **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`.
 - **On-chain:** ARC-8004 Identity + Reputation + Validation registries (Algorand TS) with deploy configs, unit specs, and `localnet-e2e.ts`.
 - **✅ DEPLOYED ON TESTNET (wired):** Identity `764031067`, Reputation `764031363`, Validation `764031094` — both Reputation & Validation are `initialize()`'d so their global `idApp` = `764031067` (verified on-chain). Reputation `764031363` ships the x402 `giveFeedback` coupling (supersedes earlier `764031075`). Deployer/creator = shared payer `24E3…`. **See `DEPLOYED.md`** for code hashes + creation txids; app ids also in `public/deployed.testnet.json`; UI (`arc8004.js`) consumes them. Redeploy: `npm run deploy:testnet` (orchestrator: `smart_contracts/deploy-testnet.ts`, idempotent via indexer).
 - **Frontend:** 5 pages + a left sidebar (Trust Router · Marketplace · Agent Studio · Contracts · Admin) under `public/`.
-- **Open follow-ups:** on-chain `giveFeedback` x402 `paymentTxid`/`nonce` coupling is now **landed + deployed** (Reputation `764031363`) — remaining piece is wiring `onchain.ts` to pass the two new args (see Shayaun's section); `sandbox/lib/router/ranking.ts` is an unused stub (ranking lives in `providers.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
+- **Open follow-ups:** target discovery proxy/tool catalog (ARC-8004 + MCP + A2A) is not wired; minimal quote policy layer is not wired (`quote_id`, amount, asset, `payTo`, `observed_at`, `expires_at`); target no-custody x402 flow is not wired (`/api/pay` currently settles through the router demo payer); automatic validation for active quote vs challenge drift after settlement is not wired; user feedback is separate from validation; current env-gated `/api/validate` → `giveFeedback` bridge must be split so hidden-fee validation is not modeled as user feedback; contract-side x402 `giveFeedback` coupling is landed + deployed (Reputation `764031363`) but `onchain.ts` still needs verified wiring for `paymentTxid`/`nonce`; `sandbox/lib/router/ranking.ts` is an unused stub (ranking lives in `providers.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
 
 ---
 
 ## Shared context
 
 - Server runs on `:3001` — `npm start` from project root. **Defaults to TestNet** (shared throwaway payer in `context.ts`); set `ALGO_NETWORK=localnet` + `PAYER_MNEMONIC` in `.env` for LocalNet.
+- Markdown source of truth: `README.md` (run/status), `BUILD_CHECKLIST_2026-06-06.md` (done/left tracker), `ref/END_TO_END_HACK_SCOPE_2026-06-06.md` (demo scope), `public/README.md` (frontend), `pitch/*` (submission), `ref/ERC8004_AVM_MAPPING.md` + `ref/ARC-8004.md` (standards).
 - All types live in `sandbox/lib/router/contract.ts` — import from there, never edit it
 - Shared state lives in `ctx` (built by `context.ts`) — use the Maps, don't create your own stores
 - Wire your routes into your stub file, not into `router-server.ts`
@@ -75,11 +76,12 @@ npm start                # funds providers automatically, prints option_ids on b
 
 ---
 
-## Reza — Identity Registry + Discovery + Ranking ✅ DONE
+## Reza — Identity Registry + Demo Discovery + Ranking ✅ DEMO DONE / TOOL CATALOG OPEN
 
 `POST /api/route` + `GET /api/providers` live (`routes.providers.ts` + `providers.ts`, with
-`providers.test.ts`); discovery + ranking in `providers.ts::discoveryOptions` (`ranking.ts` is an
-unused stub). On-chain Identity registry below.
+`providers.test.ts`); current discovery is seeded-provider + register-filter only. Target discovery
+proxy/tool catalog from ARC-8004 agent URIs, MCP metadata, and A2A agent cards is open. Current ranking
+is in `providers.ts::discoveryOptions` (`ranking.ts` is an unused stub). On-chain Identity registry below.
 
 **Chain identity registry:**
 
@@ -105,7 +107,7 @@ POST /api/route { task, register } → { route_id, task, register, options:[Rout
 - `providerId(net,address)` → `algorand:{net}:{address}`
 - `registerProvider(ctx,input)` stores `Provider.agent_uri` in `ctx.providers`
 - `discover(ctx.providers.values(), register)` returns identity matches
-- `/api/route` is discovery-compatible only; no `ctx.repState` ranking yet
+- `/api/route` is demo-discovery-compatible only; target route-by-service/tool is open
 - `/api/route` stores:
 
 ```ts
@@ -127,13 +129,14 @@ ctx.routeStore.set(route_id, {
 
 ## Shayaun — Reputation Registry + Validation Registry ✅ ROUTER GLUE WIRED
 
-- Live: `POST /api/validate {payment_id}` → `{validation_id, price_match, output_pass, response, new_reputation, verdict_txid}`; `GET /api/reputation?provider=` → `{provider_id, score, reads_logged, corrections_logged, by_tag, uri, hash}`.
+- Live: `POST /api/validate {payment_id}` → `{validation_id, price_match, output_pass, response, new_reputation, verdict_txid}`; this is automatic validation for objective checks, not user feedback. `GET /api/reputation?provider=` → `{provider_id, score, reads_logged, corrections_logged, by_tag, uri, hash}`.
 - `makeValidationRoutes(ctx)` **injects `ctx.repState`** (in-memory; score = (landed−corrected)/landed) so `/api/route` reroutes after a write-back — no `router-server.ts` change needed.
 - Verdict anchored hash-only via `ctx.deps.anchorNote` (real txid on LocalNet; skipped if algod down).
 - On-chain registries deploy via new `smart_contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
-- **On-chain write wired (env-gated):** `onchain.ts::maybeWriteReputation` calls `giveFeedback` on the deployed Reputation registry from `/api/validate` (best-effort; returns the txid in `on_chain_feedback_txid` + a `erc8004.giveFeedback` ledger entry). Enable with `REPUTATION_APP_ID` + `REPUTATION_SUBMITTER_MNEMONIC` (or `PAYER_MNEMONIC`). No-op/safe when unset.
-- ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`. ⚠️ TODO (yours): wire `onchain.ts` to pass the two new args (`giveFeedback` arg order: `…, feedbackHash, paymentTxid, nonce`); confirm the regenerated `ReputationRegistryClient` method/arg names match.
+- **On-chain write wired (env-gated demo bridge):** `onchain.ts::maybeWriteReputation` currently calls `giveFeedback` on the deployed Reputation registry from `/api/validate` (best-effort; returns the txid in `on_chain_feedback_txid` + a `erc8004.giveFeedback` ledger entry). Enable with `REPUTATION_APP_ID` + `REPUTATION_SUBMITTER_MNEMONIC` (or `PAYER_MNEMONIC`). No-op/safe when unset.
+- ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`.
 - 🟡 `onchain.ts` wiring DRAFTED by Shruti's session (untested on-chain — no toolchain here): `maybeWriteReputation(ctx, provider_id, response, paymentTxid)` now passes `paymentTxid` (real x402 settlement txid → 32 bytes via base32 decode) + a random `nonce`, and uses the **real** Identity agentId from the on-boot `registerSeededAgents` map (falls back to a per-run counter). Call site `routes.validation.ts` passes `pay.txids[0]`. **Please verify the byte[32] txid encoding + arg names against a live TestNet call.**
+- ⚠️ TODO (yours): split automatic validation from user feedback: active-quote-vs-x402-challenge drift should use validation/anchor evidence, while `giveFeedback` is for payment-backed user satisfaction. Confirm the regenerated `ReputationRegistryClient` method/arg names match `onchain.ts`, then move the hidden-fee/quote-drift path off the user-feedback bridge.
 - 🟢 Offload (Shruti's session): added unit tests for the router glue — `validation.test.ts` (price-vs-quote, epsilon, quality threshold, unknown provider) + `reputation-state.test.ts` (score math, correction tags, reroute hook, per-provider isolation). Run with `npm test`. Pure logic, no network.
 
 **What's ready for you to consume:**
@@ -176,7 +179,9 @@ const ctx = await buildContext(repState);
 
 **All endpoints consumed (live):** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`.
 
-**The demo beat:** ranked providers → pay (gap in red if settled > quoted) → validate (verdict + reputation delta) → re-run reroutes off the caught provider. Pitch script/deck/storyboard in `pitch/`.
+**Current demo beat:** ranked providers → router-settled pay shim (gap in red if settled > quoted) → validate (verdict + reputation delta) → re-run reroutes off the caught provider.
+
+**Target demo beat:** ranked providers → active quote pinned → provider x402 challenge asks more → payment settles for challenge → automatic validation drops reputation → re-run reroutes off the caught provider. Pitch script/deck/storyboard in `pitch/`.
 
 **Agent registration surface (NEW — registers agents on the deployed Identity registry):**
 ```

@@ -2,7 +2,7 @@
 
 Shot list + voiceover, timed to the **actual UI** — a multi-page console with a left
 **sidebar** (Trust Router · Marketplace · Agent Studio · Contracts · Admin). Target ~2:50.
-The one beat that must land: **caught cheating → reputation drops (anchored) → re-run reroutes
+The one beat that must land: **caught cheating → automatic validation drops reputation (anchored) → re-run reroutes
 to the honest provider.**
 
 **Pre-flight**
@@ -24,13 +24,13 @@ to the honest provider.**
 
 ## BEAT 2 — Pay & the catch (0:38–1:05)
 - **Action:** Click **Approve & pay** (or `A`). Pending → metric band fills.
-- **Point at:** **Quoted vs Settled** — settled **higher, in red**; the **x402 payment-anchored** badge + proof-of-payment (round, nonce); spine on **Pay**.
-- **VO:** "Operator approves. We settle over x402 on Algorand — a real TestNet transaction. But watch the settled amount: it comes back **higher than the quote**. A hidden fee — caught straight from the on-chain settlement, not a complaint form."
+- **Point at:** **Quote vs Challenge** — x402 challenge **higher, in red**; the **x402 payment-anchored** badge + proof-of-payment (round, nonce); spine on **Pay**.
+- **VO:** "Operator approves. The provider advertised the cheapest quote, but the returned x402 challenge asks for more. Payment settles on Algorand TestNet for that challenge amount. The hidden fee is caught from quote drift plus payment proof, not a complaint form."
 
-## BEAT 3 — Validate → reputation drops, anchored (1:05–1:32)
+## BEAT 3 — Automatic validation → reputation drops, anchored (1:05–1:32)
 - **Action:** (validation runs automatically) — the causal line + signed packet appear.
-- **Point at:** the **causal line** "Reputation 88 → 78 **because** settled > quoted — missed_compensation"; the **signed packet** (verdict, reputation delta, SHA-256); the **ledger** row in the audit ribbon.
-- **VO:** "Validation writes the verdict: the provider's reputation **drops**, *because* settled exceeded quote — anchored hash-only on Algorand. Here's the signed packet, here's the anchor. The penalty is on the ledger, not in a private database."
+- **Point at:** the **causal line** "Reputation 88 → 78 **because** challenge > active quote — quote_drift"; the **signed packet** (verdict, reputation delta, SHA-256); the **ledger** row in the audit ribbon.
+- **VO:** "Automatic validation writes the verdict: the provider's reputation **drops**, *because* the challenge exceeded the active quote commitment — anchored hash-only on Algorand. Here's the signed packet, here's the anchor. This is not user feedback; it's objective payment evidence."
 - *(Optional 3s):* **⚑ Flag provider** → "the operator can file a dispute too."
 
 ## BEAT 4 — Re-run → self-correction (1:32–1:58) ★ THE MONEY BEAT
@@ -46,7 +46,7 @@ to the honest provider.**
 ## BEAT 6 — Verifiability (2:30–2:42)
 - **Action:** Back on the router (sidebar → **Trust Router**), click a **ledger anchor** → detail modal → **TestNet explorer** link. Click a hash to **copy**.
 - **Point at:** the bottom-right **chain badge** (TestNet + app-ids); hash-only note; explorer link.
-- **VO:** "Everything's anchored hash-only on Algorand's note field — verifiable by anyone, exposing nothing. One ledger of who paid whom, quoted vs settled, and the verdict."
+- **VO:** "Everything's anchored hash-only on Algorand's note field — verifiable by anyone, exposing nothing. One ledger of who paid whom, quote vs challenge, settlement proof, and the verdict."
 
 ## CLOSE (2:42–2:55)
 - **Screen:** Trust Router, reroute still visible (or title slide).
@@ -62,8 +62,8 @@ One line in Beat 5 ("the router's pick score reads the registry's earned score")
 ## Honesty (criterion 7 — do not overclaim)
 - **Live on TestNet:** x402 settlement + hash-only ledger anchoring (real txids; explorer links resolve to `lora.algokit.io/testnet`).
 - **On-chain, built + tested:** the three ARC-8004 registries (AVM TypeScript, unit specs + `localnet-e2e.ts` exercising every ABI method). Deploying them to TestNet is the milestone.
-- **Computed off-chain (today):** the demo's reputation/reroute runs in the router's in-memory state and is *anchored* hash-only — say "anchored," not "computed on-chain." If asked, that's exactly the next wire-up.
-- ERC-8004-**shaped**, Algorand-native; "validated reputation" = the specific checks (price-vs-quote, output) — not a general oracle.
+- **Computed off-chain (today):** the demo's automatic validation, reputation/reroute, and user-feedback separation run in the router's in-memory state and are *anchored* hash-only — say "anchored," not "computed on-chain." If asked, that's exactly the next wire-up.
+- ERC-8004-**shaped**, Algorand-native; "validated reputation" = active quote vs x402 challenge, optional output checks — not a general oracle.
 
 ## Video production notes (≤3-min recording)
 - 1920×1080, present mode, cursor visible, ~110% zoom. Navigate via the **sidebar**.
@@ -80,7 +80,7 @@ One line in Beat 5 ("the router's pick score reads the registry's earned score")
 | beat | t | what the audience must see |
 |---|---|---|
 | 1 | 0:12 | ranked by trust, not price |
-| 2 | 0:38 | settled > quoted, in red |
+| 2 | 0:38 | challenge > active quote, in red |
 | 3 | 1:05 | reputation drops, anchored |
 | 4 | 1:32 | **re-run reroutes — self-correction** |
 | 5 | 1:58 | reviews audit to a payment · real registry app-ids |
