@@ -17,9 +17,14 @@
  */
 
 /* ───────────────────────────── config ─────────────────────────────── */
-const BASE_URL = "http://localhost:3001";   // Navid's router-server
-const LIVE     = false;                      // ← single flip: false = mock, true = live
-const API_BASE = LIVE ? BASE_URL : null;
+const BASE_URL = "http://localhost:3001";   // Navid's router-server (INTEGRATION_HANDOFF.md)
+// LIVE MODE — per-endpoint switch. true = hit the live server, false = in-file mock.
+// Per the handoff: /api/pay + /api/ledger are live now; /api/route, /api/validate,
+// /api/reputation are mocked until Reza/Shayaun land them — flip those to true as
+// they go live. (Live /api/pay needs a live /api/route, since pay looks up the
+// route_id in the server's store; so flip route+pay together for the approve step.)
+const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
+const ANY_LIVE = Object.values(LIVE).some(Boolean);
 const NETWORK  = "localnet";
 const TRUST_WEIGHTS = { price: 0.3, reputation: 0.4, validation: 0.3 };
 const MOCK_LATENCY = { route: 260, pay: 460, validate: 620 };   // makes pending states visible
@@ -140,16 +145,16 @@ const mockApi = {
 
 /* ───────────────────────── api wrapper (mock ↔ live) ──────────────── */
 async function http(method, path, body) {
-  const res = await fetch(API_BASE + path, body ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { method });
+  const res = await fetch(BASE_URL + path, body ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { method });
   if (!res.ok) { const e = new Error(`${path} → ${res.status}`); e.status = res.status; throw e; }
   return res.json();
 }
 const api = {
-  route: (b) => API_BASE ? http("POST", "/api/route", b) : mockApi.route(b),
-  pay: (b) => API_BASE ? http("POST", "/api/pay", b) : mockApi.pay(b),
-  validate: (b) => API_BASE ? http("POST", "/api/validate", b) : mockApi.validate(b),
-  reputation: (p) => API_BASE ? http("GET", `/api/reputation?provider=${encodeURIComponent(p)}`).catch(() => null) : mockApi.reputation(p),
-  ledger: () => API_BASE ? http("GET", "/api/ledger") : mockApi.ledgerAll(),
+  route: (b) => LIVE.route ? http("POST", "/api/route", b) : mockApi.route(b),
+  pay: (b) => LIVE.pay ? http("POST", "/api/pay", b) : mockApi.pay(b),
+  validate: (b) => LIVE.validate ? http("POST", "/api/validate", b) : mockApi.validate(b),
+  reputation: (p) => LIVE.reputation ? http("GET", `/api/reputation?provider=${encodeURIComponent(p)}`).catch(() => null) : mockApi.reputation(p),
+  ledger: () => LIVE.ledger ? http("GET", "/api/ledger") : mockApi.ledgerAll(),
 };
 
 /* ──────────────────────────── helpers ─────────────────────────────── */
@@ -340,11 +345,12 @@ async function renderLedger() {
 }
 
 function renderReceipt() {
-  $("frameReceipt").innerHTML = `
+  const r = $("frameReceipt"); if (!r) return;   // never let a missing chrome element blank the screen
+  r.innerHTML = `
     <span class="fr-glyph">◇</span>
     <span class="fr-strong">route · ${ui.route ? ui.route.route_id : "—"}</span>
     <span class="fr-sep">·</span><span>${ui.route ? ui.route.options.length : 0} providers</span>
-    <span class="fr-sep">·</span><span>${NETWORK} · ${API_BASE ? "live" : "mock"}</span>
+    <span class="fr-sep">·</span><span>${NETWORK} · ${ANY_LIVE ? "live" : "mock"}</span>
     <span class="fr-right">⌘? shortcuts · ⌘. tray</span>`;
 }
 
@@ -437,7 +443,7 @@ function boot() {
   renderReceipt();
   requestAnimationFrame(() => document.body.classList.add("ready"));
 }
-function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${API_BASE ? "LIVE :3001" : "MOCK"}`; }
+function setBanner() { $("netBanner").textContent = `ALGORAND · ${NETWORK.toUpperCase()} · ${ANY_LIVE ? "LIVE :3001" : "MOCK"}`; }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();

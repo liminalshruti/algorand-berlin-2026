@@ -56,7 +56,7 @@ The UI codes to the frozen API (`TEAM_SWIMLANES_2026-06-06.md`):
 | `cut-shell.css` | vendored desktop-app shell (frame chrome, rails, slate, brief, dispo, audit) |
 | `brand-upgrade.css` + `fonts/` | vendored brand serif/display faces (Perfectly Nineties, Nineties Headliner) |
 
-A catalog mirror of this UI lives at
-`liminal-prototype/cuts/09-trust-router.html` for design-system review. The
-shell files are vendored here so the judged repo renders identically to the
-desktop app with no external dependency.
+**This repo is the single home for the trust-router frontend.** The Liminal
+design system (`design-tokens.css`, `cut-shell.css`, `brand-upgrade.css`, fonts)
+is vendored here so the judged repo renders identically to the desktop app with
+no external dependency — edit the UI here, not in `liminal-prototype`.
