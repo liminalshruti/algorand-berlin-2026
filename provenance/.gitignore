@@ -1,4 +1,0 @@
-node_modules/
-# testnet anchoring account — never commit a funded key
-.algo-testnet-account.json
-*.log
