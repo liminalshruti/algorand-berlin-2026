@@ -76,12 +76,12 @@
           <button id="routeBtn" class="dispo-btn is-primary">Route →</button>
         </div>
         <div class="rail-subhead"><span>Providers</span><span class="rs-meta" id="railSub">price · rep · trust</span></div>
-        <div id="providerList"></div>
+        <div id="providerList" aria-live="polite"></div>
       </aside>
 
       <!-- center · slate -->
       <section class="slate-area">
-        <div class="classification" id="classification">ROUTE · DILIGENCE · LOCALNET</div>
+        <div class="classification" id="classification" role="status" aria-live="polite">ROUTE · DILIGENCE · LOCALNET</div>
 
         <header class="slate-header">
           <div class="slate-eyebrow" id="slateEyebrow"><span class="sb-strong">Trust router</span></div>
@@ -89,7 +89,7 @@
           <p class="slate-subtitle" id="slateSubtitle">Collect competing quotes; rank by price + earned reputation + validation; pay the winner; validate against the quote on-chain.</p>
         </header>
 
-        <div class="metric-band" id="metricBand" hidden></div>
+        <div class="metric-band" id="metricBand" aria-live="polite" hidden></div>
 
         <div class="slate-canvas" id="slateCanvas" data-empty="1" data-layout="freeform">
           <div class="slate-empty" id="slate-empty">
@@ -124,7 +124,7 @@
           <span class="agency-label" title="ERC-8004-shaped reputation. Score = how a provider's reads survive validation. Caught once → routed around.">◇ REGISTRY · ERC-8004-SHAPED</span>
           <span class="live-indicator">live</span>
         </div>
-        <div class="registry-list" id="registryList"></div>
+        <div class="registry-list" id="registryList" aria-live="polite"></div>
         <p class="registry-note">Reputation is earned through on-chain validation — the chain catches the quote-vs-settled gap. Self-reported scores are gameable; these are not.</p>
       </aside>
     </main>
