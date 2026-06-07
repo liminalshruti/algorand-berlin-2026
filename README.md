@@ -18,9 +18,6 @@ validation outcomes, then route around agents that get caught drifting from thei
 - `docs/pitch/` - script, deck outline, and demo storyboard.
 - `docs/reference/ERC8004_AVM_MAPPING.md` + `docs/reference/ARC-8004.md` - standards/reference material.
 
-Old pre-Berlin logistics, H0 implementation specs, and prior Liminal-substrate positioning docs have
-been removed from the active markdown surface.
-
 ## Current Architecture
 
 | Layer | Where | What |
