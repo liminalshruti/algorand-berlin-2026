@@ -1,0 +1,40 @@
+/*
+ * nav.css · sidebar lives INSIDE the app frame.
+ * .frame (flex column): titlebar on top, then .frame-body (row) = sidebar | content.
+ */
+.frame-body { display: flex; flex: 1; min-height: 0; }
+.frame-content { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+
+.sidebar {
+  flex-shrink: 0; width: 196px; display: flex; flex-direction: column;
+  background: var(--frame-bg-2); border-right: 1px solid var(--frame-border);
+  padding: 14px 10px 12px; overflow-y: auto;
+}
+.sb-brand { display: flex; align-items: center; gap: 8px; padding: 2px 9px 12px; }
+.sb-brand .diamond { color: var(--clarity); font-family: var(--mono); font-size: 15px; }
+.sb-brand .sb-word { font-family: var(--display); font-size: 18px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
+.sb-tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-dim); padding: 0 9px 12px; }
+
+.sb-nav { display: flex; flex-direction: column; gap: 2px; }
+.sb-link {
+  display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: var(--radius-3);
+  text-decoration: none; color: var(--text-dim); font-family: var(--sans); font-size: var(--fs-sm);
+  border-left: 2px solid transparent; transition: background var(--tx-base) var(--ease), color var(--tx-base) var(--ease);
+}
+.sb-link:hover { background: var(--hover); color: var(--text); }
+.sb-link.is-active { background: var(--clarity-bg); color: var(--text); border-left-color: var(--clarity); }
+.sb-ico { width: 16px; text-align: center; color: var(--text-faint); font-size: 12px; }
+.sb-link.is-active .sb-ico { color: var(--clarity); }
+
+.sb-foot { margin-top: auto; padding: 12px 9px 2px; border-top: 1px solid var(--frame-border); }
+.sb-net { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 9px; letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-dim); }
+.sb-net .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--watch); flex-shrink: 0; }
+.sb-net.testnet .dot { background: var(--cerulean-500, #197EEB); } .sb-net.mainnet .dot { background: var(--good); }
+
+/* narrow: collapse to an icon rail (still inside the frame) */
+@media (max-width: 920px) {
+  .sidebar { width: 52px; padding: 12px 6px; }
+  .sb-brand .sb-word, .sb-tag, .sb-label { display: none; }
+  .sb-link { justify-content: center; padding: 10px 0; }
+  .sb-foot { padding: 10px 0 2px; }
+}
