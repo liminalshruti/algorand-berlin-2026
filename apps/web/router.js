@@ -805,7 +805,8 @@ function applyPeraOperator() {
   if (w.account) { peraActiveR = true; ui.operator = w.account; }
   else if (peraActiveR) { peraActiveR = false; ui.operator = null; }
   else return;
-  toast(w.account ? `Pera connected · operator ${w.account.slice(0, 4)}…${w.account.slice(-4)}` : "Pera disconnected");
+  const kind = w.isLocal ? "Demo wallet" : "Pera";
+  toast(w.account ? `${kind} connected · agent ${w.account.slice(0, 4)}…${w.account.slice(-4)}` : `${kind} disconnected`);
 }
 window.addEventListener("wallet:change", applyPeraOperator);
 window.addEventListener("wallet:ready", applyPeraOperator);

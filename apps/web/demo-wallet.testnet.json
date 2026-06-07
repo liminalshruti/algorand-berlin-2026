@@ -1,0 +1,6 @@
+{
+  "_comment": "PUBLIC throwaway TestNet demo wallet — the SAME agent wallet the Claude x402-demo skill / MCP server pays from (PAYER_MNEMONIC in committed .env.demo). TestNet ALGO is valueless and this key is published on purpose so the browser can auto-sign as this agent without Pera pairing. NEVER reuse on MainNet. Source of truth: .env.demo.",
+  "network": "testnet",
+  "address": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+  "mnemonic": "vacuum major sort slide sister traffic average noble board boss yellow labor measure resource current sniff bamboo meat federal metal other almost atom abandon document"
+}

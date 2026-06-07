@@ -18,6 +18,13 @@
  * (Pera can't reach localnet). explorerFor() returns a lora TestNet link.
  *
  * Any element with [data-pera-connect] becomes a connect/disconnect toggle, auto-labelled.
+ *
+ * LOCAL DEMO SIGNER (router page only):
+ *   On pages with <body data-page="router"> we auto-connect a *local* signer holding the
+ *   public throwaway TestNet wallet from demo-wallet.testnet.json — the SAME agent wallet the
+ *   Claude x402-demo skill / MCP server pays from. It signs real TestNet txns in-browser with
+ *   the mnemonic (no Pera pairing). Every other page keeps the real no-custody Pera flow.
+ *   The same window.WALLET surface is used either way, so router.js needs no changes.
  */
 const NETWORK = "testnet";
 const CHAIN_ID = 416002;                              // Algorand TestNet (mainnet = 416001)
@@ -28,11 +35,18 @@ const PERA_CDN = "https://esm.sh/@perawallet/connect@1.5.2";   // needs the js-s
 // browser dedupes to one module instance — same Transaction class on both sides of signing.
 const ALGOSDK_CDN = "https://esm.sh/algosdk@^3.0.0?target=es2022";
 
+// Local demo signer: auto-connect the public throwaway wallet on the router page only.
+const LOCAL_WALLET_URL = "demo-wallet.testnet.json";
+const LOCAL_MODE = typeof document !== "undefined" && document.body
+  ? document.body.dataset.page === "router"
+  : false;
+
 const subs = [];
-const state = { account: localStorage.getItem(LS_KEY) || null, ready: false, network: NETWORK };
+const state = { account: localStorage.getItem(LS_KEY) || null, ready: false, network: NETWORK, local: false };
 let pera = null;     // PeraWalletConnect instance
 let algosdk = null;  // algosdk module
 let algod = null;    // Algodv2 client (TestNet)
+let localSk = null;  // local demo signer secret key (router page only)
 
 const explorerFor = (txid) => `https://lora.algokit.io/${NETWORK}/transaction/${txid}`;
 
@@ -48,19 +62,44 @@ function setAccount(addr) {
   emit("wallet:change");
 }
 
+// Load just algosdk + a TestNet algod client. Used by the local signer, which has no
+// Pera dependency, so a Pera CDN miss never blocks local signing.
+async function loadSdk() {
+  if (algosdk && algod) return;
+  const sdkMod = await import(ALGOSDK_CDN);
+  algosdk = sdkMod.default || sdkMod;
+  algod = new algosdk.Algodv2("", ALGOD, "");
+}
+
 async function loadDeps() {
   if (pera && algosdk) return;
-  const [peraMod, sdkMod] = await Promise.all([import(PERA_CDN), import(ALGOSDK_CDN)]);
-  algosdk = sdkMod.default || sdkMod;
+  const [peraMod] = await Promise.all([import(PERA_CDN), loadSdk()]);
   const PeraWalletConnect =
     peraMod.PeraWalletConnect || (peraMod.default && peraMod.default.PeraWalletConnect);
   if (!PeraWalletConnect) throw new Error("Pera Connect failed to load");
   pera = new PeraWalletConnect({ chainId: CHAIN_ID });
-  algod = new algosdk.Algodv2("", ALGOD, "");
   pera.connector?.on("disconnect", () => setAccount(null));
 }
 
+// Connect the local demo signer: derive the public throwaway wallet from
+// demo-wallet.testnet.json and hold its key for in-browser signing (router page only).
+async function connectLocal() {
+  await loadSdk();
+  const res = await fetch(LOCAL_WALLET_URL, { cache: "no-store" });
+  if (!res.ok) throw new Error(`demo wallet config ${res.status}`);
+  const cfg = await res.json();
+  if (!cfg.mnemonic) throw new Error("demo wallet config missing mnemonic");
+  const acct = algosdk.mnemonicToSecretKey(cfg.mnemonic.trim());
+  localSk = acct.sk;
+  const addr = acct.addr.toString ? acct.addr.toString() : String(acct.addr);
+  if (cfg.address && cfg.address !== addr) throw new Error("demo wallet address mismatch");
+  state.local = true;
+  setAccount(addr);
+  return addr;
+}
+
 async function connect() {
+  if (LOCAL_MODE) return connectLocal();
   await loadDeps();
   let accounts;
   try { accounts = await pera.connect(); }
@@ -73,10 +112,16 @@ async function connect() {
   return state.account;
 }
 async function disconnect() {
+  if (state.local) { localSk = null; state.local = false; setAccount(null); return; }
   try { await pera?.disconnect(); } catch (_) {}
   setAccount(null);
 }
 async function reconnect() {
+  if (LOCAL_MODE) {
+    try { await connectLocal(); }
+    catch (e) { try { window.dispatchEvent(new CustomEvent("wallet:error", { detail: { message: `local wallet: ${e.message}` } })); } catch (_) {} }
+    return;
+  }
   try {
     await loadDeps();
     const accounts = await pera.reconnectSession();
@@ -84,21 +129,28 @@ async function reconnect() {
   } catch (_) { /* no live session — leave state as-is */ }
 }
 
-// Sign an array of algosdk.Transaction (one atomic group) with Pera and submit to TestNet.
+// Sign an array of algosdk.Transaction (one atomic group) and submit to TestNet.
+// Local mode signs in-browser with the demo key; otherwise Pera signs (no-custody).
 async function signAndSend(txns) {
-  if (!state.account) throw new Error("connect a Pera wallet first");
-  await loadDeps();
-  const group = txns.map((txn) => ({ txn, signers: [state.account] }));
-  const signed = await pera.signTransaction([group]);
+  if (!state.account) throw new Error(state.local ? "local wallet not ready" : "connect a Pera wallet first");
+  let signed;
+  if (state.local) {
+    await loadSdk();
+    signed = txns.map((txn) => txn.signTxn(localSk));
+  } else {
+    await loadDeps();
+    const group = txns.map((txn) => ({ txn, signers: [state.account] }));
+    signed = await pera.signTransaction([group]);
+  }
   const res = await algod.sendRawTransaction(signed).do();
-  const txid = res.txid || res.txId;                      // v3 → txid, v2 → txId
+  const txid = res.txid || res.txId || txns[0].txID();    // v3 → txid, v2 → txId
   await algosdk.waitForConfirmation(algod, txid, 6);
   return { txid, network: NETWORK, explorer: explorerFor(txid) };
 }
 // Convenience: a single payment (defaults to a 0-ALGO self-anchor carrying a note).
 async function payment({ to, amountAlgo = 0, note = "" } = {}) {
-  if (!state.account) throw new Error("connect a Pera wallet first");
-  await loadDeps();
+  if (!state.account) throw new Error(state.local ? "local wallet not ready" : "connect a Pera wallet first");
+  if (state.local) await loadSdk(); else await loadDeps();
   const sp = await algod.getTransactionParams().do();
   const dest = to || state.account;
   const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -115,11 +167,14 @@ async function payment({ to, amountAlgo = 0, note = "" } = {}) {
 function paintButtons() {
   document.querySelectorAll("[data-pera-connect]").forEach((btn) => {
     const a = state.account;
+    const label = state.local ? "Demo wallet" : "Connect Pera";
     btn.classList.toggle("is-connected", !!a);
-    btn.title = a ? `Pera · ${NETWORK} · click to disconnect` : "Connect a Pera wallet (testnet)";
+    btn.title = a
+      ? `${state.local ? "Local demo wallet" : "Pera"} · ${NETWORK} · click to disconnect`
+      : (LOCAL_MODE ? "Connect the demo agent wallet (testnet)" : "Connect a Pera wallet (testnet)");
     btn.innerHTML = a
       ? `<span class="pera-dot"></span>${a.slice(0, 4)}…${a.slice(-4)}`
-      : `<span class="pera-dot"></span>Connect Pera`;
+      : `<span class="pera-dot"></span>${label}`;
   });
 }
 // Pages that don't ship a static [data-pera-connect] button get one auto-mounted in the titlebar.
@@ -151,6 +206,7 @@ function wireButtons() {
 window.WALLET = {
   get account() { return state.account; },
   get isConnected() { return !!state.account; },
+  get isLocal() { return !!state.local; },
   get network() { return NETWORK; },
   get ready() { return state.ready; },
   connect, disconnect, reconnect, signAndSend, payment, explorerFor,
