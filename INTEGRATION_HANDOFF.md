@@ -231,7 +231,7 @@ GET /api/state → {
   ledger:[{ txid, schema, ref_id, hash, round, network, explorer }]
 }
 ```
-Read-only serializer of the in-memory `ctx` Maps that the per-call responses never expose (payments, challenges, active quotes), with each record carrying its on-chain anchor txid + `explorer` URL where one exists. Server: `apps/router/src/routes.state.ts` (`makeStateRoutes(ctx)`); composed in `router-server.ts` via `app.route('/', makeStateRoutes(ctx))` (one line, alongside the other teammate factories). No mutation — pure read of shared state; reputation is feature-detected via `repState.full()`. _(Touches `router-server.ts` only for the one compose line — flag for Navid.)_
+Read-only serializer of the in-memory `ctx` Maps that the per-call responses never expose (payments, challenges, active quotes), with each record carrying its on-chain anchor txid + `explorer` URL where one exists. Server: `apps/router/src/routes.state.ts` (`makeStateRoutes(ctx)`); composed in `router-server.ts` via `app.route('/', makeStateRoutes(ctx))` (one line, alongside the other teammate factories). No mutation — pure read of shared state; reputation is feature-detected via `repState.full()`. Tests: `apps/router/src/routes.state.test.ts` (8 in-process `app.request('/api/state')` cases — empty state, reputation full()+by_tag, getReputation fallback, payment drift/explorer, challenge quote_drift, ledger explorer, active quotes). _(Touches `router-server.ts` only for the one compose line — flag for Navid.)_
 
 **Current demo beat:** ranked agents → router-settled pay shim (gap in red if settled > quoted) → validate (verdict + reputation delta) → re-run reroutes off the caught agent.
 
