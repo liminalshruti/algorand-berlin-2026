@@ -60,6 +60,7 @@ npm start                # boots on TestNet, funds the 3 agents, prints option_i
 
 - **Default network is TestNet.** `.env.demo` carries the shared throwaway payer mnemonic so anyone can `npm start` with no local `.env` and get real on-chain txids. TestNet ALGO is valueless; the key is public on purpose — never reuse on MainNet.
 - Boot calls `fundAgents` (0.5 ALGO each, ~1.5 ALGO/restart), so **the payer must be funded first or boot fails.** Dispense ~10 ALGO; top up if it runs dry.
+- Current payer top-up blocker (2026-06-07): `npm start` loads the 2 card-backed agents and known registrations, then stops in `fundAgents` because shared payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` lacks enough available balance for the next funding tx; `algokit dispenser fund` is unavailable locally until `algokit dispenser login` is completed.
 - Explorer links resolve to `lora.algokit.io/testnet/transaction/<txid>`.
 - LocalNet still works with local overrides for `ALGO_NETWORK`, `ALGOD_URL`, `ALGOD_PORT`, and `ALGOD_TOKEN`; set a private payer only if you intentionally do not want the public TestNet demo payer.
 

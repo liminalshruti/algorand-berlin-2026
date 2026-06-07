@@ -291,10 +291,10 @@ Gate:
 |---|---|---|---|
 | Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
 | Phase 1 - Known-Agent Identity Registration | PASS | `npm run register:testnet-agents -- --check` PASS; `npm run register:testnet-agents` registered Honest `registry_agent_id=1` and Cheat `registry_agent_id=2`; evidence recorded in `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. | Owner `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU`; Honest txs `ZQ4VZVKAHKPTA7GZSGRFZ7CF3EPXSF3G4IBG5UWPWTPLOTF2WVAQ` / `G6M6XS6NK2Y3K4DI66KDPD64PZCWYPYCOOM7OKJ73HM6TXSYFQWQ`; Cheat txs `IO4QNVCWR6MRWCUJDLNDWUA2ZIJ35OXQLK4ITX76EPLTGSETQSYQ` / `MWI56EUVNEUJWNXOJGT2KPLYYMKO7QS6LZHDSPWR3OQB5MKQEZUA`. |
-| Phase 2 - x402 Readiness Checklist | TODO | Pending. | Current cards already declare `x402Support: true`; confirm parser/tests remain aligned. |
+| Phase 2 - x402 Readiness Checklist | PASS | `npm test` PASS; in-process `GET /api/services` shows Honest/Cheat `registry_agent_id` values with `quote.pay_to` equal to agent wallets and no hidden challenge field; in-process `POST /api/route` created 2 active quotes and 2 payment requirements. | Cards remain declaration-only x402; route-time quote/payment requirements are router-derived. |
 | Phase 3 - Direct-Payment Proof Path Design | TODO | Pending. | Future interfaces are planned, not live. |
 | Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
-| Phase 5 - Live Smoke And Handoff | TODO | Pending. | Run non-spending checks before any TestNet smoke. |
+| Phase 5 - Live Smoke And Handoff | TODO | Early `npm start` attempt loaded 2 cards and 2 known registrations, then stopped in `fundAgents`. | Shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` needs a top-up before live payment smoke; `algokit dispenser fund` was unavailable because local dispenser login is required. |
 
 ## Test Plan
 
