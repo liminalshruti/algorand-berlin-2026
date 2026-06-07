@@ -69,14 +69,14 @@ async function getReputation(app: ReturnType<typeof makeValidationRoutes>, agent
   return { status: res.status, body: (await res.json()) as Json };
 }
 
-test("honest payment -> full pass, reputation 100, verdict anchored to the ledger", async () => {
+test("honest payment -> full pass, effective reputation rises, verdict anchored to the ledger", async () => {
   const { app, ctx } = setup();
   const { status, body } = await postValidate(app, "pay-honest");
   assert.equal(status, 200);
   assert.equal(body.price_match, true);
   assert.equal(body.output_pass, null);
   assert.equal(body.response, 100);
-  assert.equal(body.new_reputation, 100);
+  assert.equal(body.new_reputation, 70);
   assert.match(body.verdict_txid as string, /^anchor-/);
   assert.equal(typeof body.validation_id, "string");
   assert.equal(ctx.ledger.length, 1);
@@ -85,20 +85,20 @@ test("honest payment -> full pass, reputation 100, verdict anchored to the ledge
   assert.equal(ctx.ledger[0].network, "testnet");
 });
 
-test("quote drift payment (settled > quoted) -> price mismatch, reputation drops to 0", async () => {
+test("quote drift payment (settled > quoted) -> price mismatch, reputation drops below prior", async () => {
   const { app } = setup();
   const { body } = await postValidate(app, "pay-cheat");
   assert.equal(body.price_match, false);
   assert.equal(body.response, 0);
-  assert.equal(body.new_reputation, 0);
+  assert.equal(body.new_reputation, 45);
 });
 
-test("validating quote drift updates ctx.repState so ranking reroutes on re-run", async () => {
+test("validating quote drift updates ctx.repState for future ranking", async () => {
   const { app, ctx } = setup();
   await postValidate(app, "pay-cheat");
   const r = ctx.repState.getReputation("agent-cheat");
   assert.notEqual(r, null);
-  assert.equal(r!.score, 0);
+  assert.equal(r!.score, 45);
 });
 
 test("unknown payment_id -> 400", async () => {
@@ -133,7 +133,7 @@ test("reputation reflects a caught quote drift with the correction tag", async (
   const { status, body } = await getReputation(app, "agent-cheat");
   assert.equal(status, 200);
   assert.equal(body.agent_id, "agent-cheat");
-  assert.equal(body.score, 0);
+  assert.equal(body.score, 45);
   assert.equal(body.reads_logged, 1);
   assert.equal(body.corrections_logged, 1);
   assert.deepEqual(body.by_tag, { missed_compensation: 1 });

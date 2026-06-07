@@ -226,6 +226,26 @@ test('fair Honest challenge proof does not lower reputation', async () => {
   });
 });
 
+test('payment proof accepts user_id and settlement_txid aliases', async () => {
+  await withFetch(async () => {
+    const payments = new Map<string, OnChainPayment>();
+    const ctx = mockCtx(payments);
+    const { app, body } = await createChallenge(ctx, 'honest');
+    payments.set('honest-pay', paymentFor(body, { txid: 'honest-pay' }));
+
+    const proof = await postJson(app, '/api/payment-proof', {
+      challenge_id: body.challenge_id,
+      settlement_txid: 'honest-pay',
+      user_id: PAYER,
+    });
+
+    assert.equal(proof.status, 200);
+    assert.equal(proof.body.user_id, PAYER);
+    assert.equal(proof.body.settlement_txid, 'honest-pay');
+    assert.equal(proof.body.policy_result, 'fair');
+  });
+});
+
 test('payment proof rejects wrong payer, receiver, amount, nonce, unconfirmed tx, and expired challenge', async () => {
   await withFetch(async () => {
     const cases: Array<{ name: string; mutate: (payment: OnChainPayment, ctx: Ctx, challengeId: string) => void; match: RegExp }> = [
@@ -291,7 +311,7 @@ test('payment proof rejects replayed txid across challenges', async () => {
   });
 });
 
-test('quote drift proof lowers reputation and reroute avoids the caught agent', async () => {
+test('quote drift proof lowers effective reputation without one-event route death', async () => {
   await withFetch(async () => {
     const payments = new Map<string, OnChainPayment>();
     const ctx = mockCtx(payments);
@@ -305,8 +325,8 @@ test('quote drift proof lowers reputation and reroute avoids the caught agent', 
     });
     assert.equal(proof.status, 200);
     assert.equal(proof.body.policy_result, 'quote_drift');
-    assert.equal(proof.body.new_reputation, 0);
-    assert.equal(ctx.repState.getReputation(cheat.id)?.score, 0);
+    assert.equal(proof.body.new_reputation, 45);
+    assert.equal(ctx.repState.getReputation(cheat.id)?.score, 45);
 
     const route = makeAgentRoutes(ctx);
     const reroute = await route.request('/api/route', {
@@ -316,7 +336,7 @@ test('quote drift proof lowers reputation and reroute avoids the caught agent', 
     });
     const rerouteBody = await reroute.json() as { options: Array<{ agent_id: string }> };
     assert.equal(reroute.status, 200);
-    assert.deepEqual(rerouteBody.options.map((candidate) => candidate.agent_id), [honest.id]);
+    assert.ok(rerouteBody.options.some((candidate) => candidate.agent_id === cheat.id));
   });
 });
 
@@ -340,6 +360,39 @@ test('feedback rejects txid-only attempts and requires payer self-auth tx', asyn
     });
     assert.equal(noAuth.status, 400);
     assert.match(noAuth.body.error as string, /self-payment/);
+  });
+});
+
+test('feedback rejects 0 ALGO auth from a wallet other than the settlement payer', async () => {
+  await withFetch(async () => {
+    const payments = new Map<string, OnChainPayment>();
+    const ctx = mockCtx(payments);
+    const { app, body } = await createChallenge(ctx, 'honest');
+    payments.set('feedback-pay', paymentFor(body, { txid: 'feedback-pay' }));
+    const intent = await postJson(app, '/api/feedback/intent', {
+      challenge_id: body.challenge_id,
+      payment_txid: 'feedback-pay',
+      payer: PAYER,
+      response: 100,
+    });
+    assert.equal(intent.status, 200);
+    payments.set('wrong-auth-pay', {
+      txid: 'wrong-auth-pay',
+      sender: 'OTHER',
+      receiver: 'OTHER',
+      amount: 0,
+      asset: 'ALGO',
+      network: 'testnet',
+      note: intent.body.note as string,
+      round: 124,
+    });
+
+    const feedback = await postJson(app, '/api/feedback', {
+      feedback_intent_id: intent.body.feedback_intent_id,
+      auth_txid: 'wrong-auth-pay',
+    });
+    assert.equal(feedback.status, 400);
+    assert.match(feedback.body.error as string, /payer self-payment/);
   });
 });
 
@@ -373,8 +426,8 @@ test('feedback accepts matching 0 ALGO payer self-auth tx and blocks duplicate f
     });
     assert.equal(feedback.status, 200);
     assert.equal(feedback.body.accepted, true);
-    assert.equal(feedback.body.new_reputation, 0);
-    assert.equal(ctx.repState.getReputation(honest.id)?.score, 0);
+    assert.equal(feedback.body.new_reputation, 45);
+    assert.equal(ctx.repState.getReputation(honest.id)?.score, 45);
 
     const duplicate = await postJson(app, '/api/feedback/intent', {
       challenge_id: body.challenge_id,
@@ -384,6 +437,44 @@ test('feedback accepts matching 0 ALGO payer self-auth tx and blocks duplicate f
     });
     assert.equal(duplicate.status, 400);
     assert.match(duplicate.body.error as string, /already used/);
+  });
+});
+
+test('feedback intent accepts user_id and settlement_txid aliases', async () => {
+  await withFetch(async () => {
+    const payments = new Map<string, OnChainPayment>();
+    const ctx = mockCtx(payments);
+    const { app, body } = await createChallenge(ctx, 'honest');
+    payments.set('feedback-pay', paymentFor(body, { txid: 'feedback-pay' }));
+
+    const intent = await postJson(app, '/api/feedback/intent', {
+      challenge_id: body.challenge_id,
+      settlement_txid: 'feedback-pay',
+      user_id: PAYER,
+      response: 100,
+    });
+    assert.equal(intent.status, 200);
+    assert.equal(intent.body.user_id, PAYER);
+    assert.equal(intent.body.settlement_txid, 'feedback-pay');
+
+    payments.set('auth-pay', {
+      txid: 'auth-pay',
+      sender: PAYER,
+      receiver: PAYER,
+      amount: 0,
+      asset: 'ALGO',
+      network: 'testnet',
+      note: intent.body.note as string,
+      round: 125,
+    });
+
+    const feedback = await postJson(app, '/api/feedback', {
+      feedback_intent_id: intent.body.feedback_intent_id,
+      auth_txid: 'auth-pay',
+    });
+    assert.equal(feedback.status, 200);
+    assert.equal(feedback.body.user_id, PAYER);
+    assert.equal(feedback.body.settlement_txid, 'feedback-pay');
   });
 });
 

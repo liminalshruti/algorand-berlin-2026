@@ -55,8 +55,9 @@ async function main() {
     console.log(`warmed ${quoteWarmup.snapshots.length} x402 quote snapshots`);
   }
   logIdentityRegistrationPreflight();
-  console.log("funding agents...");
-  await fundAgents(ctx);
+  const lowSpendSmoke = process.env.LOW_SPEND_SMOKE === "true";
+  console.log(lowSpendSmoke ? "funding agents (low-spend strict)..." : "funding agents...");
+  await fundAgents(ctx, { lowSpendSmoke });
   const app = new Hono();
   app.use("*", cors());
 

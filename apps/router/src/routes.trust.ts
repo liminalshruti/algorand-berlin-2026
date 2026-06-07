@@ -30,13 +30,17 @@ type ChallengeBody = {
 type PaymentProofBody = {
   challenge_id?: string;
   txid?: string;
+  settlement_txid?: string;
   payer?: string;
+  user_id?: string;
 };
 
 type FeedbackIntentBody = {
   challenge_id?: string;
   payment_txid?: string;
+  settlement_txid?: string;
   payer?: string;
+  user_id?: string;
   response?: number;
 };
 
@@ -477,11 +481,11 @@ export function makeTrustRoutes(ctx: Ctx): Hono {
     try {
       const body = await c.req.json<PaymentProofBody>().catch((): PaymentProofBody => ({}));
       const challenge_id = body.challenge_id?.trim();
-      const txid = body.txid?.trim();
-      const payer = body.payer?.trim();
+      const txid = (body.txid ?? body.settlement_txid)?.trim();
+      const payer = (body.payer ?? body.user_id)?.trim();
       if (!challenge_id) fail('challenge_id is required');
-      if (!txid) fail('txid is required');
-      if (!payer) fail('payer is required');
+      if (!txid) fail('settlement_txid is required');
+      if (!payer) fail('user_id is required');
 
       const challenge = ensureTrustStores(ctx).challenges.get(challenge_id);
       if (!challenge) fail('unknown challenge_id');
@@ -489,6 +493,8 @@ export function makeTrustRoutes(ctx: Ctx): Hono {
       return c.json({
         accepted: true,
         challenge_id,
+        user_id: payer,
+        settlement_txid: accepted.payment.txid,
         payment_txid: accepted.payment.txid,
         agent_id: challenge.agent_id,
         policy_result: challenge.quote_drift ? 'quote_drift' : 'fair',
@@ -508,12 +514,12 @@ export function makeTrustRoutes(ctx: Ctx): Hono {
     try {
       const body = await c.req.json<FeedbackIntentBody>().catch((): FeedbackIntentBody => ({}));
       const challenge_id = body.challenge_id?.trim();
-      const payment_txid = body.payment_txid?.trim();
-      const payer = body.payer?.trim();
+      const payment_txid = (body.payment_txid ?? body.settlement_txid)?.trim();
+      const payer = (body.payer ?? body.user_id)?.trim();
       const response = Number(body.response);
       if (!challenge_id) fail('challenge_id is required');
-      if (!payment_txid) fail('payment_txid is required');
-      if (!payer) fail('payer is required');
+      if (!payment_txid) fail('settlement_txid is required');
+      if (!payer) fail('user_id is required');
       if (!Number.isFinite(response) || response < 0 || response > 100) fail('response must be 0..100');
 
       const stores = ensureTrustStores(ctx);
@@ -526,6 +532,8 @@ export function makeTrustRoutes(ctx: Ctx): Hono {
       stores.feedbackIntents.set(intent.feedback_intent_id, intent);
       return c.json({
         feedback_intent_id: intent.feedback_intent_id,
+        user_id: payer,
+        settlement_txid: payment_txid,
         proof_id: payment_txid,
         note: intent.note,
         note_hash: intent.note_hash,
@@ -567,6 +575,8 @@ export function makeTrustRoutes(ctx: Ctx): Hono {
       return c.json({
         accepted: true,
         feedback_id,
+        user_id: intent.payer,
+        settlement_txid: intent.payment_txid,
         proof_id: intent.payment_txid,
         agent_id: intent.agent_id,
         response: intent.response,
