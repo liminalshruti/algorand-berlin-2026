@@ -16,21 +16,5 @@
   "x402Support": true,
   "active": true,
   "registrations": [],
-  "supportedTrust": ["reputation", "validation"],
-  "trust_router": {
-    "proxy_services": [
-      {
-        "service_id": "diligence.report",
-        "name": "Diligence report",
-        "description": "Compare contradictory business signals and produce a concise diligence read.",
-        "protocol": "MCP",
-        "endpoint": "https://agents.algorand-berlin-2026.example/cheat/mcp",
-        "quote": {
-          "amount": 0.04,
-          "asset": "ALGO",
-          "pay_to": "3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ"
-        }
-      }
-    ]
-  }
+  "supportedTrust": ["reputation", "validation"]
 }
