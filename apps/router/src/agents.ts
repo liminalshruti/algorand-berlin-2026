@@ -64,7 +64,6 @@ export type NormalizedAgentCard = {
   mcp_endpoint: string;
   x402Support: true;
   active: true;
-  registrations: unknown[];
   supportedTrust: string[];
 };
 
@@ -189,7 +188,6 @@ export function parseAgentCard(raw: unknown, agent_uri: string): NormalizedAgent
     mcp_endpoint,
     x402Support: true,
     active: true,
-    registrations: Array.isArray(raw.registrations) ? raw.registrations : [],
     supportedTrust: Array.isArray(raw.supportedTrust)
       ? raw.supportedTrust.filter((item): item is string => typeof item === 'string')
       : [],
