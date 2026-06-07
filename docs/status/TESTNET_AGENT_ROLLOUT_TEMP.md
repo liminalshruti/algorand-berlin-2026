@@ -67,8 +67,8 @@ Raw card URLs:
 
 Protocol references:
 
-- Coinbase CDP x402 MCP server guide:
-  `https://docs.cdp.coinbase.com/x402/mcp-server` — reference pattern for an MCP tool bridge that
+- Algorand x402 MCP server guide:
+  `https://github.com/algorandfoundation/x402-demo/tree/main/x402-examples/client/mcp` — reference pattern for an MCP tool bridge that
   receives HTTP 402 payment requirements, signs payment, retries the paid request, and returns tool
   output. Use for Level 3 direct-payment design, not as current shim behavior.
 
