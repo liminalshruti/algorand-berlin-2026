@@ -17,6 +17,7 @@ Everyone's Claude should read this before writing anything.
 
 - Server runs on `:3001` — `npm start` from project root. **Defaults to TestNet** (shared throwaway payer in `context.ts`); set `ALGO_NETWORK=localnet` + `PAYER_MNEMONIC` in `.env` for LocalNet.
 - Markdown source of truth: `README.md` (run/status), `BUILD_CHECKLIST_2026-06-06.md` (done/left tracker), `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md` (demo scope), `apps/web/README.md` (frontend), `docs/pitch/*` (submission), `docs/reference/ERC8004_AVM_MAPPING.md` + `docs/reference/ARC-8004.md` (standards).
+- Temporary execution handoff: `docs/status/TESTNET_AGENT_ROLLOUT_TEMP.md` (Honest/Cheat TestNet agent cards, registration order, `/api/services` catalog target).
 - All router wire types live in `apps/router/src/contract.ts` — import from there and coordinate before changing shared shapes.
 - Shared state lives in `ctx` (built by `context.ts`) — use the Maps, don't create your own stores.
 - Active router identity language is **Agent**. `agent_id` means the router-stable selected-agent id `algorand:{net}:{address}`; `registry_agent_id` means the IdentityRegistry uint64 when available.
