@@ -1,0 +1,52 @@
+flowchart TB
+  %% ===== HAPPY PATH (annotated) =====
+  %% Phase A (agent onboards): steps A1..A3
+  %% Phase B (client request routed to that agent): steps 1..6
+  %% Solid edges = wired & running today. Dashed edges = intended seam (not wired yet).
+
+  subgraph BROWSER["BROWSER — apps/web/ (static, vendored)"]
+    AGENTUI["Agent operator<br/>Agent Studio / Contracts page"]
+    UI["Client — Trust Router (router.html/js)<br/>BASE_URL=localhost:3001"]
+    WALLET["Pera Wallet (wallet.js)<br/>signs register() + self-anchor<br/>NETWORK=testnet"]
+  end
+
+  subgraph SERVER["ROUTER SERVER :3001 — Hono (router-server.ts)"]
+    direction TB
+    SEED["BOOT: seedProviders(ctx) → registerProvider()<br/>3 demo agents written into ctx.providers<br/>id = algorand:net:address (compat alias)"]
+    PROVIDERS["ctx.providers : Map id → Provider<br/>{ name, register(payTo addr), quote,<br/>asset, quality, dishonest, agent_uri }<br/>— THE source the router routes from today"]
+    ADAPTER["live adapter (SEAM, not wired)<br/>providerRegisters() hardcodes ['Diligence']<br/>'future: source from ERC-8004 registration'"]
+
+    ROUTE["1+2. DISCOVER+RANK — routes.providers.ts (Reza)<br/>POST /api/route {task, register}<br/>discover(providers, register) filter by tag<br/>discoveryOptions() → RouteOption[]<br/>routeStore.set(route_id, options)"]
+    REPSTATE["ctx.repState (Shayaun, in-memory)<br/>score = (landed − corrected)/landed<br/>fed by /api/validate writeBack<br/>→ reroute on re-run (ranking seam)"]
+    PAY["5. PAY — pay.ts (Navid)<br/>POST /api/pay {route_id, option_id}<br/>resolve option.provider_id → provider.register<br/>settle quoted; +50% hidden fee if dishonest"]
+    VALIDATE["VALIDATE — validation.ts (Shayaun)<br/>POST /api/validate {payment_id}<br/>price_match, response 0|60|100<br/>repState.writeBack(provider_id)"]
+  end
+
+  subgraph CHAIN["ALGORAND TestNet"]
+    IDREG["IdentityRegistry (ARC-72 NFT)<br/>register(agentURI, metadata) → agentId<br/>owner=sender; agentWallet=sender<br/>canonical id = {agentRegistry, agentId}"]
+    SETTLE["settle() → real ALGO payment to provider.register"]
+    ANCHOR["anchorNote() → 0-ALGO hash-only self-txn"]
+  end
+
+  %% ---- Phase A: agent onboards into the IdentityRegistry ----
+  AGENTUI -->|"A1. register agent"| WALLET
+  WALLET -->|"A2. signed register(agentURI,metadata)"| IDREG
+  IDREG -.->|"A3. SEAM: adapter reads on-chain agent<br/>(agentId, agentURI, agentWallet, register tag)"| ADAPTER
+  ADAPTER -.->|"populate (intended)"| PROVIDERS
+  SEED ==>|"A3'. WIRED TODAY: boot seeds the same Map"| PROVIDERS
+
+  %% ---- Phase B: client request routed to that specific agent ----
+  UI ==>|"1. POST /api/route {task, register}"| ROUTE
+  PROVIDERS ==>|"2. candidate agents (filter by register tag)<br/>price ← provider.quote"| ROUTE
+  REPSTATE -.->|"2b. trust/reputation input (reroute seam)<br/>1st pass uses DISCOVERY_* constants"| ROUTE
+  ROUTE ==>|"3. route_id + ranked options[]<br/>(each option_id → provider_id)"| UI
+  UI ==>|"4. client picks the agent → 5. POST /api/pay route_id+option_id"| PAY
+  PAY ==>|"resolve provider_id → register addr"| PROVIDERS
+  PAY ==>|"signed txns"| SETTLE
+  PAY -->|hash| ANCHOR
+  PAY ==>|"6. payment_id, txids, quoted, settled"| UI
+
+  %% ---- feedback loop that changes future routing ----
+  UI -->|"POST /api/validate"| VALIDATE
+  VALIDATE -->|"writeBack score"| REPSTATE
+  VALIDATE -->|verdict hash| ANCHOR

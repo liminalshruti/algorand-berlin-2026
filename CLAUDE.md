@@ -6,9 +6,9 @@
 
 ## Active build context
 - Primary scope doc: `BUILD_CHECKLIST_2026-06-06.md` (current done/left tracker)
-- Companion scope: `ref/END_TO_END_HACK_SCOPE_2026-06-06.md`
-- Navid owns: `sandbox/bin/router-server.ts`, `sandbox/lib/router/pay.ts`, `sandbox/lib/router/context.ts`; `sandbox/lib/router/contract.ts` is frozen shared API
-- Do NOT touch `sandbox/bin/berlin-server.js` or any `sandbox/lib/x402/*` file.
+- Companion scope: `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md`
+- Navid owns: `apps/router/bin/router-server.ts`, `apps/router/src/pay.ts`, `apps/router/src/context.ts`; `apps/router/src/contract.ts` is frozen shared API
+- Do NOT restore deleted legacy router or x402 files.
 
 ## INTEGRATION_HANDOFF.md — keep it current
 

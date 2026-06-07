@@ -8,9 +8,9 @@
     "sourceMap": false
   },
   "include": [
-    "smart_contracts/index.ts",
-    "smart_contracts/*/deploy-config.ts",
-    "smart_contracts/artifacts/**/*.ts"
+    "contracts/index.ts",
+    "contracts/*/deploy-config.ts",
+    "contracts/artifacts/**/*.ts"
   ],
   "exclude": ["node_modules", "dist", "coverage"]
 }

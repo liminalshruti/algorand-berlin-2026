@@ -20,6 +20,6 @@
     "lib": ["ESNext"],
     "types": ["node"]
   },
-  "include": ["smart_contracts/**/*.ts", "sandbox/**/*.ts"],
+  "include": ["contracts/**/*.ts", "apps/router/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

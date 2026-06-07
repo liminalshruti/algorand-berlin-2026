@@ -13,10 +13,10 @@ validation outcomes, then route around agents that get caught drifting from thei
 
 - `INTEGRATION_HANDOFF.md` - live team handoff, endpoint signatures, shared Maps, open follow-ups.
 - `BUILD_CHECKLIST_2026-06-06.md` - current done/left tracker, owners, and verification gates.
-- `ref/END_TO_END_HACK_SCOPE_2026-06-06.md` - demo spine, scope, honesty register, next moves.
-- `public/README.md` - frontend pages and live/mock wiring.
-- `pitch/` - script, deck outline, and demo storyboard.
-- `ref/ERC8004_AVM_MAPPING.md` + `ref/ARC-8004.md` - standards/reference material.
+- `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md` - demo spine, scope, honesty register, next moves.
+- `apps/web/README.md` - frontend pages and live/mock wiring.
+- `docs/pitch/` - script, deck outline, and demo storyboard.
+- `docs/reference/ERC8004_AVM_MAPPING.md` + `docs/reference/ARC-8004.md` - standards/reference material.
 
 Old pre-Berlin logistics, H0 implementation specs, and prior Liminal-substrate positioning docs have
 been removed from the active markdown surface.
@@ -25,9 +25,9 @@ been removed from the active markdown surface.
 
 | Layer | Where | What |
 |---|---|---|
-| Frontend | `public/` | 5-page vanilla JS/CSS console: Trust Router, Marketplace, Agent Studio, Contracts, Admin. Trust Router calls the live API with per-endpoint mock fallback. |
-| Router server | `sandbox/` | Hono server on `:3001`. Routes discovery, payment, validation, reputation, ledger, and agent listing. Defaults to TestNet. |
-| On-chain | `smart_contracts/` | Algorand TypeScript Identity, Reputation, and Validation registries with deploy configs, generated clients, unit specs, and LocalNet e2e. |
+| Frontend | `apps/web/` | 5-page vanilla JS/CSS console: Trust Router, Marketplace, Agent Studio, Contracts, Admin. Trust Router calls the live API with per-endpoint mock fallback. |
+| Router server | `apps/router/` | Hono server on `:3001`. Routes discovery, payment, validation, reputation, ledger, and agent listing. Defaults to TestNet. |
+| On-chain | `contracts/` | Algorand TypeScript Identity, Reputation, and Validation registries with deploy configs, generated clients, unit specs, and LocalNet e2e. |
 
 Live API:
 
@@ -45,7 +45,7 @@ GET  /api/agents      -> { network, app_id, agents:[{ agent_id, registry_agent_i
 Frontend only:
 
 ```sh
-npx serve public
+npx serve apps/web
 ```
 
 Open the served `router.html`. The frontend can run fully on mocks.
@@ -57,7 +57,7 @@ npm install
 npm start
 ```
 
-`npm start` boots `sandbox/bin/router-server.ts` on `:3001`, seeds the demo agents, funds them from
+`npm start` boots `apps/router/bin/router-server.ts` on `:3001`, seeds the demo agents, funds them from
 the shared throwaway TestNet payer, and returns real on-chain txids. Fund the payer first; the address
 and dispenser command live in `INTEGRATION_HANDOFF.md`.
 
@@ -76,7 +76,7 @@ Contracts:
 npm run build
 npm run deploy:localnet
 npm run test:contracts
-tsx localnet-e2e.ts
+tsx scripts/localnet-e2e.ts
 ```
 
 ## Demo Beat
@@ -111,8 +111,8 @@ Known follow-ups:
   challenge violates the active quote commitment; payment can still settle, then validation uses the
   proof to write reputation down. Future active validations can let agents earn reputation through
   validator attestations.
-- `sandbox/lib/router/ranking.ts` is not the active ranking implementation; routing currently ranks in
-  `sandbox/lib/router/agents.ts::discoveryOptions`.
+- `apps/router/src/ranking.ts` is not the active ranking implementation; routing currently ranks in
+  `apps/router/src/agents.ts::discoveryOptions`.
 - Marketplace, Studio, Contracts, and Admin are mock-first for raw registry operations; the Trust
   Router page consumes the live backend API.
 

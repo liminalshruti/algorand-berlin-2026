@@ -1,6 +1,6 @@
 # Build Checklist - x402 Trust Router
 
-**Date:** 2026-06-06 · **Server:** `sandbox/bin/router-server.ts`
+**Date:** 2026-06-06 · **Server:** `apps/router/bin/router-server.ts`
 
 This is the active status tracker. It is organized by work remaining, verification evidence, and the
 person responsible for updating each row.
@@ -11,8 +11,8 @@ Legend: `[x]` done · `[ ]` left · `Owner` is who should update the row when it
 
 | Status | Task | Owner | Evidence |
 |---|---|---|---|
-| [x] | Router server boots on `:3001` | Navid | `npm start`; Hono server in `sandbox/bin/router-server.ts` |
-| [x] | Seed 3 Diligence demo agents | Reza/Navid | `sandbox/lib/router/seed.ts` |
+| [x] | Router server boots on `:3001` | Navid | `npm start`; Hono server in `apps/router/bin/router-server.ts` |
+| [x] | Seed 3 Diligence demo agents | Reza/Navid | `apps/router/src/seed.ts` |
 | [x] | Demo agent discovery by service | Reza | `GET /api/agents`; seeded identities + resolved MCP service |
 | [x] | Route task and store route | Reza | `POST /api/route`; writes `ctx.routeStore` |
 | [x] | Router-settled demo payment | Navid | `POST /api/pay`; writes `ctx.paymentStore`; router acts as demo payer |
@@ -22,7 +22,7 @@ Legend: `[x]` done · `[ ]` left · `Owner` is who should update the row when it
 | [x] | Validate payment against quote | Shayaun | `POST /api/validate`; `price_match` |
 | [x] | Update reputation after verdict | Shayaun | `ctx.repState`; `GET /api/reputation` |
 | [x] | Re-route after failed verdict | Reza/Shayaun | `/api/route` reads updated reputation |
-| [x] | Surface loop in frontend | Shruti | `public/router.html` + `public/router.js` |
+| [x] | Surface loop in frontend | Shruti | `apps/web/router.html` + `apps/web/router.js` |
 
 ## Discovery Proxy / Tool Catalog
 
@@ -86,12 +86,12 @@ proof.
 
 | Status | Task | Owner | Evidence |
 |---|---|---|---|
-| [x] | Identity registry contract | Reza | `smart_contracts/identity_registry/*` |
-| [x] | Reputation registry contract | Shayaun | `smart_contracts/reputation_registry/*` |
-| [x] | Validation registry contract | Shayaun | `smart_contracts/validation_registry/*` |
-| [x] | Generated clients/artifacts | Reza/Shayaun | `smart_contracts/artifacts/*` |
+| [x] | Identity registry contract | Reza | `contracts/identity_registry/*` |
+| [x] | Reputation registry contract | Shayaun | `contracts/reputation_registry/*` |
+| [x] | Validation registry contract | Shayaun | `contracts/validation_registry/*` |
+| [x] | Generated clients/artifacts | Reza/Shayaun | `contracts/artifacts/*` |
 | [x] | LocalNet deploy path | Navid | `npm run build && npm run deploy:localnet` |
-| [x] | Env-gated on-chain reputation write | Shayaun | `sandbox/lib/router/onchain.ts::maybeWriteReputation` |
+| [x] | Env-gated on-chain reputation write | Shayaun | `apps/router/src/onchain.ts::maybeWriteReputation` |
 | [x] | Split validation from user feedback chain writes | Shayaun/Reza | Quote-drift verdicts use validation/anchor evidence; `giveFeedback` is for user satisfaction |
 | [x] | Add x402 `paymentTxid` + `nonce` to `giveFeedback` | Shayaun | Contract + generated client landed; router feedback lane remains separate |
 | [ ] | Confirm public TestNet registry app ids for pitch | Shayaun/Navid | Deploy or document LocalNet-only proof |
@@ -101,11 +101,11 @@ proof.
 | Status | Task | Owner | Evidence |
 |---|---|---|---|
 | [x] | Trust Router page consumes live API | Shruti | `POST /api/route`, `/pay`, `/validate`; ledger/reputation reads |
-| [x] | Mock fallback remains available | Shruti | Per-endpoint fallback in `public/router.js` |
-| [x] | Marketplace/Studio/Contracts/Admin pages exist | Shruti | `public/*.html`, `registry.js`, `arc8004.js` |
-| [x] | Pitch script, deck outline, storyboard | Shruti | `pitch/` |
+| [x] | Mock fallback remains available | Shruti | Per-endpoint fallback in `apps/web/router.js` |
+| [x] | Marketplace/Studio/Contracts/Admin pages exist | Shruti | `apps/web/*.html`, `registry.js`, `arc8004.js` |
+| [x] | Pitch script, deck outline, storyboard | Shruti | `docs/pitch/` |
 | [ ] | Keep non-router console pages mock-first unless backend endpoints are added | Shruti | No raw registry backend endpoints yet |
-| [ ] | Update pitch/storyboard for target no-custody flow | Shruti/Navid | Current pitch artifacts describe the router-settled demo payer path |
+| [ ] | Update docs/pitch/storyboard for target no-custody flow | Shruti/Navid | Current pitch artifacts describe the router-settled demo payer path |
 
 ## Cleanup / Consistency
 
@@ -114,7 +114,7 @@ proof.
 | [x] | Reduce markdown surface | Reza | Active docs listed in `README.md` |
 | [x] | Remove stale H0 planning/spec docs | Reza | Deleted pre-build specs and logistics docs |
 | [x] | Make `Agent` identity-only | Reza | `Agent = { id, name, agent_uri, agent_wallet }`; quote/service state is separate |
-| [ ] | Decide whether `sandbox/lib/router/ranking.ts` is wired or deleted | Reza/Navid | Active ranking is `agents.ts::discoveryOptions` |
+| [ ] | Decide whether `apps/router/src/ranking.ts` is wired or deleted | Reza/Navid | Active ranking is `agents.ts::discoveryOptions` |
 | [ ] | Keep `INTEGRATION_HANDOFF.md` current as code changes land | Everyone | Endpoint signatures, shared Maps, and blockers only |
 
 ## Verification Checklist
@@ -142,7 +142,6 @@ Run before calling the current build demo-ready:
 ## Guardrails
 
 - Read `INTEGRATION_HANDOFF.md` before writing code.
-- Do not touch `sandbox/bin/berlin-server.js`.
-- Do not touch any `sandbox/lib/x402/*` file.
-- Treat `sandbox/lib/router/contract.ts` as shared API; coordinate before changing its wire shapes.
+- Do not restore deleted legacy router or x402 files.
+- Treat `apps/router/src/contract.ts` as shared API; coordinate before changing its wire shapes.
 - Keep route handlers in route factories; `router-server.ts` composes them.
