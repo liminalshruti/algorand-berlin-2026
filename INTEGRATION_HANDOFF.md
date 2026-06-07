@@ -129,6 +129,7 @@ POST /mcp → Claude Code MCP tools over Streamable HTTP
 - Phase 1 known-agent batch registration: `npm run register:testnet-agents` registers only the canonical Honest/Cheat card URLs, calls `setAgentWallet`, and writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; use `--check` for no-tx preflight.
 - Required order: `npm run setup:testnet-identity` (or `setup:testnet-known-agents`) → `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents` → `npm start` to consume evidence.
 - Phase 1 known-agent evidence: DONE 2026-06-07 in `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; owner `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU`; Honest `registry_agent_id=1` (`register_tx=ZQ4VZVKAHKPTA7GZSGRFZ7CF3EPXSF3G4IBG5UWPWTPLOTF2WVAQ`, `wallet_tx=G6M6XS6NK2Y3K4DI66KDPD64PZCWYPYCOOM7OKJ73HM6TXSYFQWQ`); Cheat `registry_agent_id=2` (`register_tx=IO4QNVCWR6MRWCUJDLNDWUA2ZIJ35OXQLK4ITX76EPLTGSETQSYQ`, `wallet_tx=MWI56EUVNEUJWNXOJGT2KPLYYMKO7QS6LZHDSPWR3OQB5MKQEZUA`).
+- 2026-06-07 card deploy rerun: raw Honest/Cheat cards verified; `register:testnet-agents` skipped existing `registry_agent_id=1/2`; no new txs.
 - `npm start` no longer runs registration. It calls `applyKnownAgentRegistrations(ctx)` after card ingestion so `GET /api/agents` + `GET /api/services` expose `registry_agent_id` only when evidence is recorded.
 
 **What teammates can consume:**
