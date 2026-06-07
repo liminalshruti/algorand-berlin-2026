@@ -4,8 +4,14 @@
       "command": "npx",
       "args": ["tsx", "apps/router/bin/router-mcp-server.ts"],
       "env": {
-        "ROUTER_URL": "http://localhost:3001"
+        "ROUTER_URL": "http://localhost:3001",
+        "ALGO_NETWORK": "testnet",
+        "MCP_CLIENT_MNEMONIC": "vacuum major sort slide sister traffic average noble board boss yellow labor measure resource current sniff bamboo meat federal metal other almost atom abandon document"
       }
+    },
+    "liminal": {
+      "type": "http",
+      "url": "http://localhost:3001/mcp"
     }
   }
 }
