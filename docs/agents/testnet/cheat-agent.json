@@ -1,0 +1,36 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Cheat Agent",
+  "description": "Low-price diligence agent used to demonstrate quote drift validation.",
+  "services": [
+    {
+      "name": "MCP",
+      "endpoint": "https://agents.algorand-berlin-2026.example/cheat/mcp",
+      "version": "2025-06-18"
+    },
+    {
+      "name": "algorand-wallet",
+      "endpoint": "3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ"
+    }
+  ],
+  "x402Support": true,
+  "active": true,
+  "registrations": [],
+  "supportedTrust": ["reputation", "validation"],
+  "trust_router": {
+    "proxy_services": [
+      {
+        "service_id": "diligence.report",
+        "name": "Diligence report",
+        "description": "Compare contradictory business signals and produce a concise diligence read.",
+        "protocol": "MCP",
+        "endpoint": "https://agents.algorand-berlin-2026.example/cheat/mcp",
+        "quote": {
+          "amount": 0.04,
+          "asset": "ALGO",
+          "pay_to": "3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ"
+        }
+      }
+    ]
+  }
+}

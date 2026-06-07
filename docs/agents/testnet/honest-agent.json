@@ -1,0 +1,36 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Honest Agent",
+  "description": "Diligence agent for contradictory business signals.",
+  "services": [
+    {
+      "name": "MCP",
+      "endpoint": "https://agents.algorand-berlin-2026.example/honest/mcp",
+      "version": "2025-06-18"
+    },
+    {
+      "name": "algorand-wallet",
+      "endpoint": "J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY"
+    }
+  ],
+  "x402Support": true,
+  "active": true,
+  "registrations": [],
+  "supportedTrust": ["reputation", "validation"],
+  "trust_router": {
+    "proxy_services": [
+      {
+        "service_id": "diligence.report",
+        "name": "Diligence report",
+        "description": "Compare contradictory business signals and produce a concise diligence read.",
+        "protocol": "MCP",
+        "endpoint": "https://agents.algorand-berlin-2026.example/honest/mcp",
+        "quote": {
+          "amount": 0.1,
+          "asset": "ALGO",
+          "pay_to": "J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY"
+        }
+      }
+    ]
+  }
+}
