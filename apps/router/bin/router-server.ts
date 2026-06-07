@@ -13,6 +13,26 @@ import { makeAgentRoutes } from "../src/routes.agents.js";
 import { registerSeededAgents } from "../src/identity-onchain.js";
 import { ingestAgentCardsFromManifest } from "../src/agents.js";
 
+function logIdentityRegistrationPreflight() {
+  const appId = process.env.IDENTITY_APP_ID?.trim();
+  const submitter = process.env.IDENTITY_SUBMITTER_MNEMONIC?.trim();
+
+  if (!appId) {
+    console.warn("identity registration disabled: missing IDENTITY_APP_ID");
+    return;
+  }
+
+  if (!submitter) {
+    console.warn(
+      `identity registration disabled for app ${appId}: missing IDENTITY_SUBMITTER_MNEMONIC; ` +
+      "run `npm run setup:testnet-identity` and fund the printed address."
+    );
+    return;
+  }
+
+  console.log(`identity registration enabled: app_id=${appId}`);
+}
+
 async function main() {
   const port = Number(process.env.PORT ?? 3001);
   const ctx = await buildContext();
@@ -23,6 +43,7 @@ async function main() {
   if (cardIngestion.status === "loaded") {
     console.log(`loaded ${cardIngestion.cards.length} TestNet agent cards`);
   }
+  logIdentityRegistrationPreflight();
   console.log("funding agents...");
   await fundAgents(ctx);
   // Best-effort: register the current agents on-chain (Identity registry) and map

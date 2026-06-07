@@ -16,6 +16,7 @@
     "localnet:status": "docker compose -f docker-compose.localnet.yml ps",
     "localnet:logs": "docker compose -f docker-compose.localnet.yml logs -f --tail=100",
     "e2e:localnet": "tsx scripts/localnet-e2e.ts",
+    "setup:testnet-identity": "tsx scripts/setup-testnet-identity.ts",
     "check-types": "tsc --noEmit",
     "web": "npx --yes serve apps/web",
     "start": "tsx apps/router/bin/router-server.ts",

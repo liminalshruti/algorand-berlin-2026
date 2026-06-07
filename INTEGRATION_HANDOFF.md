@@ -22,6 +22,7 @@ Everyone's Claude should read this before writing anything.
 - Shared state lives in `ctx` (built by `context.ts`) — use the Maps, don't create your own stores.
 - Active router identity language is **Agent**. `agent_id` means the router-stable selected-agent id `algorand:{net}:{address}`; `registry_agent_id` means the IdentityRegistry uint64 when available.
 - Wire your routes into your stub file, not into `router-server.ts`
+- Live TestNet identity operator setup: `npm run setup:testnet-identity` writes local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS` + dispenser command; `npm start` warns/no-ops when submitter is missing.
 
 ---
 
@@ -113,7 +114,7 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
 - URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; runtime still falls back to direct card URLs if the manifest is unavailable.
-- TestNet registration blocker: `.env.demo` provides `IDENTITY_APP_ID=764031067`; on-chain registration still needs a funded private `IDENTITY_SUBMITTER_MNEMONIC` in local `.env`.
+- TestNet registration blocker: `.env.demo` provides `IDENTITY_APP_ID=764031067`; run `npm run setup:testnet-identity`, fund `IDENTITY_SUBMITTER_ADDRESS`, then on-chain registration can use local `IDENTITY_SUBMITTER_MNEMONIC`.
 
 **What teammates can consume:**
 

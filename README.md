@@ -61,6 +61,19 @@ and dispenser command live in `INTEGRATION_HANDOFF.md`. The public TestNet demo 
 `.env.demo`, so a local `.env` is optional unless you need private registration, reputation writes,
 deployment, or custom LocalNet credentials.
 
+Live TestNet agent registration setup:
+
+```sh
+npm run setup:testnet-identity
+algokit dispenser fund --receiver <printed address> --amount 2 --whole-units
+npm run setup:testnet-identity -- --check
+```
+
+The setup command creates or reuses a private TestNet-only identity-operator wallet in your local
+gitignored `.env`, prints only its address, and leaves registration itself for the explicit
+registration flow. `npm start` only warns when the submitter is missing; it does not create wallets or
+request dispenser funds during boot.
+
 LocalNet option:
 
 ```sh
