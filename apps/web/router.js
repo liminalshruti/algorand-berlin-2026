@@ -12,7 +12,7 @@
 /* ───────────────────────────── config ─────────────────────────────── */
 const BASE_URL = "http://localhost:3001";   // Navid's router-server (INTEGRATION_HANDOFF.md)
 // per-endpoint: true = live server (mock fallback on failure), false = mock.
-const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
+const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true, state: true };
 const ANY_LIVE = Object.values(LIVE).some(Boolean);
 const NETWORK  = "testnet";   // pinned to TestNet — matches wallet.js + router-server; never switch
 const OPERATOR_WALLET = "NDX7OC2VNQIDKH7BHE5IVUH75GAZ4ZWKL2BNHM6G3ZWQTQDFDN2AHVUCIQ"; // one consistent operator wallet — no impersonation
@@ -160,6 +160,28 @@ const mockApi = {
     return { agent_id: p.id, score: scoreOf(p), reads_logged: p.reads, corrections_logged: p.corrections, by_tag: p.by_tag, uri: `liminal://corrections/${p.id}`, hash: hashHex() };
   },
   async ledgerAll() { return { anchors: mock.ledger.slice() }; },
+  // mirrors GET /api/state — synthesizes the inner-workings snapshot from mock backend state
+  // so the inspector stays populated when the server is offline.
+  async state() {
+    const wallet = (id) => id.split(":").pop();
+    const agents = mock.agents.map((p) => ({
+      agent_id: p.id, name: p.name, registry_agent_id: null, agent_wallet: wallet(p.id),
+      reputation: p.reads > 0 ? { score: scoreOf(p), reads_logged: p.reads, corrections_logged: p.corrections, by_tag: p.by_tag } : null,
+    }));
+    const payments = [...mock.payments.entries()].reverse().map(([payment_id, pm]) => {
+      const tx = (mock.ledger.find((a) => a.ref_id === payment_id && a.schema === "x402.settle") || {}).txid;
+      const drift = Math.round((pm.settled - pm.quoted) * 1e6) / 1e6;
+      return { payment_id, agent_id: pm.agent_id, quote_id: pm.option_id, quoted: pm.quoted, settled: pm.settled,
+        drift, over_quote: pm.settled > pm.quoted + 1e-9, txids: tx ? [tx] : [], explorer: tx ? explorer(tx) : null, read: "" };
+    });
+    const challenges = payments.filter((p) => p.over_quote).map((p) => ({
+      challenge_id: "ch_" + p.payment_id, agent_id: p.agent_id, route_id: "", quote_amount: p.quoted, challenge_amount: p.settled,
+      asset: "ALGO", pay_to: wallet(p.agent_id), quote_drift: true, payment_note: "", payment_txid: p.txids[0] || null,
+      explorer: p.explorer, validation_txid: null, observed_at: "" }));
+    return { network: NETWORK, generated_at: new Date().toISOString(),
+      counts: { agents: agents.length, payments: mock.payments.size, challenges: challenges.length, anchors: mock.ledger.length },
+      agents, payments, challenges, active_quotes: [], ledger: mock.ledger.slice() };
+  },
 };
 
 /* ───────────────── api wrapper · live with mock fallback (#13) ─────── */
@@ -189,6 +211,7 @@ const api = {
   validate: (b) => call("validate", () => http("POST", "/api/validate", b), () => mockApi.validate(b)),
   reputation: (p) => call("reputation", () => http("GET", `/api/reputation?agent=${encodeURIComponent(p)}`), () => mockApi.reputation(p)),
   ledger: () => call("ledger", () => http("GET", "/api/ledger"), () => mockApi.ledgerAll()),
+  state: () => call("state", () => http("GET", "/api/state"), () => mockApi.state()),
 };
 
 /* ──────────────────────────── helpers ─────────────────────────────── */
@@ -482,6 +505,53 @@ async function inspectAgent(opt) {   // JTBD#3 click-in: reputation provenance f
     <div class="qcb-legend"><span><i class="dot price"></i>price ${Math.round(parts.price * 100)}</span><span><i class="dot rep"></i>reputation ${Math.round(parts.reputation * 100)}</span></div>
     ${d.uri ? `<div class="lm-kv" style="margin-top:10px"><span>off-chain uri</span><code class="copyable" data-copy="${d.uri}">${d.uri}</code></div>` : ""}`);
 }
+async function openState() {   // "inside the router" — live in-memory state; each row verifiable on-chain
+  let s;
+  try { s = await api.state(); } catch (e) { toast(`Router state unavailable: ${e.message}`, true); return; }
+  const nameById = Object.fromEntries((s.agents || []).map((a) => [a.agent_id, a.name]));
+  const nm = (id) => nameById[id] || shortTx(id);
+  const f2 = (n) => Number(n).toFixed(2);
+  const verify = (url, tx) => (url ? `<a class="txid-link" href="${url}" target="_blank" rel="noopener">${shortTx(tx)} ↗</a>` : `<span class="lm-raw">no anchor yet</span>`);
+  const sect = (t, meta, rows, empty) =>
+    `<div class="lm-section"><span class="lm-section-t">${t}</span><span class="lm-section-m">${meta}</span></div>` +
+    (rows && rows.length ? rows.join("") : `<p class="lm-mean">${empty}</p>`);
+
+  const agentRows = (s.agents || []).map((a) => {
+    const r = a.reputation, score = r && r.score != null ? r.score : null, tag = topTag(r && r.by_tag);
+    return `<div class="lm-row">
+      <div class="lm-top"><span class="lm-schema">${a.name}</span><span class="lm-round">${score == null ? "unrated" : score + " / 100"}</span></div>
+      <div class="lm-mean">${r ? `✓ ${r.reads_logged} paid reviews · ${r.corrections_logged} corrections${tag ? ` · <span class="st-tag">${tag}</span>` : ""}` : "no validated history"}</div>
+      <div class="lm-kv"><span>agent</span><code class="copyable" data-copy="${a.agent_id}">${a.agent_id}</code></div>
+      ${a.registry_agent_id != null ? `<div class="lm-kv"><span>registry</span><code>#${a.registry_agent_id}</code></div>` : ""}
+    </div>`;
+  });
+  const payRows = (s.payments || []).map((p) => `<div class="lm-row">
+    <div class="lm-top"><span class="lm-schema">${nm(p.agent_id)}</span><span class="lm-round">pay ${shortTx(p.payment_id)}</span></div>
+    <div class="lm-mean"><span class="st-flow">${f2(p.quoted)} → ${f2(p.settled)} ALGO</span> ${p.over_quote ? `<span class="st-drift">+${f2(p.drift)} quote drift</span>` : `<span class="st-good">matches quote</span>`}</div>
+    <div class="lm-kv"><span>txid</span>${verify(p.explorer, p.txids && p.txids[0])}</div>
+  </div>`);
+  const chalRows = (s.challenges || []).map((ch) => `<div class="lm-row">
+    <div class="lm-top"><span class="lm-schema">${nm(ch.agent_id)}</span><span class="lm-round">${ch.quote_drift ? "⚠ quote drift" : "within quote"}</span></div>
+    <div class="lm-mean">active quote <b>${f2(ch.quote_amount)}</b> · x402 asked <b class="${ch.quote_drift ? "st-bad" : "st-good"}">${f2(ch.challenge_amount)}</b> ${ch.asset || "ALGO"}</div>
+    <div class="lm-kv"><span>pay to</span><code class="copyable" data-copy="${ch.pay_to}">${shortTx(ch.pay_to)}</code></div>
+    ${ch.payment_txid ? `<div class="lm-kv"><span>paid</span>${verify(ch.explorer, ch.payment_txid)}</div>` : ""}
+  </div>`);
+  const anchorRows = (s.ledger || []).slice(0, 5).map((a) => `<div class="lm-row">
+    <div class="lm-top"><span class="lm-schema">${schemaLabel(a.schema)}</span><span class="lm-round">round r${a.round} · ${a.network}</span></div>
+    <div class="lm-kv"><span>ref</span><code class="copyable" data-copy="${a.ref_id}">${shortTx(a.ref_id)}</code></div>
+    <div class="lm-kv"><span>txid</span>${verify(a.explorer || explorerOn(a.network, a.txid), a.txid)}</div>
+  </div>`);
+
+  const c = s.counts || {};
+  const live = srcMode.state === "live";
+  const head = `<p class="lm-mean">Live in-memory state the per-call responses never expose — <b>${c.agents ?? 0}</b> agents · <b>${c.payments ?? 0}</b> payments · <b>${c.challenges ?? 0}</b> challenges · <b>${c.anchors ?? 0}</b> anchors. Each row is verifiable on-chain. <span class="lm-raw">${live ? "live · :3001" : "mock"}</span></p>`;
+  modal("Inside the router · live in-memory state · each row verifiable on-chain", "Router state",
+    head +
+    sect("Agents · reputation", "earned via on-chain validation", agentRows, "No agents discovered yet.") +
+    sect("Payments · quoted → settled", "the gap is the lie", payRows, "No payments yet — route and pay to populate.") +
+    sect("Challenges · active quote vs x402 ask", "quote drift = caught", chalRows, "No x402 challenges yet.") +
+    sect("Recent anchors · on-chain proof", "hash-only · verifiable by anyone", anchorRows, "No anchors yet."));
+}
 function closeLedger() { $("ledgerModal").classList.remove("is-open"); }
 function copy(text) { try { navigator.clipboard.writeText(text); toast("copied to clipboard"); } catch (_) { toast("copy failed", true); } }
 
@@ -601,6 +671,7 @@ function boot() {
 
   const pill = $("tray-pill"), stage = document.querySelector(".stage");
   if (pill && stage) pill.addEventListener("click", () => stage.classList.toggle("tray-open"));
+  $("statePill").addEventListener("click", openState);
   $("ledgerPill").addEventListener("click", () => openLedger(-1));
   $("ledgerModalClose").addEventListener("click", closeLedger);
   $("ledgerModal").addEventListener("click", (e) => { if (e.target.id === "ledgerModal") closeLedger(); });
@@ -612,6 +683,7 @@ function boot() {
     if (e.key === "Escape") closeLedger();
     else if (e.key === "r" || e.key === "R") doRoute(false);
     else if (e.key === "a" || e.key === "A") { if (!$("disposition").hidden) doApprove(); }
+    else if (e.key === "i" || e.key === "I") openState();
     else if (e.key === "p" || e.key === "P") document.body.classList.toggle("present");
     else if (e.key === "." && (e.metaKey || e.ctrlKey)) { e.preventDefault(); stage.classList.toggle("tray-open"); }
   });

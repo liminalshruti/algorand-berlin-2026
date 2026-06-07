@@ -215,7 +215,9 @@ const ctx = await buildContext(repState);
   - **Network = TestNet, pinned everywhere — never switched.** `router.js NETWORK` and `arc8004.js NET` are hardcoded `"testnet"`; the `nav.js`/`registry.js` fallbacks are also `"testnet"`, matching `wallet.js` and `context.ts`'s TestNet default. Explorer/genesis/banner all resolve to TestNet. Real Pera signing needs the Pera mobile app paired + TestNet funds.
   - **Required on every page that loads `wallet.js`:** an `<script type="importmap">` redirecting `https://esm.sh/js-sha3@0.8.0/es2022/js-sha3.mjs` → `/vendor/js-sha3-shim.js` (in `<head>`, before the module). esm.sh's `js-sha3` build only default-exports, so Pera's `import { keccak_256 }` fails without the shim. Wired into: `router.html`, `marketplace/studio/contracts/admin.html`. `wallet.js` auto-injects its Connect button into `.surface-meta`/titlebar if a page has no static `[data-pera-connect]`.
 
-**All endpoints consumed (live):** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`.
+**All endpoints consumed (live):** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/state`.
+
+**"Inside the router" inspector (NEW — consumes `GET /api/state`):** titlebar pill `◇ inside` (and `i` key) on `router.html` opens the shared `#ledgerModal` via `openState()` in `router.js`. Reuses the `.lm-*` row chrome verbatim; sections = Agents·reputation, Payments (quoted→settled drift), Challenges (quote vs x402 ask), Recent anchors — each row carries a `verify ↗` explorer link. Mock-first: `mockApi.state()` synthesizes the snapshot from mock backend state so the inspector populates with the server offline.
 
 **Router state snapshot (NEW — read-only inner-workings feed for the UI):**
 ```

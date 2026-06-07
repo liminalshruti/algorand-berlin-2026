@@ -289,6 +289,16 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 .dispo-btn.da-flag[disabled] { opacity: 0.6; color: var(--watch); }
 .lm-raw { color: var(--text-faint); font-family: var(--mono); font-size: 9px; }
 
+/* ── "inside the router" live-state inspector · reuses .ledger-modal + .lm-* chrome ── */
+.lm-section { display: flex; align-items: baseline; gap: 8px; margin: 8px 2px 0; }
+.lm-section-t { font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: var(--ls-mono-sm); text-transform: uppercase; color: var(--text-mid); }
+.lm-section-m { font-family: var(--serif); font-style: italic; font-size: 11px; color: var(--text-faint); }
+.lm-row .st-flow  { font-family: var(--mono); color: var(--text); font-style: normal; }
+.lm-row .st-good  { color: var(--good); font-family: var(--mono); font-style: normal; }
+.lm-row .st-bad   { color: var(--red); }
+.lm-row .st-tag   { color: var(--red); font-family: var(--mono); }
+.lm-row .st-drift { font-family: var(--mono); font-weight: 600; color: var(--red); font-style: normal; margin-left: 6px; }
+
 /* server health indicator */
 .sm-src { cursor: pointer; }
 .sm-src.is-up { color: var(--good); }
