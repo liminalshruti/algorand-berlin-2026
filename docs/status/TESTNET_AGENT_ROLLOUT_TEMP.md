@@ -150,7 +150,8 @@ Keep `/api/pay` documented as the current router-settled demo shim until the no-
 - Do not restore deleted legacy router or x402 files.
 - Treat `apps/router/src/contract.ts` as shared API; make additive shape changes only when needed.
 - Keep route handlers inside route factories, especially `apps/router/src/routes.agents.ts`.
-- Do not run `npm start` casually on TestNet; it can spend TestNet funds by funding/registering agents.
+- Do not run `npm start` casually on TestNet; it can spend TestNet funds by funding demo agents.
+  It consumes known-agent registration evidence but does not register agents.
 - Do not redeploy registry contracts for this slice.
 - Do not add a persistent production DB in this slice unless this file is updated first.
 - Keep `INTEGRATION_HANDOFF.md` current when endpoint signatures, env requirements, app ids, or
@@ -189,6 +190,17 @@ Purpose: register Honest/Cheat cards in the deployed TestNet IdentityRegistry wh
 - Record `registry_agent_id`, owner, txid, wallet txid, explorer link, and any blocker.
 - If `IDENTITY_SUBMITTER_MNEMONIC` is missing or unfunded, mark this phase `BLOCKED` and keep local
   ingestion working.
+
+Required command order:
+
+```bash
+npm run setup:testnet-identity          # or: npm run setup:testnet-known-agents
+algokit dispenser fund --receiver <printed IDENTITY_SUBMITTER_ADDRESS> --amount 2 --whole-units
+npm run setup:testnet-identity -- --check
+npm run register:testnet-agents -- --check
+npm run register:testnet-agents
+npm start                              # consumes evidence only; never registers agents
+```
 
 Gate:
 
@@ -276,7 +288,7 @@ Gate:
 | Phase | Status | Validation evidence | Notes |
 |---|---|---|---|
 | Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
-| Phase 1 - Known-Agent Identity Registration | BLOCKED | Code path landed; `npm test` PASS; `npm run check-types` PASS; `npm run setup:testnet-identity -- --check` found `IDENTITY_SUBMITTER_ADDRESS=ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` with `0` ALGO; `npm run register:testnet-agents -- --check` stopped before tx with the same blocker. | Fund with `algokit dispenser fund --receiver ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU --amount 2 --whole-units`, then rerun checks and `npm run register:testnet-agents`. No TestNet registration tx sent. |
+| Phase 1 - Known-Agent Identity Registration | BLOCKED | Code path landed; `npm test` PASS; `npm run check-types` PASS; `npm run setup:testnet-identity -- --check` found `IDENTITY_SUBMITTER_ADDRESS=ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` with `0` ALGO; `npm run register:testnet-agents -- --check` stopped before tx with the same blocker. | Fund with `algokit dispenser fund --receiver ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU --amount 2 --whole-units`, then resume at `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents`. No TestNet registration tx sent. |
 | Phase 2 - x402 Readiness Checklist | TODO | Pending. | Current cards already declare `x402Support: true`; confirm parser/tests remain aligned. |
 | Phase 3 - Direct-Payment Proof Path Design | TODO | Pending. | Future interfaces are planned, not live. |
 | Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
@@ -289,12 +301,14 @@ Non-spending checks:
 - `npm test`
 - `npm run check-types`
 - `npm run setup:testnet-identity -- --check`
+- `npm run setup:testnet-known-agents -- --check`
 - `npm run register:testnet-agents -- --check`
 
 Registration checks:
 
-- If `IDENTITY_SUBMITTER_MNEMONIC` is funded, register Honest/Cheat and record `registry_agent_id`,
-  txid, owner, wallet, and explorer link.
+- If `IDENTITY_SUBMITTER_MNEMONIC` is funded, run `npm run register:testnet-agents -- --check`, then
+  `npm run register:testnet-agents`, and record `registry_agent_id`, txid, owner, wallet txid, and
+  explorer links.
 - If not funded, record blocker and keep local/card ingestion working.
 
 Demo checks:

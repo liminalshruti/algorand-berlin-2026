@@ -171,10 +171,17 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
    npm run deploy:testnet
    ```
    Record new app ids in `.env.demo`, `docs/status/DEPLOYED.md`, and `apps/web/deployed.testnet.json`.
-2. **Configure + start the server.** Defaults come from `.env.demo`; add only optional private overrides in `.env`. `npm start`.
-3. **Register the roster.** `curl -X POST localhost:3001/api/agents/register` per agent (or `POST /api/agents/seed` if built). Confirm each returns `on_chain:true` + an explorer link that resolves on `lora.algokit.io/testnet`.
-4. **Point the frontend at TestNet.** Flip `NETWORK`/`NET` to `testnet`; drop the real app-ids into `arc8004.js` (or `chain-config.js`); set `LIVE_AGENTS=true`.
-5. **Verify the loop.** Open Marketplace → real roster agents render with on-chain agentIds; open Agent Studio → register a new test agent through the form → see it mint on TestNet with an explorer link. Run the trust-router demo over the roster (cheat agent still gets caught + rerouted).
+2. **Prepare the identity operator.** Run `npm run setup:testnet-identity` or
+   `npm run setup:testnet-known-agents`. If the printed `IDENTITY_SUBMITTER_ADDRESS` is unfunded,
+   fund it with `algokit dispenser fund --receiver <printed address> --amount 2 --whole-units`, then
+   rerun `npm run setup:testnet-identity -- --check`.
+3. **Register the known Honest/Cheat agents.** Run `npm run register:testnet-agents -- --check`, then
+   `npm run register:testnet-agents`. This is the only batch command that mints the known agents;
+   it writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` with registry ids and explorer links.
+4. **Start the server after registration.** `npm start` consumes the registration evidence so
+   `GET /api/agents` and `GET /api/services` include `registry_agent_id`; it does not register agents.
+5. **Point the frontend at TestNet.** Flip `NETWORK`/`NET` to `testnet`; drop the real app-ids into `arc8004.js` (or `chain-config.js`); set `LIVE_AGENTS=true`.
+6. **Verify the loop.** Open Marketplace → real roster agents render with on-chain agentIds; open Agent Studio → register a new test agent through the form → see it mint on TestNet with an explorer link. Run the trust-router demo over the roster (cheat agent still gets caught + rerouted).
 
 ---
 

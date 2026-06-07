@@ -17,6 +17,7 @@
     "localnet:logs": "docker compose -f docker-compose.localnet.yml logs -f --tail=100",
     "e2e:localnet": "tsx scripts/localnet-e2e.ts",
     "setup:testnet-identity": "tsx scripts/setup-testnet-identity.ts",
+    "setup:testnet-known-agents": "tsx scripts/setup-testnet-identity.ts",
     "register:testnet-agents": "tsx scripts/register-testnet-agents.ts",
     "check-types": "tsc --noEmit",
     "web": "npx --yes serve apps/web",
