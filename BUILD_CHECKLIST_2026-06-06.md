@@ -120,15 +120,17 @@ stale challenge, bad nonce, and replay are proof/auth failures, not reputation p
 
 Run before calling the current build demo-ready:
 
+**Live x402 end-to-end demo PASSED on TestNet 2026-06-07** (driver `_mcp_drive.mjs` over `router-mcp-server.ts`, `LOW_SPEND_SMOKE=true npm start`). Payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI`. Real settles confirmed on-chain (indexer-verified): Cheat `AHVU2VCAIF26ZNJX6YQT5WIF2CPJPBR2MJMA5BJZIWYDMUMPL4UQ` (round 64130884, 0.06 > 0.04 quote, drift), Honest `UV6CKKDHRWMRIUXDZEFERQPK53SQODH5BOC2QYPDKNH5VJSRWZ7Q` (round 64130888, 0.1 = 0.1 quote), feedback auth `CZWARXMSD6SRCBWALYZHI3FQGZORM5WRMIVN6WKB2TQAPFYWHOIA` (round 64130892). Reputation: Cheat 60→45, Honest 60→70; re-route picked Honest after the drop. Explorer: `https://lora.algokit.io/testnet/transaction/<txid>`. (Payer left at 0.0055 ALGO available — re-fund before next run.)
+
 - [x] `npm test`
 - [ ] `npm run test:contracts`
 - [x] `npm run check-types`
-- [ ] `npm start`
-- [ ] Honest agent: `settled_amount == quoted_amount`
-- [ ] Cheat agent: `settled_amount > quoted_amount`
-- [ ] `/api/validate` lowers the cheat agent reputation
-- [ ] Re-running `/api/route` reflects the caught agent's trust penalty
-- [ ] `/api/ledger` contains hash-only anchors with explorer-ready txids
+- [x] `npm start` — booted on `:3001`, TestNet, agents discovered (`LOW_SPEND_SMOKE=true`)
+- [x] Honest agent: `settled_amount == quoted_amount` — 0.1 = 0.1 (`UV6CK…WZ7Q`)
+- [x] Cheat agent: `settled_amount > quoted_amount` — 0.06 > 0.04 (`AHVU2…L4UQ`)
+- [x] `/api/validate` lowers the cheat agent reputation — proof-path quote-drift auto-validation dropped Cheat 60→45 (`policy_result: quote_drift`)
+- [x] Re-running `/api/route` reflects the caught agent's trust penalty — Honest became `options[0]` (trust 54 vs Cheat 51)
+- [x] `/api/ledger` contains hash-only anchors with explorer-ready txids — ledger anchors `2VTO7EXL…`, `U2OSQG7B…`, `SO5HXCQO…`
 - [x] Discovery catalog groups at least one service with multiple agents
 - [x] Route request can target a service/tool rather than a register lane
 - [x] Target flow forwards agent x402 challenge with agent wallet as `payTo`

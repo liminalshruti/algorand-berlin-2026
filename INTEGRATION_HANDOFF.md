@@ -3,6 +3,18 @@
 Live doc. Each engineer updates their section when they land code.
 Everyone's Claude should read this before writing anything.
 
+## x402 end-to-end live demo — ✅ DONE (verified on TestNet 2026-06-07)
+
+Full spine ran live through the `mcp__x402-trust-router__*` tools (driver: `_mcp_drive.mjs` against `router-mcp-server.ts`) with `LOW_SPEND_SMOKE=true npm start`. All three settlements confirmed on-chain via indexer; reputation moved exactly as designed.
+
+- Payer (paying agent wallet): `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` · network `testnet`.
+- **Cheat settle (quote drift):** quoted 0.04 → demanded 0.06, settled **0.06 ALGO**, `proof_status: confirmed`, `quote_drift: true`. txid `AHVU2VCAIF26ZNJX6YQT5WIF2CPJPBR2MJMA5BJZIWYDMUMPL4UQ` (round 64130884) — https://lora.algokit.io/testnet/transaction/AHVU2VCAIF26ZNJX6YQT5WIF2CPJPBR2MJMA5BJZIWYDMUMPL4UQ
+- **Honest settle (on quote):** quoted 0.1, settled **0.1 ALGO**, `quote_drift: false`. txid `UV6CKKDHRWMRIUXDZEFERQPK53SQODH5BOC2QYPDKNH5VJSRWZ7Q` (round 64130888) — https://lora.algokit.io/testnet/transaction/UV6CKKDHRWMRIUXDZEFERQPK53SQODH5BOC2QYPDKNH5VJSRWZ7Q
+- **Feedback auth (0-ALGO self-pay):** `accepted: true`. txid `CZWARXMSD6SRCBWALYZHI3FQGZORM5WRMIVN6WKB2TQAPFYWHOIA` (round 64130892) — https://lora.algokit.io/testnet/transaction/CZWARXMSD6SRCBWALYZHI3FQGZORM5WRMIVN6WKB2TQAPFYWHOIA
+- **Reputation:** Cheat `60 → 45` (quote-drift penalty, auto-validation). Honest `60 → 70` (payment-backed feedback). Re-route after the drop made the Honest agent `options[0]` (trust 54 vs Cheat 51) with no human in the loop.
+- Cheat deliverable was wrong (`answer: false` to "2+2=4"), Honest correct (`answer: true`) — both over real paid x402 (`http_status: 200`).
+- ⚠️ **Payer nearly drained:** `24E3…` now reads `0.648 ALGO` total / `0.0055 ALGO` available. Re-fund via the dispenser before the next live run.
+
 ## Current state (origin/main) — core loop landed ✅
 
 - **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/challenge`, `GET /api/challenge/:challenge_id`, `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/services`, `POST /mcp`.
@@ -27,7 +39,7 @@ Everyone's Claude should read this before writing anything.
 - Wire your routes into your stub file, not into `router-server.ts`
 - Live TestNet identity operator setup: `npm run setup:testnet-identity` / `npm run setup:testnet-known-agents` writes or checks local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS`, balance, and next registration command when the pre-funded submitter is present; setup never registers agents. Batch mint is explicit via `npm run register:testnet-agents`; `npm start` only loads `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` evidence and never mints IdentityRegistry records.
 - Current identity preflight status (2026-06-07): submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `13.996 ALGO`; `npm run setup:testnet-identity -- --check`, alias `setup:testnet-known-agents -- --check`, and `npm run register:testnet-agents -- --check` all PASS without sending registration txs.
-- Current TestNet smoke status (2026-06-07): direct algod query shows shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` at `2.657 ALGO` total / `2.0145 ALGO` available; `npm start` / live smoke not rerun yet because it spends TestNet funds.
+- Current TestNet smoke status (2026-06-07): **live x402 end-to-end demo PASSED** (see the "x402 end-to-end live demo" section at the top for txids/explorer/reputation). After the run the shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` reads `0.648 ALGO` total / `0.0055 ALGO` available — re-fund before the next run.
 - Low-spend proof smoke mode: start with `LOW_SPEND_SMOKE=true npm start`; boot skips agents with available balance >= `AGENT_MIN_AVAILABLE_ALGO` (default `0.1`) and aborts instead of funding underfunded wallets. Proof APIs accept `user_id` (= payer Algorand address) and `settlement_txid` aliases. Spending runner: `npm run smoke:testnet:proof` (Cheat-only, direct settlement + 0-ALGO auth, rejects duplicate feedback).
 
 ---
@@ -66,7 +78,7 @@ npm start                # boots on TestNet, funds discovered agents, prints opt
 
 - **Default network is TestNet.** `.env.demo` carries the shared throwaway payer mnemonic so anyone can `npm start` with no local `.env` and get real on-chain txids. TestNet ALGO is valueless; the key is public on purpose — never reuse on MainNet.
 - Boot calls idempotent `fundAgents`: funded wallets are skipped; underfunded wallets receive `AGENT_FUND_ALGO` (default `0.5`) unless `LOW_SPEND_SMOKE=true`, where boot aborts before any top-up.
-- Current TestNet smoke status (2026-06-07): shared payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` now reads `2.657 ALGO` total / `2.0145 ALGO` available by direct algod query; identity submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` reads `13.996 ALGO`; `npm start` was not rerun because it spends TestNet funds through `fundAgents`.
+- Current TestNet smoke status (2026-06-07): **live x402 end-to-end run PASSED** — Honest settled at quote (0.1 = 0.1, `UV6CKKDHRWMRIUXDZEFERQPK53SQODH5BOC2QYPDKNH5VJSRWZ7Q`) and Cheat settled above quote (0.06 > 0.04, `AHVU2VCAIF26ZNJX6YQT5WIF2CPJPBR2MJMA5BJZIWYDMUMPL4UQ`), both `confirmed`; ledger anchored hash-only. After the run shared payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` reads `0.648 ALGO` total / `0.0055 ALGO` available — re-fund before the next run.
 - Explorer links resolve to `lora.algokit.io/testnet/transaction/<txid>`.
 - LocalNet still works with local overrides for `ALGO_NETWORK`, `ALGOD_URL`, `ALGOD_PORT`, and `ALGOD_TOKEN`; set a private payer only if you intentionally do not want the public TestNet demo payer.
 
