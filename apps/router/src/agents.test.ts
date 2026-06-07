@@ -207,15 +207,16 @@ test('valid Honest/Cheat card fixtures parse as ARC-8004 registration cards', as
   const parsedHonest = parseAgentCard(honest, HONEST_CARD_URI);
   const parsedCheat = parseAgentCard(cheat, CHEAT_CARD_URI);
 
+  assert.equal('trust_router' in (honest as Record<string, unknown>), false);
+  assert.equal('trust_router' in (cheat as Record<string, unknown>), false);
+
   assert.equal(parsedHonest.name, 'Honest Agent');
   assert.equal(parsedHonest.agent_wallet, 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY');
-  assert.equal(parsedHonest.proxy_services[0].service_id, DEFAULT_SERVICE_ID);
-  assert.equal(parsedHonest.proxy_services[0].quote.amount, 0.1);
+  assert.equal(parsedHonest.mcp_endpoint, 'https://agents.algorand-berlin-2026.example/honest/mcp');
 
   assert.equal(parsedCheat.name, 'Cheat Agent');
   assert.equal(parsedCheat.agent_wallet, '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ');
-  assert.equal(parsedCheat.proxy_services[0].service_id, DEFAULT_SERVICE_ID);
-  assert.equal(parsedCheat.proxy_services[0].quote.amount, 0.04);
+  assert.equal(parsedCheat.mcp_endpoint, 'https://agents.algorand-berlin-2026.example/cheat/mcp');
 });
 
 test('agent card parser rejects missing or unsafe required fields', async () => {
@@ -250,12 +251,11 @@ test('agent card parser rejects missing or unsafe required fields', async () => 
       match: /Invalid Algorand/,
     },
     {
-      name: 'quote wallet mismatch',
+      name: 'missing x402Support',
       mutate: (card) => {
-        const trustRouter = card.trust_router as { proxy_services: Array<{ quote: { pay_to: string } }> };
-        trustRouter.proxy_services[0].quote.pay_to = addr();
+        delete card.x402Support;
       },
-      match: /quote.pay_to/,
+      match: /x402Support/,
     },
     {
       name: 'inactive card',
@@ -265,12 +265,13 @@ test('agent card parser rejects missing or unsafe required fields', async () => 
       match: /active/,
     },
     {
-      name: 'unsupported service',
+      name: 'invalid MCP endpoint',
       mutate: (card) => {
-        const trustRouter = card.trust_router as { proxy_services: Array<{ service_id: string }> };
-        trustRouter.proxy_services[0].service_id = 'unsupported.service';
+        const mcp = (card.services as Array<{ name: string; endpoint: string }>).find((service) => service.name === 'MCP');
+        assert.ok(mcp);
+        mcp.endpoint = 'not-a-url';
       },
-      match: /unsupported service/,
+      match: /MCP endpoint/,
     },
   ];
 
@@ -391,6 +392,7 @@ test('GET /api/services returns grouped diligence catalog without hidden cheat b
   assert.deepEqual(body.services[0].options.map((option) => option.agent.name).sort(), ['Cheat Agent', 'Honest Agent']);
   assert.equal(body.services[0].options.every((option) => option.capability.source === 'agent_uri'), true);
   assert.equal(body.services[0].options.every((option) => option.quote.asset === 'ALGO'), true);
+  assert.deepEqual(body.services[0].options.map((option) => option.quote.amount).sort(), [0.04, 0.1]);
   assert.equal(body.services[0].options.every((option) => option.trust.reputation === 50), true);
   assert.equal(JSON.stringify(body).includes('challenge'), false);
 });

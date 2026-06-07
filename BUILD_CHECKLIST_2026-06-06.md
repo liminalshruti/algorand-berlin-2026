@@ -35,8 +35,8 @@ service/tool groups; then routes by requested service instead of a single `regis
 | [x] | Demo discovery primitive | Reza | In-memory agents + `register` filter in `agents.ts` |
 | [x] | Define service/tool schema | Reza | Demo fields only: `service_id`, `agent_id`, protocol, endpoint, name |
 | [x] | Agent registration/intake | Reza | Honest/Cheat cards in `docs/agents/testnet/`; `ingestAgentCardsFromManifest` |
-| [x] | Parse ARC-8004 agent registration files | Reza | `agents.ts::parseAgentCard`; reads `services[]`, wallet, `trust_router.proxy_services[]` |
-| [x] | Verify agent payment wallet | Reza/Navid | Parser enforces `quote.pay_to == algorand-wallet`; tests cover mismatch |
+| [x] | Parse ARC-8004 agent registration files | Reza | `agents.ts::parseAgentCard`; reads clean `services[]`, MCP endpoint, wallet, x402/active flags |
+| [x] | Route-time demo quote adapter | Reza/Navid | Card-backed Honest/Cheat quotes are router-derived; Cheat still requests 0.06 vs 0.04 quoted |
 | [ ] | Add MCP capability adapter | Reza | Ingest MCP server metadata/tool list names/descriptions into the shared service schema |
 | [ ] | Add A2A capability adapter | Reza | Ingest A2A agent card capability names/descriptions into the shared service schema |
 | [x] | Add local/demo agent adapter | Reza | `seed.ts` fallback tagged `source:"seed"`; card ingestion replaces seeded service on success |
@@ -44,7 +44,7 @@ service/tool groups; then routes by requested service instead of a single `regis
 | [x] | Expose tool catalog endpoint | Reza/Shruti | `GET /api/services` returns grouped services with agents |
 | [ ] | Route by service/tool intent | Reza | `POST /api/route` accepts `service_id` or inferred intent, not only `register` |
 | [x] | Include trust/payment metadata in catalog | Reza/Shayaun/Navid | `/api/services` options expose reputation, quote amount, asset, `pay_to`, `agent_id`, `registry_agent_id?` |
-| [x] | Add discovery tests | Reza | `agents.test.ts`: cards, grouping, unsupported service, fallback, route-by-service |
+| [x] | Add discovery tests | Reza | `agents.test.ts`: clean cards, grouping, fallback, route-by-service, route-time quote drift |
 
 Minimal demo routing metadata: `service_id`, `agent_id`, `quote_id`, amount, asset, `payTo`,
 `observed_at`, `expires_at`. Discovery stores identity/service facts from `agent_uri`; active quotes

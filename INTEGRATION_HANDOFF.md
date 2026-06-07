@@ -82,7 +82,9 @@ npm start                # funds agents automatically, prints option_ids on boot
 
 `POST /api/route`, `GET /api/agents`, and `GET /api/services` live (`routes.agents.ts` + `agents.ts`,
 with `agents.test.ts`). Discovery now has seeded fallback plus Honest/Cheat ARC-8004 card ingestion from
-`docs/agents/testnet/manifest.json` or direct canonical card URLs; full chain scan, MCP tool-list parsing, and A2A cards remain open.
+`docs/agents/testnet/manifest.json` or direct canonical card URLs. Cards are clean ARC-8004 identity/service
+facts only; the router owns the `diligence.report` proxy mapping and demo quote adapter. Full chain scan,
+MCP tool-list parsing, and A2A cards remain open.
 Current ranking is in `agents.ts::discoveryOptions` (`ranking.ts` is an unused stub). On-chain Identity registry below.
 
 **Chain identity registry:**
@@ -110,18 +112,18 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - Manifest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
 - Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
-- URL status: Honest/Cheat card URLs resolve over HTTPS; manifest URL currently 404, so runtime falls back to direct card URLs.
+- URL status: local Honest/Cheat card files are clean ARC-8004 cards; raw GitHub URLs need these changes pushed to `main`; runtime still falls back to direct card URLs if the manifest is unavailable.
 - TestNet registration blocker: current env has no `IDENTITY_APP_ID=764031067`.
 
 **What teammates can consume:**
 
 - `agentId(net,address)` → `algorand:{net}:{address}`
 - `registerAgentLocal(ctx,input)` stores identity-only `Agent` in `ctx.agents`
-- `registerServiceLocal(ctx,input)` stores resolved MCP/A2A services and quote templates
-- `parseAgentCard(raw, agent_uri)` validates ARC-8004 card shape + `quote.pay_to == algorand-wallet`
-- `ingestAgentCardsFromManifest(ctx)` fetches manifest/cards, falls back to direct Honest/Cheat URLs, and replaces seeded `diligence.report` on success; full fetch failure keeps seeded fallback
-- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload; no `challenge_*` fields
-- `/api/route` creates active quotes and routes by `service_id`
+- `registerServiceLocal(ctx,input)` stores resolved MCP/A2A services; `quote` is optional for card-backed endpoint facts
+- `parseAgentCard(raw, agent_uri)` validates clean ARC-8004 card shape: `type`, active/x402 flags, `MCP`, and `algorand-wallet`
+- `ingestAgentCardsFromManifest(ctx)` fetches manifest/cards, falls back to direct Honest/Cheat URLs, and replaces seeded `diligence.report` on success; card-backed services store endpoint facts only; full fetch failure keeps seeded fallback
+- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload with router-derived quote snapshots; no `challenge_*` fields
+- `/api/route` creates active quotes/payment requirements at route time and routes by `service_id`; Honest quotes 0.1/requests 0.1, Cheat quotes 0.04/requests 0.06 through the demo adapter
 - `ActiveQuote` now includes `observed_at` + `expires_at`
 - `/api/route` stores:
 

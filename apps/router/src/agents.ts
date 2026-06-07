@@ -5,6 +5,8 @@ import type { ActiveQuote, Agent, AgentService, Ctx, PaymentRequirement, Reputat
 
 const DEFAULT_SERVICE_ID = 'diligence.report';
 const DEFAULT_REPUTATION = 50;
+const DEFAULT_PROXY_NAME = 'Diligence report';
+const DEFAULT_PROXY_DESCRIPTION = 'Compare contradictory business signals and produce a concise diligence read.';
 const ARC8004_REGISTRATION_TYPE = 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1';
 const QUOTE_TTL_MS = 5 * 60 * 1000;
 
@@ -15,9 +17,11 @@ export const TESTNET_CARD_URLS = [
   'https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json',
 ] as const;
 
+const HONEST_AGENT_WALLET = 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY';
 const CHEAT_AGENT_WALLET = '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ';
-const demoChallengeOverrides = new Map<string, { challenge_amount?: number; challenge_pay_to?: string }>([
-  [`${CHEAT_AGENT_WALLET}::${DEFAULT_SERVICE_ID}`, { challenge_amount: 0.06 }],
+const demoAgentQuotes = new Map<string, { amount: number; challenge_amount?: number; challenge_pay_to?: string }>([
+  [HONEST_AGENT_WALLET, { amount: 0.1 }],
+  [CHEAT_AGENT_WALLET, { amount: 0.04, challenge_amount: 0.06 }],
 ]);
 
 type RegistryCtx = Pick<Ctx, 'net' | 'agents' | 'services' | 'activeQuotes' | 'paymentRequirements'>;
@@ -28,7 +32,7 @@ export type AgentRegistration = Omit<Agent, 'id'> & {
 };
 
 export type ServiceRegistration = AgentService & {
-  quote: number;
+  quote?: number;
   asset?: string;
   challenge_amount?: number;
   challenge_pay_to?: string;
@@ -51,19 +55,6 @@ export type RoutedCandidate = {
   reputation: number;
 };
 
-export type AgentCardProxyService = {
-  service_id: string;
-  name: string;
-  description: string;
-  protocol: 'MCP';
-  endpoint: string;
-  quote: {
-    amount: number;
-    asset: string;
-    pay_to: string;
-  };
-};
-
 export type NormalizedAgentCard = {
   type: typeof ARC8004_REGISTRATION_TYPE;
   name: string;
@@ -75,7 +66,6 @@ export type NormalizedAgentCard = {
   active: true;
   registrations: unknown[];
   supportedTrust: string[];
-  proxy_services: AgentCardProxyService[];
 };
 
 export type CardManifest = {
@@ -190,44 +180,6 @@ export function parseAgentCard(raw: unknown, agent_uri: string): NormalizedAgent
     validationError(`Invalid Algorand agent wallet: ${agent_wallet}`);
   }
 
-  if (!isRecord(raw.trust_router)) validationError('trust_router is required');
-  const proxyServices = readArray(raw.trust_router, 'proxy_services');
-  if (proxyServices.length === 0) validationError('trust_router.proxy_services[] is required');
-
-  const normalizedProxyServices = proxyServices.map((service) => {
-    if (!isRecord(service)) validationError('proxy service must be an object');
-
-    const service_id = requiredString(service, 'service_id');
-    if (service_id !== DEFAULT_SERVICE_ID) validationError(`unsupported service: ${service_id}`);
-
-    const protocol = requiredString(service, 'protocol');
-    if (protocol !== 'MCP') validationError(`unsupported protocol: ${protocol}`);
-
-    const endpoint = requiredString(service, 'endpoint');
-    assertHttpUrl(endpoint, 'proxy service endpoint');
-
-    if (!isRecord(service.quote)) validationError('proxy service quote is required');
-    const amount = service.quote.amount;
-    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
-      validationError('quote.amount must be a positive number');
-    }
-
-    const asset = requiredString(service.quote, 'asset');
-    if (asset !== 'ALGO') validationError(`unsupported quote asset: ${asset}`);
-
-    const pay_to = requiredString(service.quote, 'pay_to');
-    if (pay_to !== agent_wallet) validationError('quote.pay_to must match algorand-wallet endpoint');
-
-    return {
-      service_id,
-      name: requiredString(service, 'name'),
-      description: requiredString(service, 'description'),
-      protocol: 'MCP' as const,
-      endpoint,
-      quote: { amount, asset, pay_to },
-    };
-  });
-
   return {
     type: ARC8004_REGISTRATION_TYPE,
     name,
@@ -241,7 +193,6 @@ export function parseAgentCard(raw: unknown, agent_uri: string): NormalizedAgent
     supportedTrust: Array.isArray(raw.supportedTrust)
       ? raw.supportedTrust.filter((item): item is string => typeof item === 'string')
       : [],
-    proxy_services: normalizedProxyServices,
   };
 }
 
@@ -294,7 +245,7 @@ function removeServices(ctx: RegistryCtx, shouldRemove: (service: AgentService) 
 }
 
 export function replaceServiceWithCardBackedAgents(ctx: RegistryCtx, cards: NormalizedAgentCard[]): Agent[] {
-  const cardServiceIds = new Set(cards.flatMap((card) => card.proxy_services.map((service) => service.service_id)));
+  const cardServiceIds = new Set([DEFAULT_SERVICE_ID]);
   removeServices(ctx, (service) => cardServiceIds.has(service.service_id) && service.source !== 'agent_uri');
 
   for (const card of cards) {
@@ -378,7 +329,7 @@ export function registerServiceLocal(ctx: RegistryCtx, input: ServiceRegistratio
   if (!service.service_id || !service.endpoint || !service.name) {
     throw Object.assign(new Error('service_id, endpoint, and name are required'), { status: 400 });
   }
-  if (!Number.isFinite(input.quote) || input.quote <= 0) {
+  if (input.quote !== undefined && (!Number.isFinite(input.quote) || input.quote <= 0)) {
     throw Object.assign(new Error('quote must be a positive number'), { status: 400 });
   }
 
@@ -388,16 +339,18 @@ export function registerServiceLocal(ctx: RegistryCtx, input: ServiceRegistratio
   }
 
   ctx.services.push(service);
-  const agent = ctx.agents.get(service.agent_id)!;
-  quoteTemplates.set(serviceKey(service.agent_id, service.service_id), {
-    agent_id: service.agent_id,
-    service_id: service.service_id,
-    amount: input.quote,
-    asset: input.asset ?? 'ALGO',
-    pay_to: agent.agent_wallet,
-    challenge_amount: input.challenge_amount,
-    challenge_pay_to: input.challenge_pay_to,
-  });
+  if (input.quote !== undefined) {
+    const agent = ctx.agents.get(service.agent_id)!;
+    quoteTemplates.set(serviceKey(service.agent_id, service.service_id), {
+      agent_id: service.agent_id,
+      service_id: service.service_id,
+      amount: input.quote,
+      asset: input.asset ?? 'ALGO',
+      pay_to: agent.agent_wallet,
+      challenge_amount: input.challenge_amount,
+      challenge_pay_to: input.challenge_pay_to,
+    });
+  }
   return service;
 }
 
@@ -409,22 +362,15 @@ export function ingestAgentCard(ctx: RegistryCtx, card: NormalizedAgentCard): Ag
     agent_wallet: card.agent_wallet,
   });
 
-  for (const proxyService of card.proxy_services) {
-    const override = demoChallengeOverrides.get(`${card.agent_wallet}::${proxyService.service_id}`);
-    registerServiceLocal(ctx, {
-      service_id: proxyService.service_id,
-      agent_id: agent.id,
-      protocol: proxyService.protocol,
-      endpoint: proxyService.endpoint,
-      name: proxyService.name,
-      description: proxyService.description,
-      quote: proxyService.quote.amount,
-      asset: proxyService.quote.asset,
-      source: 'agent_uri',
-      challenge_amount: override?.challenge_amount,
-      challenge_pay_to: override?.challenge_pay_to,
-    });
-  }
+  registerServiceLocal(ctx, {
+    service_id: DEFAULT_SERVICE_ID,
+    agent_id: agent.id,
+    protocol: 'MCP',
+    endpoint: card.mcp_endpoint,
+    name: DEFAULT_PROXY_NAME,
+    description: DEFAULT_PROXY_DESCRIPTION,
+    source: 'agent_uri',
+  });
 
   return agent;
 }
@@ -446,13 +392,31 @@ export function agentRow(agent: Agent, services: AgentService[], registry_agent_
   };
 }
 
+function quoteForService(agent: Agent, service: AgentService): QuoteTemplate | null {
+  const template = quoteTemplates.get(serviceKey(agent.id, service.service_id));
+  if (template) return template;
+
+  if (service.source !== 'agent_uri' || service.service_id !== DEFAULT_SERVICE_ID) return null;
+
+  const demoQuote = demoAgentQuotes.get(agent.agent_wallet) ?? { amount: 0.1 };
+  return {
+    agent_id: agent.id,
+    service_id: service.service_id,
+    amount: demoQuote.amount,
+    asset: 'ALGO',
+    pay_to: agent.agent_wallet,
+    challenge_amount: demoQuote.challenge_amount,
+    challenge_pay_to: demoQuote.challenge_pay_to,
+  };
+}
+
 export function candidateFor(
   ctx: RegistryCtx,
   agent: Agent,
   service: AgentService,
   reputation: number,
 ): RoutedCandidate {
-  const template = quoteTemplates.get(serviceKey(agent.id, service.service_id));
+  const template = quoteForService(agent, service);
   if (!template) {
     throw Object.assign(new Error(`Missing quote template: ${serviceKey(agent.id, service.service_id)}`), { status: 500 });
   }
@@ -561,7 +525,7 @@ export function buildServicesCatalog(
     const first = groupServices[0];
     const options = groupServices.flatMap((service) => {
       const agent = ctx.agents.get(service.agent_id);
-      const template = quoteTemplates.get(serviceKey(service.agent_id, service.service_id));
+      const template = agent ? quoteForService(agent, service) : null;
       if (!agent || !template) return [];
 
       const rep = reputationFor(ctx.repState.getReputation(agent.id));
