@@ -24,6 +24,8 @@ Everyone's Claude should read this before writing anything.
 - Active router identity language is **Agent**. `agent_id` means the router-stable selected-agent id `algorand:{net}:{address}`; `registry_agent_id` means the IdentityRegistry uint64 when available.
 - Wire your routes into your stub file, not into `router-server.ts`
 - Live TestNet identity operator setup: `npm run setup:testnet-identity` / `npm run setup:testnet-known-agents` writes or checks local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS`, balance, and next registration command when the pre-funded submitter is present; setup never registers agents. Batch mint is explicit via `npm run register:testnet-agents`; `npm start` only loads `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` evidence and never mints IdentityRegistry records.
+- Current identity preflight status (2026-06-07): submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `13.996 ALGO`; `npm run setup:testnet-identity -- --check`, alias `setup:testnet-known-agents -- --check`, and `npm run register:testnet-agents -- --check` all PASS without sending registration txs.
+- Current TestNet smoke status (2026-06-07): direct algod query shows shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` at `2.657 ALGO` total / `2.0145 ALGO` available; `npm start` / live smoke not rerun yet because it spends TestNet funds.
 
 ---
 
@@ -56,12 +58,12 @@ GET  /api/ledger    → { anchors: [{ txid, schema, ref_id, hash, round, network
 # One-time: fund the shared payer from `.env.demo` via the dispenser:
 #   24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI
 # e.g.  algokit dispenser fund -r 24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI -a 10000000
-npm start                # boots on TestNet, funds the 3 agents, prints option_ids
+npm start                # boots on TestNet, funds discovered agents, prints option_ids
 ```
 
 - **Default network is TestNet.** `.env.demo` carries the shared throwaway payer mnemonic so anyone can `npm start` with no local `.env` and get real on-chain txids. TestNet ALGO is valueless; the key is public on purpose — never reuse on MainNet.
-- Boot calls `fundAgents` (0.5 ALGO each, ~1.5 ALGO/restart), so **the payer must be funded first or boot fails.** Dispense ~10 ALGO; top up if it runs dry.
-- Current payer top-up blocker (2026-06-07): `npm start` loads the 2 card-backed agents and known registrations, then stops in `fundAgents` because shared payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` lacks enough available balance for the next funding tx; `algokit dispenser fund` is unavailable locally until `algokit dispenser login` is completed.
+- Boot calls `fundAgents` (0.5 ALGO each; normally 2 card-backed agents = ~1.0 ALGO/restart, seeded fallback = ~1.5 ALGO/restart), so **the payer must be funded first or boot fails.** Dispense ~10 ALGO; top up if it runs dry.
+- Current TestNet smoke status (2026-06-07): shared payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` now reads `2.657 ALGO` total / `2.0145 ALGO` available by direct algod query; identity submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` reads `13.996 ALGO`; `npm start` was not rerun because it spends TestNet funds through `fundAgents`.
 - Explorer links resolve to `lora.algokit.io/testnet/transaction/<txid>`.
 - LocalNet still works with local overrides for `ALGO_NETWORK`, `ALGOD_URL`, `ALGOD_PORT`, and `ALGOD_TOKEN`; set a private payer only if you intentionally do not want the public TestNet demo payer.
 
