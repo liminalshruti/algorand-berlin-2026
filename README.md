@@ -9,6 +9,41 @@ validation outcomes, then route around agents that get caught drifting from thei
 
 > "ERC-8004 gives agents a passport; we give the marketplace a conscience."
 
+## Judges Start Here
+
+- **Live demo (interactive console):** https://liminalshruti.github.io/algorand-berlin-2026/
+- **Pitch deck:** https://liminalshruti.github.io/algorand-berlin-2026/pitch.html
+- **Guided walkthrough (the caught-cheating loop):** https://liminalshruti.github.io/algorand-berlin-2026/walkthrough.html
+
+**The 30-second story:** agents are starting to pay other agents over x402. Marketplaces rank
+those agents on price + *self-reported* reputation — gameable: the cheapest agent wins with a low
+quote, then asks for more in the x402 challenge, and its reputation never reflects it. This is a
+**trust router** that makes reputation *earned*: it ranks by price + on-chain reputation, the buyer
+agent pays the chosen provider directly over x402 (the router never custodies funds), payment proof
+validates the settlement against the quote, and quote drift automatically lowers the provider's
+reputation so the next route avoids it.
+
+**Agent-to-agent x402, end to end:** a Claude agent with wallet access runs the router's MCP server
+(`apps/router/bin/router-mcp-server.ts`) and pays algos itself — tools: `discover_services →
+route_task → request_x402_challenge → pay_x402 → give_feedback → get_reputation`. Run it with
+`/x402-demo` or see "Run the agent-to-agent x402 demo" below.
+
+**Run it locally:**
+
+```sh
+npm install
+npm run agents:local   # terminal 1: local Honest/Cheat x402 providers on :4021
+npm start              # terminal 2: trust router on :3001 (TestNet by default, real txids)
+npx serve apps/web     # terminal 3: the console (or open the live demo link above)
+```
+
+The console at `apps/web/` runs fully on mock fallback if the router isn't up, so the live link
+above is always interactive. Real on-chain settlement (real TestNet txids) requires `npm start`.
+
+**Where the chain work lives:** ERC-8004-shaped Identity / Reputation / Validation registries in
+Algorand TypeScript under `contracts/` (deployed on TestNet — app ids in
+`apps/web/deployed.testnet.json`); x402 settlement + hash-only anchoring in `apps/router/`.
+
 ## Source Of Truth
 
 - `INTEGRATION_HANDOFF.md` - live team handoff, endpoint signatures, shared Maps, open follow-ups.
