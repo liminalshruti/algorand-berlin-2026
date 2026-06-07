@@ -2,12 +2,12 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { resolve } from 'node:path';
 
-const root = '/Users/shruti/liminal/algorand-berlin-2026';
+const root = process.cwd();
 const transport = new StdioClientTransport({
   command: resolve(root, 'node_modules/.bin/tsx'),
   args: [resolve(root, 'apps/router/bin/router-mcp-server.ts')],
   cwd: root,
-  env: { ...process.env, ROUTER_URL: 'http://localhost:3005' },
+  env: { ...process.env, ROUTER_URL: process.env.ROUTER_URL ?? 'http://localhost:3001' },
   stderr: 'inherit',
 });
 const client = new Client({ name: 'demo-driver', version: '0.0.1' }, { capabilities: {} });
