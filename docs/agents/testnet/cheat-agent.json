@@ -15,6 +15,5 @@
   ],
   "x402Support": true,
   "active": true,
-  "registrations": [],
   "supportedTrust": ["reputation", "validation"]
 }
