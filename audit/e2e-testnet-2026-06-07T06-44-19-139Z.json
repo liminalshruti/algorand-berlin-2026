@@ -1,0 +1,159 @@
+{
+  "title": "ARC-8004 trust lifecycle — real TestNet audit trail",
+  "network": "testnet",
+  "generated_at": "2026-06-07T06:44:19.139Z",
+  "status": "complete",
+  "failure": null,
+  "apps": {
+    "identity": {
+      "app_id": 764031067,
+      "explorer": "https://lora.algokit.io/testnet/application/764031067"
+    },
+    "reputation": {
+      "app_id": 764031363,
+      "explorer": "https://lora.algokit.io/testnet/application/764031363"
+    },
+    "validation": {
+      "app_id": 764031094,
+      "explorer": "https://lora.algokit.io/testnet/application/764031094"
+    }
+  },
+  "participants": {
+    "owner": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+    "client": "5VVDRKGNVIWWVL5DHMQ2JYZ7UAH33EK552X3BRA76EJ42URCSSH3HSHWP4",
+    "validator": "2NFOYYAZIAGQCUCVYGBCR72Z3MYWMPMOCB5GXTAKVRIK3FP6UXIBXG4M34"
+  },
+  "agent": {
+    "registry_agent_id": "3",
+    "agent_uri": "https://agents.liminal.local/audit/1780814618126",
+    "agent_wallet": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI"
+  },
+  "transactions": [
+    {
+      "step": 1,
+      "category": "setup",
+      "action": "fund client/reviewer",
+      "contract": null,
+      "method": "payment",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "receiver": "5VVDRKGNVIWWVL5DHMQ2JYZ7UAH33EK552X3BRA76EJ42URCSSH3HSHWP4",
+        "amount_algo": 0.5
+      },
+      "txid": "XKRZQPZFGRH4WFJTW2DYS34J43M7D6RQRLC64ENHGKKKTKSDJNUA",
+      "confirmed_round": 64125475,
+      "explorer": "https://lora.algokit.io/testnet/transaction/XKRZQPZFGRH4WFJTW2DYS34J43M7D6RQRLC64ENHGKKKTKSDJNUA"
+    },
+    {
+      "step": 2,
+      "category": "setup",
+      "action": "fund validator",
+      "contract": null,
+      "method": "payment",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "receiver": "2NFOYYAZIAGQCUCVYGBCR72Z3MYWMPMOCB5GXTAKVRIK3FP6UXIBXG4M34",
+        "amount_algo": 0.3
+      },
+      "txid": "DPBKSSKDMHAOVUTMDIC3VWKDHT3Q3MFZISKQMURBF6PA5CA5PXYQ",
+      "confirmed_round": 64125477,
+      "explorer": "https://lora.algokit.io/testnet/transaction/DPBKSSKDMHAOVUTMDIC3VWKDHT3Q3MFZISKQMURBF6PA5CA5PXYQ"
+    },
+    {
+      "step": 3,
+      "category": "identity",
+      "action": "register agent",
+      "contract": "IdentityRegistry",
+      "method": "register",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "registry_agent_id": "3",
+        "agent_uri": "https://agents.liminal.local/audit/1780814618126"
+      },
+      "txid": "FHSMTIAB5RJBED3U3VURTJRH5SSWJM4PTR3XCLRKPXONY4MQY2LA",
+      "confirmed_round": 64125480,
+      "explorer": "https://lora.algokit.io/testnet/transaction/FHSMTIAB5RJBED3U3VURTJRH5SSWJM4PTR3XCLRKPXONY4MQY2LA"
+    },
+    {
+      "step": 4,
+      "category": "identity",
+      "action": "set agent wallet",
+      "contract": "IdentityRegistry",
+      "method": "setAgentWallet",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "registry_agent_id": "3",
+        "wallet": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI"
+      },
+      "txid": "6BZZCXLV5WXHR7HIKF2WV3OLQATHMFJNJDUQ7LZE7BKWFBHSTEPA",
+      "confirmed_round": 64125482,
+      "explorer": "https://lora.algokit.io/testnet/transaction/6BZZCXLV5WXHR7HIKF2WV3OLQATHMFJNJDUQ7LZE7BKWFBHSTEPA"
+    },
+    {
+      "step": 5,
+      "category": "payment",
+      "action": "x402 settlement (client → agent)",
+      "contract": null,
+      "method": "payment",
+      "sender": "5VVDRKGNVIWWVL5DHMQ2JYZ7UAH33EK552X3BRA76EJ42URCSSH3HSHWP4",
+      "detail": {
+        "receiver": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+        "amount_algo": 0.1,
+        "registry_agent_id": "3"
+      },
+      "txid": "BGAG5GF3JCK2NOSXYWMV3ILJHX4GSAUT6QVMLGTDWHL7C3CAIYJA",
+      "confirmed_round": 64125484,
+      "explorer": "https://lora.algokit.io/testnet/transaction/BGAG5GF3JCK2NOSXYWMV3ILJHX4GSAUT6QVMLGTDWHL7C3CAIYJA"
+    },
+    {
+      "step": 6,
+      "category": "reputation",
+      "action": "give feedback (payment-backed review)",
+      "contract": "ReputationRegistry",
+      "method": "giveFeedback",
+      "sender": "5VVDRKGNVIWWVL5DHMQ2JYZ7UAH33EK552X3BRA76EJ42URCSSH3HSHWP4",
+      "detail": {
+        "registry_agent_id": "3",
+        "value": 1,
+        "tag": "satisfied",
+        "payment_txid": "BGAG5GF3JCK2NOSXYWMV3ILJHX4GSAUT6QVMLGTDWHL7C3CAIYJA",
+        "nonce": "1780814639987"
+      },
+      "txid": "JOZADVH27C33D4QDP3HA34E4APOIKAUIW7RZ5PG2NY567N5DBIAA",
+      "confirmed_round": 64125487,
+      "explorer": "https://lora.algokit.io/testnet/transaction/JOZADVH27C33D4QDP3HA34E4APOIKAUIW7RZ5PG2NY567N5DBIAA"
+    },
+    {
+      "step": 7,
+      "category": "validation",
+      "action": "validation request (owner → validator)",
+      "contract": "ValidationRegistry",
+      "method": "validationRequest",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "registry_agent_id": "3",
+        "validator": "2NFOYYAZIAGQCUCVYGBCR72Z3MYWMPMOCB5GXTAKVRIK3FP6UXIBXG4M34",
+        "request_hash": "5d0c1f9e70e7b2f8b86f3fc3becddcdd245455d954d925114c8189203d9cd2cf"
+      },
+      "txid": "PR4L2I2JR35U6GQGMWK5UWP6KDXWVGXFJKTJK55DG34662T3ERSQ",
+      "confirmed_round": 64125490,
+      "explorer": "https://lora.algokit.io/testnet/transaction/PR4L2I2JR35U6GQGMWK5UWP6KDXWVGXFJKTJK55DG34662T3ERSQ"
+    },
+    {
+      "step": 8,
+      "category": "validation",
+      "action": "validation response (validator verdict)",
+      "contract": "ValidationRegistry",
+      "method": "validationResponse",
+      "sender": "2NFOYYAZIAGQCUCVYGBCR72Z3MYWMPMOCB5GXTAKVRIK3FP6UXIBXG4M34",
+      "detail": {
+        "registry_agent_id": "3",
+        "response": 100,
+        "tag": "quote-match"
+      },
+      "txid": "MK7VNPNSSJYZOK3K3BTOXMW2PIB57X2WAVAMVPIEYCH6MBERZTZQ",
+      "confirmed_round": 64125492,
+      "explorer": "https://lora.algokit.io/testnet/transaction/MK7VNPNSSJYZOK3K3BTOXMW2PIB57X2WAVAMVPIEYCH6MBERZTZQ"
+    }
+  ]
+}
