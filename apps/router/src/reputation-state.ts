@@ -38,6 +38,8 @@ export function createRepState(): RouterRepState {
   const score = (e: { reads: number; corrections: number }): number | null =>
     e.reads > 0
       ? Math.round(
+        // Blend sparse observed evidence with a prior so one complaint lowers trust
+        // without permanently killing cold-start agents; repeated evidence dominates.
         ((REPUTATION_PRIOR_WEIGHT * REPUTATION_PRIOR_SCORE) + (100 * (e.reads - e.corrections))) /
         (REPUTATION_PRIOR_WEIGHT + e.reads),
       )
