@@ -75,6 +75,7 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     session: { payer, facilitator, funded },
     agents: new Map(),
     services: [],
+    quoteCache: new Map(),
     activeQuotes: new Map(),
     paymentRequirements: new Map(),
     routeStore: new Map(),

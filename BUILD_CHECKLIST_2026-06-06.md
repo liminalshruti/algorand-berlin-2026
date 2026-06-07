@@ -36,7 +36,7 @@ service/tool groups; then routes by requested service instead of a single `regis
 | [x] | Define service/tool schema | Reza | Demo fields only: `service_id`, `agent_id`, protocol, endpoint, name |
 | [x] | Agent registration/intake | Reza | Honest/Cheat cards in `docs/agents/testnet/`; `ingestAgentCardsFromManifest` |
 | [x] | Parse ARC-8004 agent registration files | Reza | `agents.ts::parseAgentCard`; reads clean `services[]`, MCP endpoint, wallet, x402/active flags |
-| [x] | Route-time demo quote adapter | Reza/Navid | Card-backed Honest/Cheat quotes are probed from local 402 responses; Cheat execution 402 requests 0.06 vs 0.04 quoted |
+| [x] | Route-time demo quote adapter | Reza/Navid | Card-backed Honest/Cheat quotes are pre-probed into `ctx.quoteCache`; Cheat execution 402 requests 0.06 vs 0.04 quoted |
 | [ ] | Add MCP capability adapter | Reza | Ingest MCP server metadata/tool list names/descriptions into the shared service schema |
 | [ ] | Add A2A capability adapter | Reza | Ingest A2A agent card capability names/descriptions into the shared service schema |
 | [x] | Add local/demo agent adapter | Reza | `seed.ts` fallback tagged `source:"seed"`; card ingestion replaces seeded service on success |
@@ -60,7 +60,7 @@ the client agent to the selected agent wallet.
 | Status | Task | Owner | Evidence |
 |---|---|---|---|
 | [ ] | Define proxy invocation shape | Reza/Navid | Client calls our service/tool endpoint; request carries `service_id` or task intent |
-| [x] | Add quote policy layer | Reza/Navid | `/api/route` probes `AgentService.endpoint` in quote mode and stores 402 response as `ActiveQuote` |
+| [x] | Add quote policy layer | Reza/Navid | `refreshQuotes` stores quote-mode 402 snapshots in `ctx.quoteCache`; `/api/route` mints route-specific `ActiveQuote`s from fresh cache |
 | [ ] | Select concrete agent by trust + price | Reza/Shayaun | Selection reads reputation, active quote, and availability |
 | [ ] | Forward agent x402 challenge | Navid/Reza | Return agent `402 PaymentRequirements` with agent `payTo`; router does not settle or custody funds |
 | [ ] | Preserve challenge correlation | Navid | Carry `route_id`, `agent_id`, active `quote_id`, x402 `nonce`, `resource`, amount, asset, network |

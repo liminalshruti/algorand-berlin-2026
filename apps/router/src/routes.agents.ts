@@ -117,7 +117,7 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
     }
 
     const route_id = randomUUID();
-    const options = discoveryOptions(candidates);
+    const options = discoveryOptions(ctx, candidates);
 
     ctx.routeStore.set(route_id, { route_id, task, service_id, options });
 

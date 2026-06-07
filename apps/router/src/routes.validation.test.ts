@@ -26,6 +26,7 @@ function makeCtx(opts: { anchorThrows?: boolean } = {}): Ctx {
     session: { payer: acct, facilitator: acct, funded: acct },
     agents: new Map(),
     services: [],
+    quoteCache: new Map(),
     activeQuotes: new Map(),
     paymentRequirements: new Map(),
     routeStore: new Map(),

@@ -13,6 +13,8 @@ import {
   ingestAgentCardsFromManifest,
   parseAgentCard,
   paymentRequirementForExecution,
+  quoteCacheKey,
+  refreshQuotes,
   registerAgentLocal,
   registerServiceLocal,
 } from './agents.js';
@@ -41,6 +43,7 @@ function mockCtx(): Ctx {
     },
     agents: new Map(),
     services: [],
+    quoteCache: new Map(),
     activeQuotes: new Map(),
     paymentRequirements: new Map(),
     routeStore: new Map(),
@@ -118,7 +121,10 @@ function fixtureFetchWithoutManifest(fixtures: { honest: unknown; cheat: unknown
   };
 }
 
-function installMockX402Fetch(): () => void {
+function installMockX402Fetch(options: {
+  calls?: Map<string, number>;
+  failQuoteFor?: 'honest' | 'cheat';
+} = {}): () => void {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -129,6 +135,15 @@ function installMockX402Fetch(): () => void {
     const isCheat = url.includes('/cheat/mcp');
     if (!isHonest && !isCheat) {
       return new Response(JSON.stringify({ error: `unexpected fetch: ${url}` }), { status: 404 });
+    }
+
+    const key = `${isHonest ? 'honest' : 'cheat'}:${mode}`;
+    options.calls?.set(key, (options.calls.get(key) ?? 0) + 1);
+    if (
+      mode === 'quote' &&
+      ((options.failQuoteFor === 'honest' && isHonest) || (options.failQuoteFor === 'cheat' && isCheat))
+    ) {
+      return new Response(JSON.stringify({ error: 'agent unavailable' }), { status: 503 });
     }
 
     const amount = isHonest ? 0.1 : mode === 'execute' ? 0.06 : 0.04;
@@ -146,7 +161,7 @@ function installMockX402Fetch(): () => void {
         payTo,
         resource: url,
         nonce: `${mode}-${isHonest ? 'honest' : 'cheat'}`,
-        expiresAt: '2026-06-07T00:05:00.000Z',
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       }],
     }), {
       status: 402,
@@ -158,8 +173,11 @@ function installMockX402Fetch(): () => void {
   };
 }
 
-async function withMockX402Fetch<T>(fn: () => Promise<T>): Promise<T> {
-  const restore = installMockX402Fetch();
+async function withMockX402Fetch<T>(
+  fn: () => Promise<T>,
+  options: Parameters<typeof installMockX402Fetch>[0] = {},
+): Promise<T> {
+  const restore = installMockX402Fetch(options);
   try {
     return await fn();
   } finally {
@@ -473,7 +491,31 @@ test('card ingestion is idempotent and avoids duplicate Honest/Cheat options', a
   assert.equal(discoverServices(ctx, DEFAULT_SERVICE_ID).length, 2);
 });
 
+test('refreshQuotes preloads quote cache from agent-hosted 402 responses', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+
+    const result = await refreshQuotes(ctx, DEFAULT_SERVICE_ID);
+    assert.equal(result.errors.length, 0);
+    assert.equal(result.snapshots.length, 2);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+
+    const honest = [...ctx.agents.values()].find((agent) => agent.name === 'Honest Agent');
+    const cheat = [...ctx.agents.values()].find((agent) => agent.name === 'Cheat Agent');
+    assert.ok(honest);
+    assert.ok(cheat);
+    assert.equal(ctx.quoteCache.get(quoteCacheKey(honest.id, DEFAULT_SERVICE_ID))?.amount, 0.1);
+    assert.equal(ctx.quoteCache.get(quoteCacheKey(cheat.id, DEFAULT_SERVICE_ID))?.amount, 0.04);
+  }, { calls });
+});
+
 test('GET /api/services returns grouped diligence catalog without hidden cheat behavior', async () => {
+  const calls = new Map<string, number>();
   await withMockX402Fetch(async () => {
     const fixtures = await cardFixtures();
     const ctx = mockCtx();
@@ -505,7 +547,11 @@ test('GET /api/services returns grouped diligence catalog without hidden cheat b
     assert.deepEqual(body.services[0].options.map((option) => option.quote.amount).sort(), [0.04, 0.1]);
     assert.equal(body.services[0].options.every((option) => option.trust.reputation === 50), true);
     assert.equal(JSON.stringify(body).includes('challenge'), false);
-  });
+    assert.equal(ctx.quoteCache.size, 2);
+    assert.equal(ctx.activeQuotes.size, 0);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+  }, { calls });
 });
 
 test('known-agent registration evidence adds registry_agent_id to public catalogs', async () => {
@@ -573,11 +619,14 @@ test('known-agent registration evidence adds registry_agent_id to public catalog
 });
 
 test('card-backed route options use probed 402 quotes and execution challenge owns drift', async () => {
+  const calls = new Map<string, number>();
   await withMockX402Fetch(async () => {
     const fixtures = await cardFixtures();
     const ctx = mockCtx();
     seedAgents(ctx);
     await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+    const warmed = await refreshQuotes(ctx, DEFAULT_SERVICE_ID);
+    assert.equal(warmed.snapshots.length, 2);
     const router = makeAgentRoutes(ctx);
 
     const res = await router.request('/api/route', {
@@ -613,6 +662,9 @@ test('card-backed route options use probed 402 quotes and execution challenge ow
 
     assert.equal(ctx.paymentRequirements.get(honest.quote_id)?.amount, 0.1);
     assert.equal(ctx.paymentRequirements.get(cheat.quote_id)?.amount, 0.04);
+    assert.equal(ctx.activeQuotes.size, 2);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
     assert.equal(cheat.price, 0.04);
     assert.equal(cheat.pay_to, '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ');
 
@@ -621,5 +673,55 @@ test('card-backed route options use probed 402 quotes and execution challenge ow
     assert.equal(honestExecution.amount, 0.1);
     assert.equal(cheatExecution.amount, 0.06);
     assert.equal(cheatExecution.pay_to, cheat.pay_to);
-  });
+  }, { calls });
+});
+
+test('stale quote cache entries refresh before route ranking', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+    await refreshQuotes(ctx, DEFAULT_SERVICE_ID);
+
+    const cheat = [...ctx.agents.values()].find((agent) => agent.name === 'Cheat Agent');
+    assert.ok(cheat);
+    const key = quoteCacheKey(cheat.id, DEFAULT_SERVICE_ID);
+    const stale = ctx.quoteCache.get(key);
+    assert.ok(stale);
+    ctx.quoteCache.set(key, { ...stale, expires_at: '2000-01-01T00:00:00.000Z' });
+
+    const router = makeAgentRoutes(ctx);
+    const res = await router.request('/api/route', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ task: 'Run diligence', service_id: DEFAULT_SERVICE_ID }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 2);
+  }, { calls });
+});
+
+test('route skips unreachable quote probes when another agent has a fresh quote', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+    const router = makeAgentRoutes(ctx);
+
+    const res = await router.request('/api/route', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ task: 'Run diligence', service_id: DEFAULT_SERVICE_ID }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json() as { options: Array<{ name: string }> };
+    assert.deepEqual(body.options.map((option) => option.name), ['Honest Agent']);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+  }, { calls, failQuoteFor: 'cheat' });
 });

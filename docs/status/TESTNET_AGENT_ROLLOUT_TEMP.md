@@ -15,7 +15,7 @@ Move the demo from "card-backed catalog + router-settled payment shim" toward kn
 Known Honest/Cheat agents
   -> curated ARC-8004 cards
   -> registered by us in the TestNet IdentityRegistry when submitter env is ready
-  -> x402 readiness is explicit in cards and route-time 402 quote probes
+  -> x402 readiness is explicit in cards and cached 402 quote probes
   -> current /api/pay remains the router-settled demo shim
   -> future direct-payment proof path is planned but not live yet
 ```
@@ -31,10 +31,10 @@ for this slice.
 - Honest/Cheat cards live in `docs/agents/testnet/` and expose clean ARC-8004 identity/service facts.
 - Router boot ingests the committed manifest or direct raw card URLs; fetch failure keeps seeded
   fallback agents alive.
-- `GET /api/services` exposes one grouped `diligence.report` proxy catalog with 402-probed quote snapshots.
+- `GET /api/services` exposes one grouped `diligence.report` proxy catalog with cached 402 quote snapshots.
 - `npm run agents:local` serves local Honest/Cheat MCP/x402 providers on `:4021`.
-- `/api/route` probes each card-backed `AgentService.endpoint` in quote mode and stores the 402
-  response as an active quote/payment requirement.
+- Router warmup and lazy refresh probe card-backed `AgentService.endpoint`s in quote mode and cache
+  402 responses in `ctx.quoteCache`; `/api/route` mints route-specific active quotes from fresh cache.
 - `/api/pay` remains the legacy router-settled demo shim, but now asks the selected agent endpoint for
   an execution 402 before settling; the router no longer authors Honest/Cheat drift.
 - `/api/validate` compares `PaymentResult.settled <= PaymentResult.quoted` and updates in-memory
@@ -114,7 +114,7 @@ This is live now and required for catalog ingestion.
 This is live now through local agent-hosted 402 behavior plus the router-settled shim.
 
 - Cards declare x402 support and point at local MCP/x402 endpoints for the demo.
-- The router probes each selected service endpoint and stores the returned 402 as the active quote.
+- The router probes selected service endpoints ahead of routing and stores quote-mode 402s in `ctx.quoteCache`.
 - Honest Agent: quote probe `0.10 ALGO`, execution challenge `0.10 ALGO`.
 - Cheat Agent: quote probe `0.04 ALGO`, execution challenge `0.06 ALGO`.
 - `/api/pay` acts as the demo facilitator shim and settles from the router payer to the selected
@@ -158,6 +158,7 @@ Current router-internal x402 helpers:
 
 ```txt
 fetchPaymentRequirementFromService(service, request)
+refreshQuotes(ctx, service_id?) -> ctx.quoteCache
 paymentRequirementForExecution(ctx, option)
 PaymentChallenge { challenge_id, route_id, option_id, agent_id, service_id, quote_id, nonce, resource, amount, asset, pay_to, network, observed_at, expires_at }
 ```
@@ -244,7 +245,7 @@ Purpose: make x402 readiness explicit before building direct payment.
 - Add or document a checklist that distinguishes card declaration from real x402 challenge support.
 - Confirm public catalog does not expose hidden Cheat behavior.
 - Confirm `/api/services` quote snapshots remain runtime-observed, not card-authored.
-- Confirm `/api/route` creates active quotes and payment requirements at route time.
+- Confirm `/api/route` creates route-specific active quotes and payment requirements from cached quote snapshots.
 
 Gate:
 
@@ -318,7 +319,7 @@ Gate:
 | Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
 | Phase 1 - Known-Agent Identity Registration | PASS | `npm run register:testnet-agents -- --check` PASS; `npm run register:testnet-agents` registered Honest `registry_agent_id=1` and Cheat `registry_agent_id=2`; evidence recorded in `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. | Owner `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU`; Honest txs `ZQ4VZVKAHKPTA7GZSGRFZ7CF3EPXSF3G4IBG5UWPWTPLOTF2WVAQ` / `G6M6XS6NK2Y3K4DI66KDPD64PZCWYPYCOOM7OKJ73HM6TXSYFQWQ`; Cheat txs `IO4QNVCWR6MRWCUJDLNDWUA2ZIJ35OXQLK4ITX76EPLTGSETQSYQ` / `MWI56EUVNEUJWNXOJGT2KPLYYMKO7QS6LZHDSPWR3OQB5MKQEZUA`. |
 | Phase 2 - x402 Readiness Checklist | PASS | `npm test` PASS; in-process `GET /api/services` shows Honest/Cheat `registry_agent_id` values with `quote.pay_to` equal to agent wallets and no hidden challenge field; in-process `POST /api/route` created 2 active quotes and 2 payment requirements. | Cards remain declaration-only x402; Phase 3 supersedes router-derived quote fixtures with 402 probes. |
-| Phase 3 - Agent-Hosted x402 Quote Ingestion | PASS | `npm test` PASS; `npm run check-types` PASS; tests mock Honest/Cheat 402 quote probes and execution challenges. | `npm run agents:local` serves `:4021`; `/api/route` stores quote 402 as `ActiveQuote`; legacy `/api/pay` asks execution 402 before settling. |
+| Phase 3 - Agent-Hosted x402 Quote Ingestion | PASS | `npm test` PASS; `npm run check-types` PASS; tests mock Honest/Cheat 402 quote probes, quote-cache refresh, stale refresh, unreachable-agent skip, and execution challenges. | `npm run agents:local` serves `:4021`; quote-mode 402s warm/lazy-refresh into `ctx.quoteCache`; `/api/route` mints route-specific `ActiveQuote`s from fresh cached quotes; legacy `/api/pay` asks execution 402 before settling. |
 | Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
 | Phase 5 - Live Smoke And Handoff | TODO | Early `npm start` attempt loaded 2 cards and 2 known registrations, then stopped in `fundAgents`. | Shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` needs a top-up before live payment smoke; `algokit dispenser fund` was unavailable because local dispenser login is required. |
 
@@ -344,7 +345,7 @@ Demo checks:
 - `npm run agents:local` serves `http://localhost:4021/honest/mcp` and
   `http://localhost:4021/cheat/mcp`.
 - `GET /api/services` returns one `diligence.report` group with Honest/Cheat.
-- `POST /api/route` creates active quotes from quote-mode 402 responses.
+- `POST /api/route` creates active quotes from cached quote-mode 402 snapshots.
 - Cheat quote probe is `0.04 ALGO`; Cheat execution 402 is `0.06 ALGO`.
 - Honest settles at quote through current shim.
 - Cheat settles above quote through current shim.

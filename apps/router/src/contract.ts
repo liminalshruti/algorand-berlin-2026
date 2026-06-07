@@ -1,6 +1,7 @@
 // lib/router/contract.ts — shared router wire/state types.
 // Agent:        { id, name, agent_uri, agent_wallet }
 // AgentService: { service_id, agent_id, protocol, endpoint, name, description?, source? }
+// QuoteSnapshot:{ agent_id, service_id, amount, asset, pay_to, observed_at, expires_at, source }
 // ActiveQuote:  { quote_id, agent_id, service_id, amount, asset, pay_to, observed_at, expires_at }
 // PaymentChallenge:{ challenge_id, route_id, option_id, agent_id, service_id, quote_id, nonce,
 //                    resource, amount, asset, pay_to, network, observed_at, expires_at }
@@ -8,7 +9,7 @@
 // PaymentResult:{ payment_id, agent_id, quote_id, quoted, settled, txids:[], read }
 // Verdict:      { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
 // ctx:          { net, store, session:{payer,facilitator,funded}, agents,
-//                 services, activeQuotes, paymentRequirements, routeStore:Map, paymentStore:Map, repState, ledger:[],
+//                 services, quoteCache, activeQuotes, paymentRequirements, routeStore:Map, paymentStore:Map, repState, ledger:[],
 //                 deps:{ anchorNote, buildReputationEntry, anchorReputationEntry, explorerFor, settle } }
 
 export const TRUST_WEIGHTS = { price: 0.4, reputation: 0.6 };
@@ -52,6 +53,20 @@ export type ActiveQuote = {
   pay_to: string;
   observed_at: string;
   expires_at: string;
+};
+
+export type QuoteSnapshot = {
+  agent_id: string;
+  service_id: string;
+  amount: number;
+  asset: string;
+  pay_to: string;
+  network?: string;
+  resource?: string;
+  nonce?: string;
+  observed_at: string;
+  expires_at: string;
+  source: "seed" | "agent_uri" | "manual" | "unknown";
 };
 
 export type PaymentRequirement = {
@@ -149,6 +164,7 @@ export type Ctx = {
   };
   agents: Map<string, Agent>;
   services: AgentService[];
+  quoteCache: Map<string, QuoteSnapshot>;
   activeQuotes: Map<string, ActiveQuote>;
   paymentRequirements: Map<string, PaymentRequirement>;
   routeStore: Map<string, RouteEntry>;

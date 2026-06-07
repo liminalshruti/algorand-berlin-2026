@@ -61,9 +61,9 @@ the shared throwaway TestNet payer, and returns real on-chain txids. Fund the pa
 and dispenser command live in `INTEGRATION_HANDOFF.md`. The public TestNet demo config is committed in
 `.env.demo`, so a local `.env` is optional unless you need private registration, reputation writes,
 deployment, or custom LocalNet credentials.
-Route-time quotes for the known Honest/Cheat cards are probed from the local x402 provider server:
-Honest returns `0.10 ALGO` for quote and execution; Cheat returns `0.04 ALGO` for quote and
-`0.06 ALGO` for execution.
+Known Honest/Cheat quotes are pre-probed from the local x402 provider into the router's in-memory
+quote cache: Honest returns `0.10 ALGO` for quote and execution; Cheat returns `0.04 ALGO` for quote
+and `0.06 ALGO` for execution.
 
 Live TestNet agent registration setup:
 
@@ -119,7 +119,7 @@ tsx scripts/localnet-e2e.ts
 - Payment + ledger are landed and verified with real txids.
 - Demo agent discovery is landed; full ARC-8004/MCP/A2A service discovery is still open.
 - Agent-hosted quote ingestion is landed for Honest/Cheat: `npm run agents:local` serves localhost
-  MCP/x402 providers, and `/api/route` pins active quotes from their 402 responses.
+  MCP/x402 providers, and `/api/route` pins active quotes from cached 402 quote snapshots.
 - Reputation + validation routes are landed; quote-drift validation updates in-memory reputation and
   anchors verdict evidence. Env-gated on-chain `giveFeedback` remains the separate user-feedback lane.
 

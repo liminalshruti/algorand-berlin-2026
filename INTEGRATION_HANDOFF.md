@@ -133,10 +133,12 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - `ingestAgentCardsFromManifest(ctx)` fetches manifest/cards, falls back to direct Honest/Cheat URLs, and replaces seeded `diligence.report` on success; card-backed services store endpoint facts only; full fetch failure keeps seeded fallback
 - `knownAgentRegistrationTargets(ctx)` returns exactly card-backed Honest/Cheat targets; seeded fallback returns none
 - `applyKnownAgentRegistrations(ctx)` maps committed evidence into `registryAgentIdFor(agent_id)` without on-chain writes
+- `ctx.quoteCache: Map<agent_id::service_id, QuoteSnapshot>` stores pre-probed quote-mode 402 snapshots; warmup runs after card ingestion and lazy refresh runs on `/api/services` + `/api/route`.
 - `fetchPaymentRequirementFromService(service, request)` calls MCP/x402 endpoint and parses 402 `accepts[0]` into `{ amount, asset, pay_to, network?, resource?, nonce?, expires_at? }`
+- `refreshQuotes(ctx, service_id?)` probes discovered services into `ctx.quoteCache`; failed agents are skipped non-fatally.
 - `paymentRequirementForExecution(ctx, option)` asks the selected agent endpoint for execution-mode 402; Honest returns `0.10`, Cheat returns `0.06`
-- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload with 402-probed quote snapshots; no `challenge_*` fields
-- `/api/route` creates active quotes/payment requirements at route time by probing `AgentService.endpoint` in quote mode; Honest quotes `0.10`, Cheat quotes `0.04`
+- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload from fresh cached quote snapshots; no `challenge_*` fields
+- `/api/route` ranks from fresh `ctx.quoteCache` snapshots; missing/stale quotes are refreshed first, then route-specific `ActiveQuote`/`PaymentRequirement` records are minted.
 - `PaymentChallenge` type added in `contract.ts` for future proof path; no `/api/challenge` or `/api/payment-proof` route yet
 - `ActiveQuote` now includes `observed_at` + `expires_at`
 - `/api/route` stores:
