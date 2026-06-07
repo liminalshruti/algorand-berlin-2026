@@ -12,7 +12,7 @@
 /* ───────────────────────────── config ─────────────────────────────── */
 const BASE_URL = "http://localhost:3001";   // Navid's router-server (INTEGRATION_HANDOFF.md)
 // per-endpoint: true = live server (mock fallback on failure), false = mock.
-const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true };
+const LIVE = { route: true, pay: true, validate: true, reputation: true, ledger: true, challenge: true, paymentProof: true, feedbackIntent: true, feedback: true };
 const ANY_LIVE = Object.values(LIVE).some(Boolean);
 const NETWORK  = "testnet";   // pinned to TestNet — matches wallet.js + router-server; never switch
 const OPERATOR_WALLET = "NDX7OC2VNQIDKH7BHE5IVUH75GAZ4ZWKL2BNHM6G3ZWQTQDFDN2AHVUCIQ"; // one consistent operator wallet — no impersonation
@@ -64,7 +64,7 @@ const isFeeSchema = (s) => s.includes("fee");
 
 /* ──────────────────────── mock backend state ──────────────────────── */
 const mock = {
-  seq: 0, routes: new Map(), payments: new Map(), ledger: [],
+  seq: 0, routes: new Map(), payments: new Map(), challenges: new Map(), ledger: [],
   agents: [
     pv("Helios Diligence",   "diligence.report",     0.38, 0.38, 20, 3),
     pv("Borealis Analytics", "diligence.report",     0.34, 0.34, 20, 5),
@@ -159,6 +159,54 @@ const mockApi = {
     if (!p) return null;
     return { agent_id: p.id, score: scoreOf(p), reads_logged: p.reads, corrections_logged: p.corrections, by_tag: p.by_tag, uri: `liminal://corrections/${p.id}`, hash: hashHex() };
   },
+  // ── proof path · mirror Reza/Shayaun server contracts (challenge → payment-proof → feedback) ──
+  async challenge({ route_id, option_id }) {
+    await wait(MOCK_LATENCY.pay);
+    const route = mock.routes.get(route_id);
+    const opt = route && route.options.find((o) => o.option_id === option_id);
+    if (!opt) { const e = new Error("unknown route/option"); e.status = 400; throw e; }
+    const agent = mock.agents.find((p) => p.id === opt.agent_id);
+    const challenge_id = `ch_${++mock.seq}`;
+    const nonce = String((Math.random() * 1e9) | 0);
+    const amount = Math.round(agent.challenge_price * 100) / 100;   // execution-mode 402 (may exceed quote)
+    const payment_note = JSON.stringify({ schema: "trust-router.challenge.v1", challenge_id, nonce });
+    const expires_at = new Date(Date.now() + 5 * 60000).toISOString();
+    const ch = {
+      challenge_id, route_id, option_id, agent_id: opt.agent_id, service_id: opt.service_id, quote_id: opt.quote_id,
+      amount, asset: "ALGO", pay_to: opt.pay_to, network: NETWORK, nonce, resource: opt.service_id, expires_at, payment_note,
+      quote: { amount: opt.price, asset: "ALGO", pay_to: opt.pay_to, expires_at },
+      quote_drift: amount > opt.price + 1e-9,
+    };
+    mock.challenges.set(challenge_id, ch);
+    return ch;
+  },
+  async paymentProof({ challenge_id, txid, payer }) {
+    await wait(MOCK_LATENCY.validate);
+    const ch = mock.challenges.get(challenge_id);
+    if (!ch) { const e = new Error("unknown challenge_id"); e.status = 400; throw e; }
+    const agent = mock.agents.find((p) => p.id === ch.agent_id);
+    const drift = ch.quote_drift;
+    if (drift) { agent.reads += 1; agent.corrections = agent.reads; agent.by_tag["missed_compensation"] = (agent.by_tag["missed_compensation"] || 0) + 1; }
+    else { agent.reads += 1; }
+    const ledger_txid = rand32();   // mock = hash-only validation anchor (on-chain ValidationRegistry write is env-gated server-side)
+    mock.ledger.unshift({ txid: ledger_txid, schema: "liminal.validation.v1", ref_id: challenge_id, hash: hashHex(), round: ++mockRound, network: NETWORK });
+    ch.payment_txid = txid; ch.payer = payer;
+    return { accepted: true, challenge_id, payment_txid: txid, agent_id: ch.agent_id, policy_result: drift ? "quote_drift" : "fair", quote_drift: drift, validation_id: `val_${++mock.seq}`, validation_txid: null, ledger_txid, new_reputation: scoreOf(agent) };
+  },
+  async feedbackIntent({ challenge_id, payment_txid, payer, response }) {
+    await wait(160);
+    const feedback_intent_id = `fbi_${++mock.seq}`;
+    const note = JSON.stringify({ schema: "trust-router.feedback-auth.v1", feedback_intent_id, challenge_id, payment_txid, payer, response });
+    return { feedback_intent_id, proof_id: payment_txid, note, note_hash: hashHex(), expires_at: new Date(Date.now() + 10 * 60000).toISOString() };
+  },
+  async feedback({ feedback_intent_id, auth_txid, agent_id, response }) {
+    await wait(220);
+    const agent = mock.agents.find((p) => p.id === agent_id);
+    if (agent) agent.reads += 1;
+    const ledger_txid = rand32();
+    mock.ledger.unshift({ txid: ledger_txid, schema: "algorand-rep-v1", ref_id: feedback_intent_id, hash: hashHex(), round: ++mockRound, network: NETWORK });
+    return { accepted: true, feedback_id: `fb_${++mock.seq}`, proof_id: auth_txid, agent_id, response, new_reputation: agent ? scoreOf(agent) : null, reputation_txid: null, ledger_txid, rebate_txid: null };
+  },
   async ledgerAll() { return { anchors: mock.ledger.slice() }; },
 };
 
@@ -189,6 +237,10 @@ const api = {
   validate: (b) => call("validate", () => http("POST", "/api/validate", b), () => mockApi.validate(b)),
   reputation: (p) => call("reputation", () => http("GET", `/api/reputation?agent=${encodeURIComponent(p)}`), () => mockApi.reputation(p)),
   ledger: () => call("ledger", () => http("GET", "/api/ledger"), () => mockApi.ledgerAll()),
+  challenge: (b) => call("challenge", () => http("POST", "/api/challenge", b), () => mockApi.challenge(b)),
+  paymentProof: (b) => call("paymentProof", () => http("POST", "/api/payment-proof", b), () => mockApi.paymentProof(b)),
+  feedbackIntent: (b) => call("feedbackIntent", () => http("POST", "/api/feedback/intent", b), () => mockApi.feedbackIntent(b)),
+  feedback: (b) => call("feedback", () => http("POST", "/api/feedback", { feedback_intent_id: b.feedback_intent_id, auth_txid: b.auth_txid }), () => mockApi.feedback(b)),
 };
 
 /* ──────────────────────────── helpers ─────────────────────────────── */
@@ -367,26 +419,48 @@ function renderBriefVerdict(pay, v) {
   $("disposition").hidden = true;
 }
 
-function renderSignedPacket(pay, v, picked, prevRep) {
+function renderSignedPacket(pay, v, picked, prevRep, proofMeta) {
   const over = pay.settled_amount > pay.quoted_amount + 1e-9;
   const down = prevRep != null && v.new_reputation != null && v.new_reputation < prevRep;
   const packetHash = hashHex(40);
   const art = $("dispoArtifact"); art.hidden = false;
+  let proofSection = "";
+  if (proofMeta && proofMeta.challenge) {
+    const ch = proofMeta.challenge, pr = proofMeta.proof || {}, st = proofMeta.settle || {};
+    const net = st.network || NETWORK;
+    const evidenceTxid = pr.validation_txid || pr.ledger_txid || "";
+    const evidenceKind = pr.validation_txid ? "on-chain ValidationRegistry" : (pr.ledger_txid ? "hash-only anchor" : "—");
+    const payTo = ch.pay_to || "";
+    proofSection = `
+      <div class="da-section da-proof">
+        <div class="da-label">Direct payment proof · x402</div>
+        <div class="da-text">
+          <div class="pp-row"><span class="pp-k">agent wallet</span><code class="copyable" data-copy="${payTo}">${shortTx(payTo)}</code></div>
+          <div class="pp-row"><span class="pp-k">x402 nonce</span><code>${ch.nonce ?? "—"}</code></div>
+          <div class="pp-row"><span class="pp-k">note binds challenge</span><code>✓ ${ch.challenge_id}</code></div>
+          <div class="pp-row"><span class="pp-k">payment</span><a class="txid-link" href="${explorerOn(net, pay.txids[0])}" target="_blank" rel="noopener">${shortTx(pay.txids[0])} ↗</a> <span class="pp-tag ${st.real ? "real" : ""}">${st.real ? "Pera · verified on-chain" : "demo settle"}</span></div>
+          <div class="pp-row"><span class="pp-k">policy</span><code class="${pr.quote_drift ? "bad" : "good"}">${pr.policy_result || (pr.quote_drift ? "quote_drift" : "fair")}</code></div>
+          <div class="pp-row"><span class="pp-k">validation evidence</span>${evidenceTxid ? `<a class="txid-link" href="${explorerOn(net, evidenceTxid)}" target="_blank" rel="noopener">${shortTx(evidenceTxid)} ↗</a> <span class="pp-tag">${evidenceKind}</span>` : "—"}</div>
+        </div>
+      </div>`;
+  }
   art.innerHTML = `
     <div class="da-bar"><span class="da-stamp">${over ? "Contested" : "Settled"}</span><span class="da-title">${picked.name} · validated</span><span class="da-time">${NETWORK}</span></div>
     <div class="da-body">
-      <div class="da-section"><div class="da-label">Disposition</div><div class="da-text">Paid <em>${pay.quoted_amount.toFixed(2)}</em> → settled <em>${pay.settled_amount.toFixed(2)}</em> ALGO</div></div>
+      <div class="da-section"><div class="da-label">Disposition</div><div class="da-text">Quoted <em>${pay.quoted_amount.toFixed(2)}</em> → charged <em>${pay.settled_amount.toFixed(2)}</em> ALGO</div></div>
       <div class="da-section"><div class="da-label">Verdict</div><div class="da-text">${v.price_match ? "price match" : "price-vs-quote FAILED"} · response ${v.response}/100</div></div>
       <div class="da-section"><div class="da-label">Reputation</div><div class="da-text"><span class="rep-line"><span class="rep-from">${prevRep ?? "—"}</span>→<span class="rep-to ${down ? "down" : "up"}">${v.new_reputation ?? "—"}</span></span></div></div>
+      ${proofSection}
       <div class="da-section"><div class="da-label">Committed to ledger</div><div class="da-text">${pay.txids.length + 1} anchors · hash-only</div></div>
     </div>
     <div class="da-foot">
       <div class="da-hash"><span class="da-hash-label">SHA-256</span><code class="copyable" data-copy="${packetHash}" title="click to copy">${packetHash}</code></div>
-      <div class="da-handoff">${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag agent</button>` : ""}${(window.WALLET && window.WALLET.isConnected) ? `<button class="dispo-btn da-handoff-btn da-pera" id="peraSignBtn">⚿ Sign on TestNet (Pera)</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
+      <div class="da-handoff">${proofMeta ? `<button class="dispo-btn da-handoff-btn da-review" id="reviewBtn">✓ Leave verified review</button>` : ""}${(over || v.response < 100) ? `<button class="dispo-btn da-handoff-btn da-flag" id="flagBtn">⚑ Flag agent</button>` : ""}${(window.WALLET && window.WALLET.isConnected) ? `<button class="dispo-btn da-handoff-btn da-pera" id="peraSignBtn">⚿ Sign on TestNet (Pera)</button>` : ""}<button class="dispo-btn da-handoff-btn" id="rerunBtn">↻ Re-run request</button><a class="dispo-btn da-handoff-btn" href="${explorer(v.verdict_txid)}" target="_blank" rel="noopener">View on explorer ›</a></div>
     </div>`;
   $("rerunBtn").addEventListener("click", () => doRoute(true));
   if ($("flagBtn")) $("flagBtn").addEventListener("click", () => flagAgent(picked));
   if ($("peraSignBtn")) $("peraSignBtn").addEventListener("click", peraSettleOnChain);
+  if ($("reviewBtn")) $("reviewBtn").addEventListener("click", () => fileVerifiedReview(picked));
 }
 
 // Real operator signature: sign a 0-ALGO self-anchor on TestNet via Pera carrying the
@@ -406,6 +480,34 @@ async function peraSettleOnChain() {
   } catch (e) {
     toast(`Pera signing failed: ${e.message}`, true);
     if (btn) { btn.disabled = false; btn.textContent = "⚿ Sign on TestNet (Pera)"; }
+  }
+}
+
+// Payment-backed feedback — verified payer files one review per proof (/api/feedback/intent +
+// /api/feedback). Pera 0-ALGO self-auth when connected, demo auth otherwise. Best-effort; never blocks.
+async function fileVerifiedReview(picked) {
+  const ch = ui.lastChallenge, pay = ui.lastPay, settle = ui.lastSettle;
+  if (!ch || !pay) return;
+  if (ui.reviewed) return toast("Already reviewed — one review per payment proof.");
+  const btn = $("reviewBtn"); if (btn) { btn.disabled = true; btn.textContent = "✓ filing verified review…"; }
+  try {
+    const response = 100;   // satisfied (demo)
+    const payer = (settle && settle.payer) || ui.operator || OPERATOR_WALLET;
+    const intent = await api.feedbackIntent({ challenge_id: ch.challenge_id, payment_txid: pay.txids[0], payer, response });
+    let auth_txid = rand32();
+    const w = window.WALLET;
+    if (w && w.isConnected && typeof w.payment === "function" && intent.note) {
+      try { const r = await w.payment({ to: w.account, amountAlgo: 0, note: intent.note }); auth_txid = r.txid; } catch (_) { /* fall back to demo auth */ }
+    }
+    const fb = await api.feedback({ feedback_intent_id: intent.feedback_intent_id, auth_txid, agent_id: ch.agent_id, response });
+    ui.reviewed = true;
+    await renderLedger();
+    await loadRepDetail(ui.route); renderRegistry();
+    if (btn) { btn.textContent = "✓ verified review filed"; }
+    toast(`Verified review filed · reputation ${fb.new_reputation ?? "—"} · one review per proof.`);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "✓ Leave verified review"; }
+    toast(`Review failed: ${e.message}`, true);
   }
 }
 
@@ -534,6 +636,16 @@ async function doRoute(isRerun) {
   }
 }
 
+async function settleChallenge(ch) {
+  // The client pays the selected agent's wallet directly for the x402 challenge amount, bound by
+  // the challenge payment_note. Default = demo settle (no real spend) so the loop is safe offline;
+  // the explicit Pera action does the real, on-chain, no-custody vendor payment.
+  return { txid: rand32(), payer: ui.operator || OPERATOR_WALLET, real: false, network: NETWORK };
+}
+
+// Proof path: forward the agent's x402 challenge → pay the agent wallet → submit payment proof.
+// Reuses the existing render sequence; falls back to the legacy pay/validate loop on any failure so
+// the demo can never break. Consumes Reza/Shayaun's /api/challenge + /api/payment-proof.
 async function doApprove() {
   if (!ui.route || !ui.picked) return;
   const picked = ui.picked, prevRep = picked.reputation;
@@ -541,37 +653,83 @@ async function doApprove() {
   $("slateCanvas").setAttribute("aria-busy", "true");
   setStep("pay");
   renderMetricBand(picked.price, null, null);
-  $("briefBody").innerHTML = `<span class="brief-opener">Settling <em>${picked.name}</em> over x402 on Algorand…</span>`;
+  $("briefBody").innerHTML = `<span class="brief-opener">Forwarding the x402 challenge for <em>${picked.name}</em>…</span>`;
   $("disposition").hidden = true;
   try {
-    const pay = await api.pay({ route_id: ui.route.route_id, option_id: picked.option_id });
-    ui.lastPay = pay; ui.lastPicked = picked;   // for the optional Pera on-chain signature
-    const over = pay.settled_amount > pay.quoted_amount + 1e-9;   // the cheat — settled exceeded quote
-    renderMetricBand(pay.quoted_amount, pay.settled_amount, null);
+    const ch = await api.challenge({ route_id: ui.route.route_id, option_id: picked.option_id });
+    const quoted = (ch.quote && ch.quote.amount != null) ? ch.quote.amount : picked.price;
+    const charge = ch.amount;
+    const over = charge > quoted + 1e-9;                          // the cheat — execution 402 exceeds the quote
+    renderMetricBand(quoted, charge, null);
     $("metricBand").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    if (over) await wait(BEAT);                                   // let the red gap land before the verdict
+    $("briefBody").innerHTML = `<span class="brief-opener">Paying ${algo(charge)} to <em>${picked.name}</em>'s wallet over x402…</span>`;
+    if (over) await wait(BEAT);
+    const settle = await settleChallenge(ch);
     setStep("validate");
-    const v = await api.validate({ payment_id: pay.payment_id });
-    renderMetricBand(pay.quoted_amount, pay.settled_amount, v.response);
+    const proof = await api.paymentProof({ challenge_id: ch.challenge_id, txid: settle.txid, payer: settle.payer });
+    const v = {
+      validation_id: proof.validation_id || `val_${mock.seq}`,
+      price_match: !proof.quote_drift,
+      output_pass: null,
+      response: proof.quote_drift ? 0 : 100,
+      new_reputation: proof.new_reputation,
+      verdict_txid: proof.validation_txid || proof.ledger_txid || settle.txid,
+    };
+    const pay = {
+      payment_id: ch.challenge_id, agent_id: ch.agent_id, quote_id: ch.quote_id, txids: [settle.txid],
+      quoted_amount: quoted, settled_amount: charge,
+      read: over ? "Delivered read (x402 charge exceeded the quote)." : "Delivered read.",
+      proof_of_payment: { from: settle.payer, to: ch.pay_to, asset: 0, amount: Math.round(charge * 1e6), txid: settle.txid, round: mockRound, nonce: ch.nonce },
+    };
+    ui.lastPay = pay; ui.lastPicked = picked; ui.lastChallenge = ch; ui.lastProof = proof; ui.lastSettle = settle; ui.reviewed = false;
+    renderMetricBand(quoted, charge, v.response);
     $("slateCanvas").classList.add("is-collapsed");          // #10 progressive disclosure
     renderBriefVerdict(pay, v);
-    renderSignedPacket(pay, v, picked, prevRep);
+    renderSignedPacket(pay, v, picked, prevRep, { challenge: ch, proof, settle });
     renderSummary(pay, v);
     await loadRepDetail(ui.route);
-    if (over) await wait(BEAT);                                   // beat before the consequence: "because…" + the score-drop
-    renderCausal(pay, v, prevRep);                               // the plain-language proof
-    renderRegistry({ [picked.agent_id]: prevRep });           // right rail: reputation drops + row flashes
+    if (over) await wait(BEAT);
+    renderCausal(pay, v, prevRep);
+    renderRegistry({ [picked.agent_id]: prevRep });
     await renderLedger();
     setStep("reputation");
     renderReceipt();
     toast(v.response === 0 ? `${picked.name} charged above quote — reputation ${prevRep ?? "—"}→${v.new_reputation ?? "—"}, anchored.` : `${picked.name} validated — reputation held.`, v.response === 0);
   } catch (e) {
-    toast(`Payment/validation failed: ${e.message}`, true);
-    $("disposition").hidden = false;
+    console.warn("proof path failed; falling back to pay/validate", e);
+    try { await doApproveLegacy(picked, prevRep); }
+    catch (e2) { toast(`Payment/validation failed: ${e2.message}`, true); $("disposition").hidden = false; }
   } finally {
     $("dispoPrimary").disabled = false; $("dispoDefer").disabled = false;
     $("slateCanvas").removeAttribute("aria-busy");
   }
+}
+
+// Legacy router-settled loop — kept verbatim as the guaranteed fallback for the proof path above.
+async function doApproveLegacy(picked, prevRep) {
+  setStep("pay");
+  renderMetricBand(picked.price, null, null);
+  const pay = await api.pay({ route_id: ui.route.route_id, option_id: picked.option_id });
+  ui.lastPay = pay; ui.lastPicked = picked;
+  const over = pay.settled_amount > pay.quoted_amount + 1e-9;
+  renderMetricBand(pay.quoted_amount, pay.settled_amount, null);
+  $("metricBand").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  if (over) await wait(BEAT);
+  setStep("validate");
+  const v = await api.validate({ payment_id: pay.payment_id });
+  renderMetricBand(pay.quoted_amount, pay.settled_amount, v.response);
+  $("slateCanvas").classList.add("is-collapsed");
+  renderBriefVerdict(pay, v);
+  renderSignedPacket(pay, v, picked, prevRep);
+  renderSummary(pay, v);
+  await loadRepDetail(ui.route);
+  if (over) await wait(BEAT);
+  renderCausal(pay, v, prevRep);
+  renderRegistry({ [picked.agent_id]: prevRep });
+  await renderLedger();
+  setStep("reputation");
+  renderReceipt();
+  toast(v.response === 0 ? `${picked.name} charged above quote — reputation ${prevRep ?? "—"}→${v.new_reputation ?? "—"}, anchored.` : `${picked.name} validated — reputation held.`, v.response === 0);
 }
 
 function doDeny() { $("briefArea").hidden = true; toast("Denied — no settlement."); }

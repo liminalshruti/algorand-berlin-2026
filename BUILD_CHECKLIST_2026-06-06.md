@@ -74,7 +74,7 @@ the client agent to the selected agent wallet.
 | [x] | One feedback per proof | Shayaun/Navid | `ctx.usedFeedbackPaymentTxids` app pre-check plus ReputationRegistry `usedPayment(paymentTxid)` final guard |
 | [x] | User-triggered reputation update | Shayaun | Payer-authorized feedback updates `ctx.repState`; ReputationRegistry write is env-gated/payer-signer-only with hash-anchor fallback |
 | [x] | Third-party validator path out of scope | Shayaun/Reza | Active trust mechanisms are payer-authorized feedback and router policy validation for quote drift only |
-| [ ] | UI shows direct-payment proof | Shruti | Catalog/route/pay flow shows selected agent wallet, txid, nonce, and feedback status |
+| [x] | UI shows direct-payment proof | Shruti | `router.js` proof path consumes `/api/challenge`+`/api/payment-proof`(+feedback); shows agent wallet, nonce, note-bind, payment+validation txids, reputation; demo-settle default with legacy+mock fallback |
 
 Reputation has two input classes in the target flow: payment-backed user feedback and automatic
 validation for objectively captured quote drift. Quote drift means the x402 challenge violates an
