@@ -217,6 +217,20 @@ const ctx = await buildContext(repState);
 
 **All endpoints consumed (live):** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`.
 
+**Router state snapshot (NEW — read-only inner-workings feed for the UI):**
+```
+GET /api/state → {
+  network, generated_at,
+  counts:{ agents, payments, challenges, anchors },
+  agents:[{ agent_id, name, registry_agent_id?, agent_wallet, reputation:{ score, reads_logged, corrections_logged, by_tag }|null }],
+  payments:[{ payment_id, agent_id, quote_id, quoted, settled, drift, over_quote, txids, explorer, read }],
+  challenges:[{ challenge_id, agent_id, route_id, quote_amount, challenge_amount, quote_drift, pay_to, payment_note, payment_txid?, explorer?, validation_txid? }],
+  active_quotes:[{ quote_id, agent_id, service_id, amount, asset, pay_to, observed_at, expires_at }],
+  ledger:[{ txid, schema, ref_id, hash, round, network, explorer }]
+}
+```
+Read-only serializer of the in-memory `ctx` Maps that the per-call responses never expose (payments, challenges, active quotes), with each record carrying its on-chain anchor txid + `explorer` URL where one exists. Server: `apps/router/src/routes.state.ts` (`makeStateRoutes(ctx)`); composed in `router-server.ts` via `app.route('/', makeStateRoutes(ctx))` (one line, alongside the other teammate factories). No mutation — pure read of shared state; reputation is feature-detected via `repState.full()`. _(Touches `router-server.ts` only for the one compose line — flag for Navid.)_
+
 **Current demo beat:** ranked agents → router-settled pay shim (gap in red if settled > quoted) → validate (verdict + reputation delta) → re-run reroutes off the caught agent.
 
 **Target demo beat:** ranked agents → active quote pinned → agent x402 challenge asks more → payment settles for challenge → automatic validation drops reputation → re-run reroutes off the caught agent. Pitch script/deck/storyboard in `docs/pitch/`.

@@ -11,6 +11,7 @@ import {
 import { makeValidationRoutes } from "../src/routes.validation.js";
 import { makeAgentRoutes } from "../src/routes.agents.js";
 import { makeTrustRoutes } from "../src/routes.trust.js";
+import { makeStateRoutes } from "../src/routes.state.js";
 import { applyKnownAgentRegistrations } from "../src/identity-onchain.js";
 import { ingestAgentCardsFromManifest, refreshQuotes } from "../src/agents.js";
 
@@ -96,6 +97,7 @@ async function main() {
   app.route("/", makeValidationRoutes(ctx));
   app.route("/", makeTrustRoutes(ctx));
   app.route("/", makeAgentRoutes(ctx));
+  app.route("/", makeStateRoutes(ctx));
 
   serve({ fetch: app.fetch, port }, () => {
     console.log(`\nrouter-server :${port}  network=${ctx.net}`);
@@ -121,6 +123,7 @@ async function main() {
     console.log("  GET  /api/ledger");
     console.log("  GET  /api/agents");
     console.log("  GET  /api/services");
+    console.log("  GET  /api/state");
     console.log("  POST /api/agents/register { name, agent_uri, address }");
   });
 }
