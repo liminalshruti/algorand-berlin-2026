@@ -37,6 +37,9 @@ for this slice.
   hash-only ledger entry.
 - `/api/validate` compares `PaymentResult.settled <= PaymentResult.quoted` and updates in-memory
   reputation through validation evidence, not user feedback.
+- Honest/Cheat are registered in the TestNet IdentityRegistry and recorded in
+  `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; router boot consumes this evidence and does
+  not mint records.
 - Payment state is currently in-memory Maps plus ledger anchors. There is no production DB in this
   slice.
 - There is no `GET /api/tools`, no `/api/challenge`, no `/api/payment-proof`, and no `POST /api/feedback`
@@ -287,7 +290,7 @@ Gate:
 | Phase | Status | Validation evidence | Notes |
 |---|---|---|---|
 | Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
-| Phase 1 - Known-Agent Identity Registration | BLOCKED | Code path landed; `npm test` PASS; `npm run check-types` PASS; known-agent registration evidence is still pending. | Run `npm run setup:testnet-identity -- --check` against the pre-funded identity submitter, then `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents`. If a check reports balance below `1 ALGO`, local `.env` is pointing at the wrong submitter key. No TestNet registration tx sent yet. |
+| Phase 1 - Known-Agent Identity Registration | PASS | `npm run register:testnet-agents -- --check` PASS; `npm run register:testnet-agents` registered Honest `registry_agent_id=1` and Cheat `registry_agent_id=2`; evidence recorded in `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. | Owner `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU`; Honest txs `ZQ4VZVKAHKPTA7GZSGRFZ7CF3EPXSF3G4IBG5UWPWTPLOTF2WVAQ` / `G6M6XS6NK2Y3K4DI66KDPD64PZCWYPYCOOM7OKJ73HM6TXSYFQWQ`; Cheat txs `IO4QNVCWR6MRWCUJDLNDWUA2ZIJ35OXQLK4ITX76EPLTGSETQSYQ` / `MWI56EUVNEUJWNXOJGT2KPLYYMKO7QS6LZHDSPWR3OQB5MKQEZUA`. |
 | Phase 2 - x402 Readiness Checklist | TODO | Pending. | Current cards already declare `x402Support: true`; confirm parser/tests remain aligned. |
 | Phase 3 - Direct-Payment Proof Path Design | TODO | Pending. | Future interfaces are planned, not live. |
 | Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |

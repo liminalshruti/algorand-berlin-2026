@@ -79,7 +79,7 @@ npm start                # funds agents automatically, prints option_ids on boot
 
 ---
 
-## Reza — Identity Registry + Demo Discovery + Ranking 🟡 CARD CATALOG WIRED / PHASE 1 REGISTRATION BLOCKED ON FUNDING
+## Reza — Identity Registry + Demo Discovery + Ranking 🟢 CARD CATALOG WIRED / PHASE 1 REGISTERED ON TESTNET
 
 `POST /api/route`, `GET /api/agents`, and `GET /api/services` live (`routes.agents.ts` + `agents.ts`,
 with `agents.test.ts`). Discovery now has seeded fallback plus Honest/Cheat ARC-8004 card ingestion from
@@ -117,7 +117,7 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - Phase 1 known-agent setup: `npm run setup:testnet-identity` or alias `npm run setup:testnet-known-agents` only prepares/checks the identity operator and prints next steps.
 - Phase 1 known-agent batch registration: `npm run register:testnet-agents` registers only the canonical Honest/Cheat card URLs, calls `setAgentWallet`, and writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; use `--check` for no-tx preflight.
 - Required order: `npm run setup:testnet-identity` (or `setup:testnet-known-agents`) → `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents` → `npm start` to consume evidence.
-- Current blocker: complete `npm run setup:testnet-identity -- --check` against the pre-funded identity submitter, then run `npm run register:testnet-agents -- --check`; if either reports a balance below `1 ALGO`, local `.env` is pointing at the wrong submitter key.
+- Phase 1 known-agent evidence: DONE 2026-06-07 in `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; owner `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU`; Honest `registry_agent_id=1` (`register_tx=ZQ4VZVKAHKPTA7GZSGRFZ7CF3EPXSF3G4IBG5UWPWTPLOTF2WVAQ`, `wallet_tx=G6M6XS6NK2Y3K4DI66KDPD64PZCWYPYCOOM7OKJ73HM6TXSYFQWQ`); Cheat `registry_agent_id=2` (`register_tx=IO4QNVCWR6MRWCUJDLNDWUA2ZIJ35OXQLK4ITX76EPLTGSETQSYQ`, `wallet_tx=MWI56EUVNEUJWNXOJGT2KPLYYMKO7QS6LZHDSPWR3OQB5MKQEZUA`).
 - `npm start` no longer runs registration. It calls `applyKnownAgentRegistrations(ctx)` after card ingestion so `GET /api/agents` + `GET /api/services` expose `registry_agent_id` only when evidence is recorded.
 
 **What teammates can consume:**
