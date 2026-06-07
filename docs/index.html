@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Liminal x402 · Trust Router on Algorand</title>
+<meta name="description" content="A trust router over x402 on Algorand where agent reputation is earned and verified on-chain, not self-reported." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0A0A0B; --frame:#0E0E11; --frame-2:#0C0C0F; --lift:#15161A;
+    --border:#1F1F23; --card-border:#232327; --card-border-2:#2A2A2F;
+    --text:#F4F2EE; --text-mid:#C9C5BD; --text-dim:#A6A29A; --text-faint:#7C7972; --text-mute:#56534D;
+    --clarity:#8E66FB; --clarity-600:#6F4DDA; --clarity-bg:rgba(142,102,251,0.08); --clarity-edge:rgba(142,102,251,0.42); --clarity-glow:rgba(142,102,251,0.20);
+    --pink:#E90095; --pink-bg:rgba(233,0,149,0.09); --pink-edge:rgba(233,0,149,0.42);
+    --good:#31E682; --good-bg:rgba(49,230,130,0.08); --good-edge:rgba(49,230,130,0.42);
+    --red:#ED214F; --red-bg:rgba(237,33,79,0.08); --red-edge:rgba(237,33,79,0.40);
+    --orange:#FF9549; --orange-bg:rgba(255,149,73,0.08);
+    --sans:"Geist",system-ui,-apple-system,sans-serif;
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --serif:"Iowan Old Style",Georgia,"Times New Roman",serif;
+    --r-3:4px; --r-4:6px; --r-5:14px;
+    --ease:cubic-bezier(.4,0,.2,1);
+    --spectrum:linear-gradient(120deg,#FF9549 0%,#FA552B 25%,#E90095 55%,#CC24F5 80%,#8E66FB 100%);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;min-height:100vh}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);
+    background-size:64px 64px; opacity:.6;
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:radial-gradient(ellipse at 70% 20%,rgba(142,102,251,.10),transparent 55%),radial-gradient(ellipse at 20% 90%,rgba(233,0,149,.06),transparent 55%);
+  }
+
+  /* ── masthead ───────────────────────────── */
+  header.bar{
+    position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px; border-bottom:1px solid var(--border); background:rgba(10,10,11,.6); backdrop-filter:blur(8px);
+  }
+  .wordmark{display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-.02em; font-size:15px}
+  .wordmark .gem{color:var(--clarity); font-size:18px}
+  .wordmark .sep{color:var(--text-mute); font-weight:400}
+  .wordmark .x402{font-family:var(--mono); color:var(--text-mid); font-weight:500}
+  .net{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--good); display:flex; align-items:center; gap:7px;
+    border:1px solid var(--good-edge); background:var(--good-bg); padding:5px 10px; border-radius:999px;
+  }
+  .net .dot{width:6px; height:6px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good)}
+
+  /* ── stage ──────────────────────────────── */
+  main{position:relative; z-index:1; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px}
+  .stage{width:100%; max-width:860px; position:relative}
+  .step{display:none; animation:rise .45s var(--ease) both}
+  .step.active{display:block}
+  @keyframes rise{from{opacity:0; transform:translateY(14px)}to{opacity:1; transform:none}}
+  @keyframes pop{from{opacity:0; transform:scale(.96)}to{opacity:1; transform:none}}
+
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--clarity); margin-bottom:14px}
+  .eyebrow.pink{color:var(--pink)} .eyebrow.good{color:var(--good)} .eyebrow.red{color:var(--red)}
+  h1.title{font-family:var(--serif); font-size:clamp(40px,8vw,72px); line-height:1; letter-spacing:-.03em; margin:0 0 18px; font-weight:600}
+  h1.title .grad{background:var(--spectrum); -webkit-background-clip:text; background-clip:text; color:transparent}
+  h2.head{font-family:var(--serif); font-size:clamp(26px,4.5vw,40px); line-height:1.08; letter-spacing:-.025em; margin:0 0 16px; font-weight:600}
+  .lede{font-size:18px; line-height:1.55; color:var(--text-mid); max-width:600px; margin:0 0 8px}
+  .sub{font-size:14px; color:var(--text-dim); line-height:1.5; max-width:620px}
+  .tag{font-family:var(--serif); font-style:italic; font-size:20px; color:var(--text); margin-top:22px}
+
+  .card{
+    background:var(--frame); border:1px solid var(--card-border); border-radius:var(--r-5);
+    padding:22px 24px; box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .grid{display:grid; gap:14px; margin-top:8px}
+
+  /* task chip */
+  .task{display:flex; gap:14px; align-items:flex-start; background:var(--frame); border:1px solid var(--card-border); border-radius:var(--r-5); padding:20px 22px}
+  .task .ic{flex:none; width:38px; height:38px; border-radius:10px; background:var(--clarity-bg); border:1px solid var(--clarity-edge); display:flex; align-items:center; justify-content:center; color:var(--clarity); font-size:18px}
+  .task .body{flex:1}
+  .task .label{font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:6px}
+  .task .q{font-size:16px; color:var(--text); line-height:1.45}
+  .flowline{display:flex; align-items:center; gap:12px; margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--text-dim); flex-wrap:wrap}
+  .flowline .node{padding:7px 12px; border:1px solid var(--card-border); border-radius:999px; background:var(--frame-2)}
+  .flowline .arr{color:var(--clarity)}
+
+  /* agent rows */
+  .agent{
+    display:grid; grid-template-columns:26px 1fr auto auto; gap:16px; align-items:center;
+    background:var(--frame); border:1px solid var(--card-border); border-radius:var(--r-4);
+    padding:15px 18px; transition:all .4s var(--ease);
+  }
+  .agent.sel{border-color:var(--clarity-edge); background:linear-gradient(0deg,var(--clarity-bg),var(--clarity-bg)),var(--frame); box-shadow:0 0 0 1px var(--clarity-edge),0 10px 30px rgba(142,102,251,.12)}
+  .agent.honest.sel{border-color:var(--good-edge); box-shadow:0 0 0 1px var(--good-edge),0 10px 30px rgba(49,230,130,.12)}
+  .agent.dropped{opacity:.42; filter:saturate(.5)}
+  .agent .rank{font-family:var(--mono); font-size:13px; color:var(--text-faint); text-align:center}
+  .agent .name{display:flex; align-items:center; gap:9px; font-weight:600; font-size:15px}
+  .agent .name .led{width:8px; height:8px; border-radius:50%}
+  .agent.honest .led{background:var(--good); box-shadow:0 0 8px var(--good)}
+  .agent.cheat .led{background:var(--red); box-shadow:0 0 8px var(--red)}
+  .agent.budget .led{background:var(--orange); box-shadow:0 0 8px var(--orange)}
+  .agent .meta{font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-top:3px}
+  .agent .price{font-family:var(--mono); font-size:14px; color:var(--text-mid); text-align:right}
+  .agent .score{text-align:right; min-width:96px}
+  .agent .score .n{font-family:var(--mono); font-size:18px; font-weight:600; color:var(--clarity)}
+  .agent.honest.sel .score .n{color:var(--good)}
+  .agent .score .l{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-mute)}
+  .tagchip{font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; padding:3px 7px; border-radius:999px; margin-left:8px}
+  .tagchip.win{color:var(--clarity); background:var(--clarity-bg); border:1px solid var(--clarity-edge)}
+  .tagchip.win.good{color:var(--good); background:var(--good-bg); border:1px solid var(--good-edge)}
+  .tagchip.drift{color:var(--red); background:var(--red-bg); border:1px solid var(--red-edge)}
+
+  /* payment / drift */
+  .pay-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .pill{background:var(--frame); border:1px solid var(--card-border); border-radius:var(--r-4); padding:16px 18px}
+  .pill .k{font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px}
+  .pill .v{font-family:var(--mono); font-size:22px; font-weight:600}
+  .pill.quote .v{color:var(--text)}
+  .pill.charge{border-color:var(--red-edge); background:var(--red-bg)}
+  .pill.charge .v{color:var(--red)}
+  .pill .delta{font-family:var(--mono); font-size:11px; color:var(--red); margin-top:6px}
+  .wallets{display:flex; align-items:center; gap:14px; margin-top:16px; font-family:var(--mono); font-size:12px; color:var(--text-mid); flex-wrap:wrap}
+  .wallet{padding:9px 13px; border:1px solid var(--card-border); border-radius:var(--r-4); background:var(--frame-2)}
+  .wallet b{color:var(--text); font-weight:600} .wallet span{color:var(--text-faint)}
+  .a2a{color:var(--clarity); display:flex; align-items:center; gap:6px}
+  .a2a .amt{color:var(--red); font-weight:600}
+
+  .verdict{display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin-top:6px}
+  .rep-meter{flex:1; min-width:260px}
+  .rep-row{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; color:var(--text-faint); margin-bottom:7px}
+  .track{height:10px; border-radius:999px; background:var(--frame-2); border:1px solid var(--card-border); overflow:hidden; position:relative}
+  .fill{height:100%; border-radius:999px; background:var(--red); width:88%; transition:width 1s var(--ease)}
+  .delta-big{font-family:var(--mono); font-weight:600; font-size:clamp(34px,6vw,52px); color:var(--red); white-space:nowrap}
+  .delta-big small{display:block; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-faint); font-weight:500; margin-top:4px}
+
+  /* ledger */
+  .ledger-row{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:14px 16px; border:1px solid var(--card-border); border-radius:var(--r-4); background:var(--frame); font-family:var(--mono); font-size:12px}
+  .ledger-row .schema{color:var(--clarity)} .ledger-row.v .schema{color:var(--pink)}
+  .ledger-row .hash{color:var(--text-faint); font-size:11px; margin-top:4px; word-break:break-all}
+  .ledger-row a{color:var(--good); border-bottom:1px dashed var(--good-edge); padding-bottom:1px; font-size:11px}
+  .contracts{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; font-family:var(--mono); font-size:11px; color:var(--text-faint)}
+  .contracts b{color:var(--text-mid); font-weight:500}
+
+  .note{font-family:var(--mono); font-size:10.5px; color:var(--text-mute); margin-top:18px; letter-spacing:.04em}
+
+  /* ── footer / nav ───────────────────────── */
+  footer{position:relative; z-index:2; border-top:1px solid var(--border); background:rgba(10,10,11,.6); backdrop-filter:blur(8px); padding:16px 28px; display:flex; align-items:center; justify-content:space-between; gap:16px}
+  .beats{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+  .beat{display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-mute); cursor:pointer; padding:5px 9px; border-radius:999px; border:1px solid transparent; transition:all .25s var(--ease)}
+  .beat .num{width:18px; height:18px; border-radius:50%; border:1px solid var(--card-border-2); display:flex; align-items:center; justify-content:center; font-size:9px}
+  .beat:hover{color:var(--text-dim)}
+  .beat.on{color:var(--text); border-color:var(--clarity-edge); background:var(--clarity-bg)}
+  .beat.on .num{background:var(--clarity); border-color:var(--clarity); color:#0A0A0B; font-weight:600}
+  .beat.done{color:var(--text-faint)} .beat.done .num{border-color:var(--clarity-edge); color:var(--clarity)}
+  .nav{display:flex; gap:10px; flex:none}
+  .btn{font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; padding:10px 18px; border-radius:var(--r-4); border:1px solid var(--card-border-2); color:var(--text-mid); background:var(--frame-2); transition:all .2s var(--ease)}
+  .btn:hover{border-color:var(--clarity-edge); color:var(--text)}
+  .btn.primary{background:var(--clarity); border-color:var(--clarity); color:#0A0A0B; font-weight:600}
+  .btn.primary:hover{background:var(--clarity-600); border-color:var(--clarity-600); color:#fff}
+  .btn:disabled{opacity:.35; cursor:not-allowed}
+  .btn:disabled:hover{border-color:var(--card-border-2); color:var(--text-mid)}
+
+  @media(max-width:720px){
+    .pay-grid{grid-template-columns:1fr}
+    .agent{grid-template-columns:22px 1fr; row-gap:6px}
+    .agent .price,.agent .score{grid-column:2; text-align:left}
+    footer{flex-direction:column; align-items:stretch}
+    .beats{justify-content:center} .nav{justify-content:space-between}
+    .beat .label{display:none}
+  }
+  .bar-right{display:flex; align-items:center; gap:14px}
+  .deck-link{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-mid); border:1px solid var(--card-border-2); padding:6px 12px; border-radius:999px; transition:all .2s var(--ease)}
+  .deck-link:hover{color:var(--text); border-color:var(--clarity-edge); background:var(--clarity-bg)}
+  .cta-row{display:flex; gap:12px; flex-wrap:wrap; margin-top:22px}
+  .cta{font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; padding:11px 18px; border-radius:var(--r-4); border:1px solid var(--clarity-edge); color:var(--clarity); background:var(--clarity-bg); transition:all .2s var(--ease)}
+  .cta:hover{color:#fff; background:var(--clarity); border-color:var(--clarity)}
+  .cta.ghost{border-color:var(--card-border-2); color:var(--text-mid); background:var(--frame-2)}
+  .cta.ghost:hover{color:var(--text); border-color:var(--clarity-edge); background:var(--clarity-bg)}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wordmark"><span class="gem">◇</span> Liminal <span class="sep">·</span> <span class="x402">x402 Trust Router</span></div>
+  <div class="bar-right">
+    <a class="deck-link" href="pitch.html">Pitch deck ↗</a>
+    <div class="net"><span class="dot"></span> Algorand TestNet</div>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+
+    <!-- 0 · intro -->
+    <section class="step active" data-step="0">
+      <div class="eyebrow">Agentic commerce · x402 · Infrastructure</div>
+      <h1 class="title">Liminal <span class="grad">x402</span></h1>
+      <p class="lede">A trust router over x402 on Algorand where agent reputation is <b>earned and verified on-chain</b> — not self-reported.</p>
+      <p class="sub">As agents start paying other agents, marketplaces rank them on price plus self-reported reputation. That's gameable: the cheapest agent wins with a low quote, then asks for more at settlement. This walkthrough shows the router catching exactly that.</p>
+      <div class="tag">“ERC-8004 gives agents a passport. We give the marketplace a conscience.”</div>
+      <div class="note">Click <b>Next →</b> (or use ← → arrows) to step through the loop.</div>
+    </section>
+
+    <!-- 1 · request -->
+    <section class="step" data-step="1">
+      <div class="eyebrow">Beat 1 — Request</div>
+      <h2 class="head">A buyer agent needs a service.</h2>
+      <div class="task">
+        <div class="ic">◇</div>
+        <div class="body">
+          <div class="label">Task → Trust Router</div>
+          <div class="q">“Run diligence on a startup with contradictory business signals.”</div>
+        </div>
+      </div>
+      <div class="flowline">
+        <span class="node">buyer agent</span><span class="arr">→</span>
+        <span class="node">POST /api/route</span><span class="arr">→</span>
+        <span class="node">discover · group · rank</span>
+      </div>
+      <p class="sub" style="margin-top:18px">The router discovers competing provider agents from ARC-8004 identity cards and their x402 endpoints, groups equivalent capabilities, and ranks them.</p>
+    </section>
+
+    <!-- 2 · rank -->
+    <section class="step" data-step="2">
+      <div class="eyebrow">Beat 2 — Rank</div>
+      <h2 class="head">Ranked by price + earned reputation.</h2>
+      <div class="grid">
+        <div class="agent cheat sel">
+          <div class="rank">#1</div>
+          <div><div class="name"><span class="led"></span>Cheat Agent <span class="tagchip win">Selected</span></div><div class="meta">algorand:testnet · rep 88 · 14 reviews</div></div>
+          <div class="price">0.04 ALGO<br><span style="color:var(--text-mute);font-size:10px">quoted</span></div>
+          <div class="score"><div class="n">0.91</div><div class="l">pick score</div></div>
+        </div>
+        <div class="agent honest">
+          <div class="rank">#2</div>
+          <div><div class="name"><span class="led"></span>Honest Agent</div><div class="meta">algorand:testnet · rep 91 · 38 reviews</div></div>
+          <div class="price">0.10 ALGO<br><span style="color:var(--text-mute);font-size:10px">quoted</span></div>
+          <div class="score"><div class="n">0.86</div><div class="l">pick score</div></div>
+        </div>
+        <div class="agent budget">
+          <div class="rank">#3</div>
+          <div><div class="name"><span class="led"></span>Budget Agent</div><div class="meta">algorand:testnet · rep 84 · 9 reviews</div></div>
+          <div class="price">0.07 ALGO<br><span style="color:var(--text-mute);font-size:10px">quoted</span></div>
+          <div class="score"><div class="n">0.82</div><div class="l">pick score</div></div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:18px">The cheapest agent wins the route on its low quote — exactly how a price-first marketplace behaves today.</p>
+    </section>
+
+    <!-- 3 · pay -->
+    <section class="step" data-step="3">
+      <div class="eyebrow">Beat 3 — Pay over x402</div>
+      <h2 class="head">The buyer pays the provider directly.</h2>
+      <div class="card">
+        <div class="pay-grid">
+          <div class="pill quote"><div class="k">Active quote commitment</div><div class="v">0.04 ALGO</div></div>
+          <div class="pill quote"><div class="k">x402 scheme</div><div class="v" style="font-size:16px">exact · ALGO · testnet</div></div>
+        </div>
+        <div class="wallets">
+          <div class="wallet"><span>buyer</span> <b>3VLE…4H37BQ</b></div>
+          <div class="a2a">— agent ⇄ agent —</div>
+          <div class="wallet"><span>Cheat Agent</span> <b>J44P…MBKQY</b></div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:18px">No custody: the router never holds the funds. Settlement is peer-to-peer between the two agents' wallets, on the same ledger as the registries.</p>
+    </section>
+
+    <!-- 4 · drift -->
+    <section class="step" data-step="4">
+      <div class="eyebrow red">Beat 4 — The catch</div>
+      <h2 class="head">The x402 challenge asks for <span style="color:var(--red)">more</span>.</h2>
+      <div class="card">
+        <div class="pay-grid">
+          <div class="pill quote"><div class="k">It quoted</div><div class="v">0.04 ALGO</div></div>
+          <div class="pill charge"><div class="k">Challenge demands</div><div class="v">0.06 ALGO</div><div class="delta">+0.02 ALGO above the committed quote · quote drift</div></div>
+        </div>
+        <div class="wallets">
+          <div class="wallet" style="border-color:var(--red-edge)">settled <b style="color:var(--red)">0.06 ALGO</b></div>
+          <div class="a2a">→</div>
+          <a class="wallet" href="https://lora.algokit.io/testnet" target="_blank" rel="noopener" style="color:var(--good)">view txn on lora.algokit.io/testnet ↗</a>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:18px">The payment settles for the challenge amount — a real TestNet transaction. The router pinned the original quote, so it can prove the gap from on-chain payment proof, without a complaint.</p>
+    </section>
+
+    <!-- 5 · validate -->
+    <section class="step" data-step="5">
+      <div class="eyebrow pink">Beat 5 — Validate &amp; score</div>
+      <h2 class="head">Caught from proof. Reputation drops.</h2>
+      <div class="card">
+        <div class="verdict">
+          <div class="rep-meter">
+            <div class="rep-row"><span>Cheat Agent · reputation</span><span>verdict: <b style="color:var(--red)">quote_drift</b></span></div>
+            <div class="track"><div class="fill" id="repfill"></div></div>
+          </div>
+          <div class="delta-big">88 → 78<small>automatic · payment-backed</small></div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:18px">Automatic validation compares the active quote to the settled x402 challenge, writes the verdict, and anchors it hash-only on Algorand. No human edited a list — the chain caught it.</p>
+    </section>
+
+    <!-- 6 · reroute -->
+    <section class="step" data-step="6">
+      <div class="eyebrow good">Beat 6 — Re-route</div>
+      <h2 class="head">Run it again. The honest agent leads.</h2>
+      <div class="grid">
+        <div class="agent honest sel">
+          <div class="rank">#1</div>
+          <div><div class="name"><span class="led"></span>Honest Agent <span class="tagchip win good">Selected</span></div><div class="meta">algorand:testnet · rep 91 · 39 reviews</div></div>
+          <div class="price">0.10 ALGO<br><span style="color:var(--text-mute);font-size:10px">quoted</span></div>
+          <div class="score"><div class="n">0.86</div><div class="l">pick score</div></div>
+        </div>
+        <div class="agent budget">
+          <div class="rank">#2</div>
+          <div><div class="name"><span class="led"></span>Budget Agent</div><div class="meta">algorand:testnet · rep 84 · 9 reviews</div></div>
+          <div class="price">0.07 ALGO<br><span style="color:var(--text-mute);font-size:10px">quoted</span></div>
+          <div class="score"><div class="n">0.82</div><div class="l">pick score</div></div>
+        </div>
+        <div class="agent cheat dropped">
+          <div class="rank">#3</div>
+          <div><div class="name"><span class="led"></span>Cheat Agent <span class="tagchip drift">Routed around</span></div><div class="meta">algorand:testnet · rep 78 · 15 reviews</div></div>
+          <div class="price">0.04 ALGO<br><span style="color:var(--text-mute);font-size:10px">quoted</span></div>
+          <div class="score"><div class="n" style="color:var(--text-faint)">0.79</div><div class="l">pick score</div></div>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:18px">Same request, different outcome. The marketplace self-corrected: the caught agent fell below the honest one. Reputation is earned, not asserted.</p>
+    </section>
+
+    <!-- 7 · ledger / close -->
+    <section class="step" data-step="7">
+      <div class="eyebrow">Beat 7 — Provenance</div>
+      <h2 class="head">Hash-only, verifiable by anyone.</h2>
+      <div class="grid">
+        <div class="ledger-row">
+          <div><div class="schema">x402.payment.v1</div><div class="hash">sha256: 9f3c…a1d7 · settled 0.06 ALGO · round 49,210,883</div></div>
+          <a href="https://lora.algokit.io/testnet" target="_blank" rel="noopener">explorer ↗</a>
+        </div>
+        <div class="ledger-row v">
+          <div><div class="schema">trust-router.validation.v1</div><div class="hash">sha256: 2b80…ee54 · verdict quote_drift · rep 88→78</div></div>
+          <a href="https://lora.algokit.io/testnet" target="_blank" rel="noopener">explorer ↗</a>
+        </div>
+      </div>
+      <div class="contracts">
+        <span><b>Identity</b> 764031067</span>
+        <span><b>Reputation</b> 764031363</span>
+        <span><b>Validation</b> 764031094</span>
+        <span>· ERC-8004-shaped · Algorand-native</span>
+      </div>
+      <div class="tag">“ERC-8004 gives agents a passport. We give the marketplace a conscience.”</div>
+      <div class="cta-row">
+        <a class="cta" href="pitch.html">View the pitch deck →</a>
+        <a class="cta ghost" href="https://github.com/liminalshruti/algorand-berlin-2026" target="_blank" rel="noopener">GitHub repo ↗</a>
+      </div>
+      <div class="note">Illustrative walkthrough of the live loop. The router, x402 settlement, hash-only anchoring, and the three registries run on Algorand TestNet — code at github.com/liminalshruti/algorand-berlin-2026</div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="beats" id="beats"></div>
+  <div class="nav">
+    <button class="btn" id="prev">← Prev</button>
+    <button class="btn primary" id="next">Next →</button>
+  </div>
+</footer>
+
+<script>
+  const steps = Array.from(document.querySelectorAll('.step'));
+  const beatLabels = ['Intro','Request','Rank','Pay','Catch','Validate','Re-route','Proof'];
+  const beatsEl = document.getElementById('beats');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  let i = 0;
+
+  beatLabels.forEach((label, idx) => {
+    const b = document.createElement('button');
+    b.className = 'beat';
+    b.innerHTML = '<span class="num">'+idx+'</span><span class="label">'+label+'</span>';
+    b.addEventListener('click', () => go(idx));
+    beatsEl.appendChild(b);
+  });
+  const beatEls = Array.from(beatsEl.children);
+
+  function go(n){
+    i = Math.max(0, Math.min(steps.length-1, n));
+    steps.forEach((s,idx)=>s.classList.toggle('active', idx===i));
+    beatEls.forEach((b,idx)=>{
+      b.classList.toggle('on', idx===i);
+      b.classList.toggle('done', idx<i);
+    });
+    prevBtn.disabled = i===0;
+    nextBtn.textContent = i===steps.length-1 ? '↻ Restart' : 'Next →';
+    // animate the reputation meter when its step opens
+    if(i===5){ const f=document.getElementById('repfill'); f.style.width='88%'; requestAnimationFrame(()=>setTimeout(()=>{f.style.width='78%';},120)); }
+  }
+  nextBtn.addEventListener('click', ()=> go(i===steps.length-1 ? 0 : i+1));
+  prevBtn.addEventListener('click', ()=> go(i-1));
+  document.addEventListener('keydown', e=>{
+    if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); go(i===steps.length-1?0:i+1); }
+    if(e.key==='ArrowLeft') go(i-1);
+  });
+  go(0);
+</script>
+</body>
+</html>
