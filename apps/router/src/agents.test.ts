@@ -9,8 +9,12 @@ import {
   TESTNET_CARD_URLS,
   agentId,
   discoverServices,
+  fetchPaymentRequirementFromService,
   ingestAgentCardsFromManifest,
   parseAgentCard,
+  paymentRequirementForExecution,
+  quoteCacheKey,
+  refreshQuotes,
   registerAgentLocal,
   registerServiceLocal,
 } from './agents.js';
@@ -39,6 +43,7 @@ function mockCtx(): Ctx {
     },
     agents: new Map(),
     services: [],
+    quoteCache: new Map(),
     activeQuotes: new Map(),
     paymentRequirements: new Map(),
     routeStore: new Map(),
@@ -114,6 +119,70 @@ function fixtureFetchWithoutManifest(fixtures: { honest: unknown; cheat: unknown
     if (!values.has(url)) throw new Error(`missing fixture: ${url}`);
     return values.get(url);
   };
+}
+
+function installMockX402Fetch(options: {
+  calls?: Map<string, number>;
+  failQuoteFor?: 'honest' | 'cheat';
+} = {}): () => void {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const rawBody = typeof init?.body === 'string' ? init.body : '{}';
+    const body = JSON.parse(rawBody) as { mode?: string };
+    const mode = body.mode === 'execute' ? 'execute' : 'quote';
+    const isHonest = url.includes('/honest/mcp');
+    const isCheat = url.includes('/cheat/mcp');
+    if (!isHonest && !isCheat) {
+      return new Response(JSON.stringify({ error: `unexpected fetch: ${url}` }), { status: 404 });
+    }
+
+    const key = `${isHonest ? 'honest' : 'cheat'}:${mode}`;
+    options.calls?.set(key, (options.calls.get(key) ?? 0) + 1);
+    if (
+      mode === 'quote' &&
+      ((options.failQuoteFor === 'honest' && isHonest) || (options.failQuoteFor === 'cheat' && isCheat))
+    ) {
+      return new Response(JSON.stringify({ error: 'agent unavailable' }), { status: 503 });
+    }
+
+    const amount = isHonest ? 0.1 : mode === 'execute' ? 0.06 : 0.04;
+    const payTo = isHonest
+      ? 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY'
+      : '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ';
+    return new Response(JSON.stringify({
+      x402Version: 1,
+      accepts: [{
+        scheme: 'exact',
+        network: 'testnet',
+        asset: 'ALGO',
+        amount,
+        maxAmountRequired: String(Math.round(amount * 1_000_000)),
+        payTo,
+        resource: url,
+        nonce: `${mode}-${isHonest ? 'honest' : 'cheat'}`,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      }],
+    }), {
+      status: 402,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  return () => {
+    globalThis.fetch = originalFetch;
+  };
+}
+
+async function withMockX402Fetch<T>(
+  fn: () => Promise<T>,
+  options: Parameters<typeof installMockX402Fetch>[0] = {},
+): Promise<T> {
+  const restore = installMockX402Fetch(options);
+  try {
+    return await fn();
+  } finally {
+    restore();
+  }
 }
 
 test('agentId formats Algorand-native router agent identity', () => {
@@ -214,11 +283,47 @@ test('valid Honest/Cheat card fixtures parse as ARC-8004 registration cards', as
 
   assert.equal(parsedHonest.name, 'Honest Agent');
   assert.equal(parsedHonest.agent_wallet, 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY');
-  assert.equal(parsedHonest.mcp_endpoint, 'https://agents.algorand-berlin-2026.example/honest/mcp');
+  assert.equal(parsedHonest.mcp_endpoint, 'http://localhost:4021/honest/mcp');
 
   assert.equal(parsedCheat.name, 'Cheat Agent');
   assert.equal(parsedCheat.agent_wallet, '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ');
-  assert.equal(parsedCheat.mcp_endpoint, 'https://agents.algorand-berlin-2026.example/cheat/mcp');
+  assert.equal(parsedCheat.mcp_endpoint, 'http://localhost:4021/cheat/mcp');
+});
+
+test('x402 quote ingestion reads 402 payment requirements from agent endpoints', async () => {
+  await withMockX402Fetch(async () => {
+    const honestRequirement = await fetchPaymentRequirementFromService({
+      service_id: DEFAULT_SERVICE_ID,
+      agent_id: 'agent-honest',
+      protocol: 'MCP',
+      endpoint: 'http://localhost:4021/honest/mcp',
+      name: 'Diligence report',
+      source: 'agent_uri',
+    }, {
+      mode: 'quote',
+      agent_id: 'agent-honest',
+      service_id: DEFAULT_SERVICE_ID,
+      network: 'testnet',
+    });
+    const cheatRequirement = await fetchPaymentRequirementFromService({
+      service_id: DEFAULT_SERVICE_ID,
+      agent_id: 'agent-cheat',
+      protocol: 'MCP',
+      endpoint: 'http://localhost:4021/cheat/mcp',
+      name: 'Diligence report',
+      source: 'agent_uri',
+    }, {
+      mode: 'quote',
+      agent_id: 'agent-cheat',
+      service_id: DEFAULT_SERVICE_ID,
+      network: 'testnet',
+    });
+
+    assert.equal(honestRequirement.amount, 0.1);
+    assert.equal(cheatRequirement.amount, 0.04);
+    assert.equal(honestRequirement.asset, 'ALGO');
+    assert.equal(cheatRequirement.pay_to, '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ');
+  });
 });
 
 test('agent card parser rejects missing or unsafe required fields', async () => {
@@ -386,130 +491,237 @@ test('card ingestion is idempotent and avoids duplicate Honest/Cheat options', a
   assert.equal(discoverServices(ctx, DEFAULT_SERVICE_ID).length, 2);
 });
 
+test('refreshQuotes preloads quote cache from agent-hosted 402 responses', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+
+    const result = await refreshQuotes(ctx, DEFAULT_SERVICE_ID);
+    assert.equal(result.errors.length, 0);
+    assert.equal(result.snapshots.length, 2);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+
+    const honest = [...ctx.agents.values()].find((agent) => agent.name === 'Honest Agent');
+    const cheat = [...ctx.agents.values()].find((agent) => agent.name === 'Cheat Agent');
+    assert.ok(honest);
+    assert.ok(cheat);
+    assert.equal(ctx.quoteCache.get(quoteCacheKey(honest.id, DEFAULT_SERVICE_ID))?.amount, 0.1);
+    assert.equal(ctx.quoteCache.get(quoteCacheKey(cheat.id, DEFAULT_SERVICE_ID))?.amount, 0.04);
+  }, { calls });
+});
+
 test('GET /api/services returns grouped diligence catalog without hidden cheat behavior', async () => {
-  const fixtures = await cardFixtures();
-  const ctx = mockCtx();
-  seedAgents(ctx);
-  await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
 
-  const router = makeAgentRoutes(ctx);
-  const res = await router.request('/api/services');
-  assert.equal(res.status, 200);
+    const router = makeAgentRoutes(ctx);
+    const res = await router.request('/api/services');
+    assert.equal(res.status, 200);
 
-  const body = await res.json() as {
-    services: Array<{
-      service_id: string;
-      options: Array<{
-        agent: { name: string; agent_uri: string; agent_wallet: string };
-        capability: { source: string; endpoint: string };
-        quote: { amount: number; asset: string; pay_to: string };
-        trust: { reputation: number; reads_logged: number; corrections_logged: number };
+    const body = await res.json() as {
+      services: Array<{
+        service_id: string;
+        options: Array<{
+          agent: { name: string; agent_uri: string; agent_wallet: string };
+          capability: { source: string; endpoint: string };
+          quote: { amount: number; asset: string; pay_to: string };
+          trust: { reputation: number; reads_logged: number; corrections_logged: number };
+        }>;
       }>;
-    }>;
-  };
+    };
 
-  assert.equal(body.services.length, 1);
-  assert.equal(body.services[0].service_id, DEFAULT_SERVICE_ID);
-  assert.equal(body.services[0].options.length, 2);
-  assert.deepEqual(body.services[0].options.map((option) => option.agent.name).sort(), ['Cheat Agent', 'Honest Agent']);
-  assert.equal(body.services[0].options.every((option) => option.capability.source === 'agent_uri'), true);
-  assert.equal(body.services[0].options.every((option) => option.quote.asset === 'ALGO'), true);
-  assert.deepEqual(body.services[0].options.map((option) => option.quote.amount).sort(), [0.04, 0.1]);
-  assert.equal(body.services[0].options.every((option) => option.trust.reputation === 50), true);
-  assert.equal(JSON.stringify(body).includes('challenge'), false);
+    assert.equal(body.services.length, 1);
+    assert.equal(body.services[0].service_id, DEFAULT_SERVICE_ID);
+    assert.equal(body.services[0].options.length, 2);
+    assert.deepEqual(body.services[0].options.map((option) => option.agent.name).sort(), ['Cheat Agent', 'Honest Agent']);
+    assert.equal(body.services[0].options.every((option) => option.capability.source === 'agent_uri'), true);
+    assert.equal(body.services[0].options.every((option) => option.quote.asset === 'ALGO'), true);
+    assert.deepEqual(body.services[0].options.map((option) => option.quote.amount).sort(), [0.04, 0.1]);
+    assert.equal(body.services[0].options.every((option) => option.trust.reputation === 50), true);
+    assert.equal(JSON.stringify(body).includes('challenge'), false);
+    assert.equal(ctx.quoteCache.size, 2);
+    assert.equal(ctx.activeQuotes.size, 0);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+  }, { calls });
 });
 
 test('known-agent registration evidence adds registry_agent_id to public catalogs', async () => {
-  const fixtures = await cardFixtures();
-  const ctx = mockCtx();
-  seedAgents(ctx);
-  await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
 
-  const records: KnownAgentRegistrationRecord[] = [
-    {
-      name: 'Honest Agent',
-      agent_uri: HONEST_CARD_URI,
-      agent_wallet: 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY',
-      registry_agent_id: '501',
-      app_id: 764031067,
-      owner: 'OWNER',
-      tx_id: 'REGISTER-HONEST',
-      wallet_tx_id: 'WALLET-HONEST',
-      wallet_set_error: null,
-      explorer: 'https://example.com/REGISTER-HONEST',
-      wallet_explorer: 'https://example.com/WALLET-HONEST',
-      registered_at: '2026-06-07T00:00:00.000Z',
-      status: 'registered',
-    },
-    {
-      name: 'Cheat Agent',
-      agent_uri: CHEAT_CARD_URI,
-      agent_wallet: '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ',
-      registry_agent_id: '502',
-      app_id: 764031067,
-      owner: 'OWNER',
-      tx_id: 'REGISTER-CHEAT',
-      wallet_tx_id: 'WALLET-CHEAT',
-      wallet_set_error: null,
-      explorer: 'https://example.com/REGISTER-CHEAT',
-      wallet_explorer: 'https://example.com/WALLET-CHEAT',
-      registered_at: '2026-06-07T00:00:00.000Z',
-      status: 'registered',
-    },
-  ];
-  assert.equal(applyKnownAgentRegistrations(ctx, records), 2);
+    const records: KnownAgentRegistrationRecord[] = [
+      {
+        name: 'Honest Agent',
+        agent_uri: HONEST_CARD_URI,
+        agent_wallet: 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY',
+        registry_agent_id: '501',
+        app_id: 764031067,
+        owner: 'OWNER',
+        tx_id: 'REGISTER-HONEST',
+        wallet_tx_id: 'WALLET-HONEST',
+        wallet_set_error: null,
+        explorer: 'https://example.com/REGISTER-HONEST',
+        wallet_explorer: 'https://example.com/WALLET-HONEST',
+        registered_at: '2026-06-07T00:00:00.000Z',
+        status: 'registered',
+      },
+      {
+        name: 'Cheat Agent',
+        agent_uri: CHEAT_CARD_URI,
+        agent_wallet: '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ',
+        registry_agent_id: '502',
+        app_id: 764031067,
+        owner: 'OWNER',
+        tx_id: 'REGISTER-CHEAT',
+        wallet_tx_id: 'WALLET-CHEAT',
+        wallet_set_error: null,
+        explorer: 'https://example.com/REGISTER-CHEAT',
+        wallet_explorer: 'https://example.com/WALLET-CHEAT',
+        registered_at: '2026-06-07T00:00:00.000Z',
+        status: 'registered',
+      },
+    ];
+    assert.equal(applyKnownAgentRegistrations(ctx, records), 2);
 
-  const router = makeAgentRoutes(ctx);
-  const agentsRes = await router.request('/api/agents');
-  const agentsBody = await agentsRes.json() as {
-    agents: Array<{ name: string; registry_agent_id?: string }>;
-  };
-  assert.equal(agentsRes.status, 200);
-  assert.deepEqual(
-    agentsBody.agents.map((agent) => [agent.name, agent.registry_agent_id]).sort(),
-    [['Cheat Agent', '502'], ['Honest Agent', '501']],
-  );
+    const router = makeAgentRoutes(ctx);
+    const agentsRes = await router.request('/api/agents');
+    const agentsBody = await agentsRes.json() as {
+      agents: Array<{ name: string; registry_agent_id?: string }>;
+    };
+    assert.equal(agentsRes.status, 200);
+    assert.deepEqual(
+      agentsBody.agents.map((agent) => [agent.name, agent.registry_agent_id]).sort(),
+      [['Cheat Agent', '502'], ['Honest Agent', '501']],
+    );
 
-  const servicesRes = await router.request('/api/services');
-  const servicesBody = await servicesRes.json() as {
-    services: Array<{ options: Array<{ agent: { name: string }; registry_agent_id?: string }> }>;
-  };
-  assert.equal(servicesRes.status, 200);
-  assert.deepEqual(
-    servicesBody.services[0].options.map((option) => [option.agent.name, option.registry_agent_id]).sort(),
-    [['Cheat Agent', '502'], ['Honest Agent', '501']],
-  );
+    const servicesRes = await router.request('/api/services');
+    const servicesBody = await servicesRes.json() as {
+      services: Array<{ options: Array<{ agent: { name: string }; registry_agent_id?: string }> }>;
+    };
+    assert.equal(servicesRes.status, 200);
+    assert.deepEqual(
+      servicesBody.services[0].options.map((option) => [option.agent.name, option.registry_agent_id]).sort(),
+      [['Cheat Agent', '502'], ['Honest Agent', '501']],
+    );
+  });
 });
 
-test('card-backed route options remain payable and preserve cheat quote drift', async () => {
-  const fixtures = await cardFixtures();
-  const ctx = mockCtx();
-  seedAgents(ctx);
-  await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
-  const router = makeAgentRoutes(ctx);
+test('card-backed route options use probed 402 quotes and execution challenge owns drift', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+    const warmed = await refreshQuotes(ctx, DEFAULT_SERVICE_ID);
+    assert.equal(warmed.snapshots.length, 2);
+    const router = makeAgentRoutes(ctx);
 
-  const res = await router.request('/api/route', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ task: 'Run diligence', service_id: DEFAULT_SERVICE_ID }),
-  });
-  assert.equal(res.status, 200);
+    const res = await router.request('/api/route', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ task: 'Run diligence', service_id: DEFAULT_SERVICE_ID }),
+    });
+    assert.equal(res.status, 200);
 
-  const body = await res.json() as {
-    route_id: string;
-    options: Array<{ name: string; quote_id: string; price: number; pay_to: string }>;
-  };
+    const body = await res.json() as {
+      route_id: string;
+      options: Array<{
+        option_id: string;
+        agent_id: string;
+        service_id: string;
+        name: string;
+        quote_id: string;
+        price: number;
+        asset: string;
+        pay_to: string;
+        reputation: number;
+        trust_score: number;
+      }>;
+    };
 
-  assert.equal(body.options.length, 2);
-  assert.ok(ctx.routeStore.has(body.route_id));
+    assert.equal(body.options.length, 2);
+    assert.ok(ctx.routeStore.has(body.route_id));
 
-  const honest = body.options.find((option) => option.name === 'Honest Agent');
-  const cheat = body.options.find((option) => option.name === 'Cheat Agent');
-  assert.ok(honest);
-  assert.ok(cheat);
+    const honest = body.options.find((option) => option.name === 'Honest Agent');
+    const cheat = body.options.find((option) => option.name === 'Cheat Agent');
+    assert.ok(honest);
+    assert.ok(cheat);
 
-  assert.equal(ctx.paymentRequirements.get(honest.quote_id)?.amount, 0.1);
-  assert.equal(ctx.paymentRequirements.get(cheat.quote_id)?.amount, 0.06);
-  assert.equal(cheat.price, 0.04);
-  assert.equal(cheat.pay_to, '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ');
+    assert.equal(ctx.paymentRequirements.get(honest.quote_id)?.amount, 0.1);
+    assert.equal(ctx.paymentRequirements.get(cheat.quote_id)?.amount, 0.04);
+    assert.equal(ctx.activeQuotes.size, 2);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+    assert.equal(cheat.price, 0.04);
+    assert.equal(cheat.pay_to, '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ');
+
+    const honestExecution = await paymentRequirementForExecution(ctx, honest);
+    const cheatExecution = await paymentRequirementForExecution(ctx, cheat);
+    assert.equal(honestExecution.amount, 0.1);
+    assert.equal(cheatExecution.amount, 0.06);
+    assert.equal(cheatExecution.pay_to, cheat.pay_to);
+  }, { calls });
+});
+
+test('stale quote cache entries refresh before route ranking', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+    await refreshQuotes(ctx, DEFAULT_SERVICE_ID);
+
+    const cheat = [...ctx.agents.values()].find((agent) => agent.name === 'Cheat Agent');
+    assert.ok(cheat);
+    const key = quoteCacheKey(cheat.id, DEFAULT_SERVICE_ID);
+    const stale = ctx.quoteCache.get(key);
+    assert.ok(stale);
+    ctx.quoteCache.set(key, { ...stale, expires_at: '2000-01-01T00:00:00.000Z' });
+
+    const router = makeAgentRoutes(ctx);
+    const res = await router.request('/api/route', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ task: 'Run diligence', service_id: DEFAULT_SERVICE_ID }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 2);
+  }, { calls });
+});
+
+test('route skips unreachable quote probes when another agent has a fresh quote', async () => {
+  const calls = new Map<string, number>();
+  await withMockX402Fetch(async () => {
+    const fixtures = await cardFixtures();
+    const ctx = mockCtx();
+    seedAgents(ctx);
+    await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+    const router = makeAgentRoutes(ctx);
+
+    const res = await router.request('/api/route', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ task: 'Run diligence', service_id: DEFAULT_SERVICE_ID }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json() as { options: Array<{ name: string }> };
+    assert.deepEqual(body.options.map((option) => option.name), ['Honest Agent']);
+    assert.equal(calls.get('honest:quote'), 1);
+    assert.equal(calls.get('cheat:quote'), 1);
+  }, { calls, failQuoteFor: 'cheat' });
 });

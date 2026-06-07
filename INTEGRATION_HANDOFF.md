@@ -9,13 +9,14 @@ Everyone's Claude should read this before writing anything.
 - **On-chain:** ARC-8004 Identity + Reputation + Validation registries (Algorand TS) with deploy configs, unit specs, and `scripts/localnet-e2e.ts`.
 - **✅ DEPLOYED ON TESTNET (wired):** Identity `764031067`, Reputation `764031363`, Validation `764031094` — both Reputation & Validation are `initialize()`'d so their global `idApp` = `764031067` (verified on-chain). Reputation `764031363` ships the x402 `giveFeedback` coupling (supersedes earlier `764031075`). Deployer/creator = shared payer `24E3…`. **See `docs/status/DEPLOYED.md`** for code hashes + creation txids; app ids also in `apps/web/deployed.testnet.json`; UI (`arc8004.js`) consumes them. Redeploy: `npm run deploy:testnet` (orchestrator: `scripts/deploy-testnet.ts`, idempotent via indexer).
 - **Frontend:** 5 pages + a left sidebar (Trust Router · Marketplace · Agent Studio · Contracts · Admin) under `apps/web/`.
-- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog slice is wired; full chain scan/MCP tool-list/A2A discovery is not wired; target no-custody x402 flow is not wired (`/api/pay` currently settles through the router demo payer); automatic validation for active quote vs challenge drift after settlement is not wired; user feedback is separate from validation; current env-gated `/api/validate` → `giveFeedback` bridge must be split so hidden-fee validation is not modeled as user feedback; contract-side x402 `giveFeedback` coupling is landed + deployed (Reputation `764031363`) but `onchain.ts` still needs verified wiring for `paymentTxid`/`nonce`; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
+- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog + local 402 quote ingestion are wired; full chain scan/MCP tool-list/A2A discovery is not wired; target no-custody payment proof path is not wired (`/api/pay` still settles through the router demo payer); user feedback is separate from validation; contract-side x402 `giveFeedback` coupling is landed + deployed (Reputation `764031363`) but `onchain.ts` still needs verified wiring for `paymentTxid`/`nonce`; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
 
 ---
 
 ## Shared context
 
 - Server runs on `:3001` — `npm start` from project root. **Defaults to TestNet** via committed `.env.demo` (shared throwaway payer + deployed app ids); local `.env` is optional for non-secret network/port overrides.
+- Local demo x402 providers run on `:4021` — `npm run agents:local`; endpoints: `POST /honest/mcp`, `POST /cheat/mcp`.
 - Markdown source of truth: `README.md` (run/status), `BUILD_CHECKLIST_2026-06-06.md` (done/left tracker), `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md` (demo scope), `apps/web/README.md` (frontend), `docs/pitch/*` (submission), `docs/reference/ERC8004_AVM_MAPPING.md` + `docs/reference/ARC-8004.md` (standards).
 - Temporary execution handoff: `docs/status/TESTNET_AGENT_ROLLOUT_TEMP.md` (Known-agent x402 rollout: curated Honest/Cheat discovery, Identity registration, x402 readiness/proof path; completed card-catalog rollout is superseded).
 - All router wire types live in `apps/router/src/contract.ts` — import from there and coordinate before changing shared shapes.
@@ -80,13 +81,14 @@ npm start                # funds agents automatically, prints option_ids on boot
 
 ---
 
-## Reza — Identity Registry + Demo Discovery + Ranking 🟢 CARD CATALOG WIRED / PHASE 1 REGISTERED ON TESTNET
+## Reza — Identity Registry + Demo Discovery + Ranking 🟢 CARD CATALOG + PHASE 3 402 QUOTES WIRED
 
 `POST /api/route`, `GET /api/agents`, and `GET /api/services` live (`routes.agents.ts` + `agents.ts`,
 with `agents.test.ts`). Discovery now has seeded fallback plus Honest/Cheat ARC-8004 card ingestion from
 `docs/agents/testnet/manifest.json` or direct canonical card URLs. Cards are clean ARC-8004 identity/service
-facts only; the router owns the `diligence.report` proxy mapping and demo quote adapter. Full chain scan,
-MCP tool-list parsing, and A2A cards remain open.
+facts only; the router owns the `diligence.report` proxy mapping. Card-backed quotes now come from local
+MCP/x402 402 probes, not router-authored Honest/Cheat quote maps. Full chain scan, MCP tool-list parsing,
+and A2A cards remain open.
 Current ranking is in `agents.ts::discoveryOptions` (`ranking.ts` is an unused stub). On-chain Identity registry below.
 
 **Chain identity registry:**
@@ -114,7 +116,8 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - Manifest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
 - Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
-- URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; runtime still falls back to direct card URLs if the manifest is unavailable.
+- Local demo MCP endpoints: Honest `http://localhost:4021/honest/mcp`; Cheat `http://localhost:4021/cheat/mcp`.
+- URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; known Honest/Cheat service endpoints are normalized to local `:4021` demo providers by default (`LOCAL_X402_AGENT_BASE_URL=card` disables that override). Runtime still falls back to direct card URLs if the manifest is unavailable.
 - Phase 1 known-agent setup: `npm run setup:testnet-identity` or alias `npm run setup:testnet-known-agents` only prepares/checks the identity operator and prints next steps.
 - Phase 1 known-agent batch registration: `npm run register:testnet-agents` registers only the canonical Honest/Cheat card URLs, calls `setAgentWallet`, and writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; use `--check` for no-tx preflight.
 - Required order: `npm run setup:testnet-identity` (or `setup:testnet-known-agents`) → `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents` → `npm start` to consume evidence.
@@ -130,8 +133,13 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - `ingestAgentCardsFromManifest(ctx)` fetches manifest/cards, falls back to direct Honest/Cheat URLs, and replaces seeded `diligence.report` on success; card-backed services store endpoint facts only; full fetch failure keeps seeded fallback
 - `knownAgentRegistrationTargets(ctx)` returns exactly card-backed Honest/Cheat targets; seeded fallback returns none
 - `applyKnownAgentRegistrations(ctx)` maps committed evidence into `registryAgentIdFor(agent_id)` without on-chain writes
-- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload with router-derived quote snapshots; no `challenge_*` fields
-- `/api/route` creates active quotes/payment requirements at route time and routes by `service_id`; Honest quotes 0.1/requests 0.1, Cheat quotes 0.04/requests 0.06 through the demo adapter
+- `ctx.quoteCache: Map<agent_id::service_id, QuoteSnapshot>` stores pre-probed quote-mode 402 snapshots; warmup runs after card ingestion and lazy refresh runs on `/api/services` + `/api/route`.
+- `fetchPaymentRequirementFromService(service, request)` calls MCP/x402 endpoint and parses 402 `accepts[0]` into `{ amount, asset, pay_to, network?, resource?, nonce?, expires_at? }`
+- `refreshQuotes(ctx, service_id?)` probes discovered services into `ctx.quoteCache`; failed agents are skipped non-fatally.
+- `paymentRequirementForExecution(ctx, option)` asks the selected agent endpoint for execution-mode 402; Honest returns `0.10`, Cheat returns `0.06`
+- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload from fresh cached quote snapshots; no `challenge_*` fields
+- `/api/route` ranks from fresh `ctx.quoteCache` snapshots; missing/stale quotes are refreshed first, then route-specific `ActiveQuote`/`PaymentRequirement` records are minted.
+- `PaymentChallenge` type added in `contract.ts` for future proof path; no `/api/challenge` or `/api/payment-proof` route yet
 - `ActiveQuote` now includes `observed_at` + `expires_at`
 - `/api/route` stores:
 
@@ -145,6 +153,7 @@ ctx.routeStore.set(route_id, {
 ```
 
 - `/api/pay` looks up `route_id` from `ctx.routeStore` — if it's not there, pay returns 400
+- Legacy `/api/pay` now uses `paymentRequirementForExecution(ctx, option)` before router-settled shim payment, so drift behavior lives in the local agent server.
 
 **Where to write your code:**
 

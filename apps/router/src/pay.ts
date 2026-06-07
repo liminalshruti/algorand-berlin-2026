@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import type { Ctx, PaymentResult, RouteOption } from './contract.js';
+import { paymentRequirementForExecution } from './agents.js';
 
 export async function payAgent(ctx: Ctx, option: RouteOption): Promise<PaymentResult> {
   const agent = ctx.agents.get(option.agent_id);
@@ -13,12 +14,7 @@ export async function payAgent(ctx: Ctx, option: RouteOption): Promise<PaymentRe
     throw Object.assign(new Error(`Unknown quote: ${option.quote_id}`), { status: 400 });
   }
 
-  const requirement = ctx.paymentRequirements.get(option.quote_id) ?? {
-    quote_id: quote.quote_id,
-    amount: quote.amount,
-    asset: quote.asset,
-    pay_to: quote.pay_to,
-  };
+  const requirement = await paymentRequirementForExecution(ctx, option);
 
   const payment_id = uuidv4();
   const tx = await ctx.deps.settle(requirement.pay_to, requirement.amount, {

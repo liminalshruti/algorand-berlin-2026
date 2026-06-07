@@ -92,8 +92,8 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
     });
   });
 
-  app.get('/api/services', (c) => {
-    return c.json(buildServicesCatalog(ctx, registryAgentIdFor));
+  app.get('/api/services', async (c) => {
+    return c.json(await buildServicesCatalog(ctx, registryAgentIdFor));
   });
 
   app.post('/api/route', async (c) => {
@@ -102,22 +102,22 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
     const task = body.task ?? '';
     const services = discoverServices(ctx, service_id);
 
-    const candidates = services
-      .map((service) => {
+    const candidates = (await Promise.all(services
+      .map(async (service) => {
         const agent = ctx.agents.get(service.agent_id);
         if (!agent) return null;
         const rep = ctx.repState.getReputation(agent.id);
         if (rep !== null && rep.score <= 0) return null;
-        return candidateFor(ctx, agent, service, rep?.score ?? DEFAULT_REPUTATION);
+        return candidateFor(ctx, agent, service, rep?.score ?? DEFAULT_REPUTATION, task).catch(() => null);
       })
-      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
+    )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
 
     if (candidates.length === 0) {
       return c.json({ error: `No agents for service: ${service_id}` }, 400);
     }
 
     const route_id = randomUUID();
-    const options = discoveryOptions(candidates);
+    const options = discoveryOptions(ctx, candidates);
 
     ctx.routeStore.set(route_id, { route_id, task, service_id, options });
 

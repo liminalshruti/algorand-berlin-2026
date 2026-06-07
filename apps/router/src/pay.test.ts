@@ -59,6 +59,7 @@ function mockCtx(overrides: Partial<Ctx> = {}): Ctx {
       [cheatAgent.id, cheatAgent],
     ]),
     services: [],
+    quoteCache: new Map(),
     activeQuotes: new Map([
       [qHonest.quote_id, qHonest],
       [qCheat.quote_id, qCheat],
