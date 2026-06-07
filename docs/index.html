@@ -175,12 +175,23 @@
     .beats{justify-content:center} .nav{justify-content:space-between}
     .beat .label{display:none}
   }
+  .bar-right{display:flex; align-items:center; gap:14px}
+  .deck-link{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-mid); border:1px solid var(--card-border-2); padding:6px 12px; border-radius:999px; transition:all .2s var(--ease)}
+  .deck-link:hover{color:var(--text); border-color:var(--clarity-edge); background:var(--clarity-bg)}
+  .cta-row{display:flex; gap:12px; flex-wrap:wrap; margin-top:22px}
+  .cta{font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; padding:11px 18px; border-radius:var(--r-4); border:1px solid var(--clarity-edge); color:var(--clarity); background:var(--clarity-bg); transition:all .2s var(--ease)}
+  .cta:hover{color:#fff; background:var(--clarity); border-color:var(--clarity)}
+  .cta.ghost{border-color:var(--card-border-2); color:var(--text-mid); background:var(--frame-2)}
+  .cta.ghost:hover{color:var(--text); border-color:var(--clarity-edge); background:var(--clarity-bg)}
 </style>
 </head>
 <body>
 <header class="bar">
   <div class="wordmark"><span class="gem">◇</span> Liminal <span class="sep">·</span> <span class="x402">x402 Trust Router</span></div>
-  <div class="net"><span class="dot"></span> Algorand TestNet</div>
+  <div class="bar-right">
+    <a class="deck-link" href="pitch.html">Pitch deck ↗</a>
+    <div class="net"><span class="dot"></span> Algorand TestNet</div>
+  </div>
 </header>
 
 <main>
@@ -342,6 +353,10 @@
         <span>· ERC-8004-shaped · Algorand-native</span>
       </div>
       <div class="tag">“ERC-8004 gives agents a passport. We give the marketplace a conscience.”</div>
+      <div class="cta-row">
+        <a class="cta" href="pitch.html">View the pitch deck →</a>
+        <a class="cta ghost" href="https://github.com/liminalshruti/algorand-berlin-2026" target="_blank" rel="noopener">GitHub repo ↗</a>
+      </div>
       <div class="note">Illustrative walkthrough of the live loop. The router, x402 settlement, hash-only anchoring, and the three registries run on Algorand TestNet — code at github.com/liminalshruti/algorand-berlin-2026</div>
     </section>
 
