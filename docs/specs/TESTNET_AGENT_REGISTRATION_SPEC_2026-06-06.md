@@ -131,10 +131,10 @@ export async function registerAgent(
 export async function listAgents(ctx: Ctx): Promise<RegisteredAgent[]>;  // optional
 ```
 
-Env vars (document in README + a new `.env.example`):
-- `IDENTITY_APP_ID` — deployed IdentityRegistry app id (from step 1).
-- `IDENTITY_SUBMITTER_MNEMONIC` — funded TestNet wallet that becomes the owner (falls back to `PAYER_MNEMONIC`; for the consistent-wallet story this should be **Reza's** wallet's mnemonic, kept out of git).
-- Reuses `ALGOD_URL/PORT/TOKEN` from `context.ts`.
+Runtime config:
+- `IDENTITY_APP_ID` — deployed IdentityRegistry app id, provided by `.env.demo`.
+- `IDENTITY_SUBMITTER_MNEMONIC` — optional private TestNet wallet that becomes the owner; if unset, backend registration is a no-op.
+- Reuses `ALGOD_URL/PORT/TOKEN` from `.env.demo` or local overrides.
 
 Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `getTypedAppClientById(IdentityRegistryClient, { appId, defaultSender })`. `metadata` values are `byte[]` — encode strings with `new TextEncoder().encode(v)`.
 
@@ -166,14 +166,12 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 
 > Prereq: TestNet deploy gaps from `INTEGRATION_HANDOFF.md` closed (registries deployed, app-ids known). Steps 1–2 are the contracts/server lane; 3–5 are mine.
 
-1. **Deploy registries to TestNet.**
+1. **Deploy registries to TestNet only if replacing the existing public app ids.**
    ```bash
-   export DEPLOYER_MNEMONIC="<funded testnet 25-word>"
-   export ALGOD_SERVER=https://testnet-api.algonode.cloud ALGOD_PORT=443 ALGOD_TOKEN=""
-   npm run build && npm run deploy        # deploys identity + reputation + validation
+   npm run deploy:testnet
    ```
-   Record the three `appId`s printed by each `deploy-config.ts`.
-2. **Configure + start the server.** Put in `.env` (gitignored): `IDENTITY_APP_ID`, `REPUTATION_APP_ID`, `VALIDATION_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC` (Reza's, funded). `npm start`.
+   Record new app ids in `.env.demo`, `docs/status/DEPLOYED.md`, and `apps/web/deployed.testnet.json`.
+2. **Configure + start the server.** Defaults come from `.env.demo`; add only optional private overrides in `.env`. `npm start`.
 3. **Register the roster.** `curl -X POST localhost:3001/api/agents/register` per agent (or `POST /api/agents/seed` if built). Confirm each returns `on_chain:true` + an explorer link that resolves on `lora.algokit.io/testnet`.
 4. **Point the frontend at TestNet.** Flip `NETWORK`/`NET` to `testnet`; drop the real app-ids into `arc8004.js` (or `chain-config.js`); set `LIVE_AGENTS=true`.
 5. **Verify the loop.** Open Marketplace → real roster agents render with on-chain agentIds; open Agent Studio → register a new test agent through the form → see it mint on TestNet with an explorer link. Run the trust-router demo over the roster (cheat agent still gets caught + rerouted).

@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../src/load-env.js";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
@@ -13,9 +13,8 @@ import { makeAgentRoutes } from "../src/routes.agents.js";
 import { registerSeededAgents } from "../src/identity-onchain.js";
 import { ingestAgentCardsFromManifest } from "../src/agents.js";
 
-const PORT = Number(process.env.PORT ?? 3001);
-
 async function main() {
+  const port = Number(process.env.PORT ?? 3001);
   const ctx = await buildContext();
   seedAgents(ctx);
   const cardIngestion = await ingestAgentCardsFromManifest(ctx, {
@@ -68,8 +67,8 @@ async function main() {
   app.route("/", makeValidationRoutes(ctx));
   app.route("/", makeAgentRoutes(ctx));
 
-  serve({ fetch: app.fetch, port: PORT }, () => {
-    console.log(`\nrouter-server :${PORT}  network=${ctx.net}`);
+  serve({ fetch: app.fetch, port }, () => {
+    console.log(`\nrouter-server :${port}  network=${ctx.net}`);
     console.log(`payer:   ${ctx.session.payer.addr}\n`);
 
     console.log("--- discovered agents ---");

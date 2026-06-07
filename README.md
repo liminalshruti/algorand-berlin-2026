@@ -57,7 +57,9 @@ npm start
 
 `npm start` boots `apps/router/bin/router-server.ts` on `:3001`, seeds the demo agents, funds them from
 the shared throwaway TestNet payer, and returns real on-chain txids. Fund the payer first; the address
-and dispenser command live in `INTEGRATION_HANDOFF.md`.
+and dispenser command live in `INTEGRATION_HANDOFF.md`. The public TestNet demo config is committed in
+`.env.demo`, so a local `.env` is optional unless you need private registration, reputation writes,
+deployment, or custom LocalNet credentials.
 
 LocalNet option:
 
@@ -66,7 +68,7 @@ npm run localnet:start
 ALGO_NETWORK=localnet npm start
 ```
 
-Use a funded `PAYER_MNEMONIC` in `.env` for LocalNet.
+Use local `.env` overrides for custom LocalNet node settings; the default demo payer lives in `.env.demo`.
 
 Contracts:
 

@@ -3,16 +3,11 @@ import crypto from 'crypto';
 import type { AlgoAccount, Ctx, RepState } from './contract.js';
 
 // --- TestNet by default, zero setup ------------------------------------------
-// Shared THROWAWAY TestNet payer, hardcoded so anyone can `npm start` and settle
-// real on-chain txns with no .env and no per-user funding. TestNet ALGO is valueless,
-// so this key is public on purpose. NEVER reuse it on MainNet.
-// To run on LocalNet instead, set ALGO_NETWORK/ALGOD_URL/PAYER_MNEMONIC in a .env.
-const SHARED_PAYER_MNEMONIC = 'vacuum major sort slide sister traffic average noble board boss yellow labor measure resource current sniff bamboo meat federal metal other almost atom abandon document';
-
-const ALGOD_URL   = process.env.ALGOD_URL   ?? 'https://testnet-api.algonode.cloud';
-const ALGOD_PORT  = Number(process.env.ALGOD_PORT  ?? 443);
-const ALGOD_TOKEN = process.env.ALGOD_TOKEN ?? '';
-const NETWORK     = process.env.ALGO_NETWORK ?? 'testnet';
+// `apps/router/src/load-env.ts` loads committed `.env.demo` before this context is
+// built. Use `.env` only for private/local overrides such as a personal payer.
+const DEFAULT_ALGOD_URL = 'https://testnet-api.algonode.cloud';
+const DEFAULT_ALGOD_PORT = 443;
+const DEFAULT_NETWORK = 'testnet';
 
 const MICROALGO = 1_000_000;
 
@@ -27,11 +22,23 @@ function loadAccount(mnemonic?: string): AlgoAccount {
   return { addr: acct.addr.toString(), sk: acct.sk };
 }
 
-export async function buildContext(repState: RepState = stubRepState): Promise<Ctx> {
-  const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_URL, ALGOD_PORT);
+function requireEnv(key: string): string {
+  const value = process.env[key]?.trim();
+  if (!value) {
+    throw new Error(`${key} missing; load .env.demo or set ${key} in .env/local shell`);
+  }
+  return value;
+}
 
-  const payer       = loadAccount(process.env.PAYER_MNEMONIC ?? SHARED_PAYER_MNEMONIC);
-  const facilitator = loadAccount(process.env.FACILITATOR_MNEMONIC);
+export async function buildContext(repState: RepState = stubRepState): Promise<Ctx> {
+  const algodUrl = process.env.ALGOD_URL ?? DEFAULT_ALGOD_URL;
+  const algodPort = Number(process.env.ALGOD_PORT ?? DEFAULT_ALGOD_PORT);
+  const algodToken = process.env.ALGOD_TOKEN ?? '';
+  const network = process.env.ALGO_NETWORK ?? DEFAULT_NETWORK;
+  const algodClient = new algosdk.Algodv2(algodToken, algodUrl, algodPort);
+
+  const payer       = loadAccount(requireEnv('PAYER_MNEMONIC'));
+  const facilitator = loadAccount();
   const funded      = payer;
 
   async function submitTxn(
@@ -63,7 +70,7 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
   }
 
   return {
-    net: NETWORK,
+    net: network,
     store: algodClient,
     session: { payer, facilitator, funded },
     agents: new Map(),
@@ -87,9 +94,9 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
         return txid;
       },
       explorerFor: (txid) =>
-        NETWORK === 'mainnet'
+        network === 'mainnet'
           ? `https://lora.algokit.io/mainnet/transaction/${txid}`
-          : NETWORK === 'testnet'
+          : network === 'testnet'
             ? `https://lora.algokit.io/testnet/transaction/${txid}`
             : `https://lora.algokit.io/localnet/transaction/${txid}`,
     },

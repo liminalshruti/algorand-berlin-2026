@@ -15,7 +15,7 @@ Everyone's Claude should read this before writing anything.
 
 ## Shared context
 
-- Server runs on `:3001` — `npm start` from project root. **Defaults to TestNet** (shared throwaway payer in `context.ts`); set `ALGO_NETWORK=localnet` + `PAYER_MNEMONIC` in `.env` for LocalNet.
+- Server runs on `:3001` — `npm start` from project root. **Defaults to TestNet** via committed `.env.demo` (shared throwaway payer + deployed app ids); local `.env` is optional for non-secret network/port overrides.
 - Markdown source of truth: `README.md` (run/status), `BUILD_CHECKLIST_2026-06-06.md` (done/left tracker), `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md` (demo scope), `apps/web/README.md` (frontend), `docs/pitch/*` (submission), `docs/reference/ERC8004_AVM_MAPPING.md` + `docs/reference/ARC-8004.md` (standards).
 - Temporary execution handoff: `docs/status/TESTNET_AGENT_ROLLOUT_TEMP.md` (Honest/Cheat TestNet agent cards, registration order, `/api/services` catalog target).
 - All router wire types live in `apps/router/src/contract.ts` — import from there and coordinate before changing shared shapes.
@@ -51,16 +51,16 @@ GET  /api/ledger    → { anchors: [{ txid, schema, ref_id, hash, round, network
 **To run (TestNet — default, zero setup):**
 
 ```bash
-# One-time: fund the shared payer (hardcoded in context.ts) via the dispenser:
+# One-time: fund the shared payer from `.env.demo` via the dispenser:
 #   24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI
 # e.g.  algokit dispenser fund -r 24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI -a 10000000
 npm start                # boots on TestNet, funds the 3 agents, prints option_ids
 ```
 
-- **Default network is TestNet.** `context.ts` hardcodes a shared throwaway payer mnemonic so anyone can `npm start` with no `.env` and get real on-chain txids. TestNet ALGO is valueless; the key is public on purpose — never reuse on MainNet.
+- **Default network is TestNet.** `.env.demo` carries the shared throwaway payer mnemonic so anyone can `npm start` with no local `.env` and get real on-chain txids. TestNet ALGO is valueless; the key is public on purpose — never reuse on MainNet.
 - Boot calls `fundAgents` (0.5 ALGO each, ~1.5 ALGO/restart), so **the payer must be funded first or boot fails.** Dispense ~10 ALGO; top up if it runs dry.
 - Explorer links resolve to `lora.algokit.io/testnet/transaction/<txid>`.
-- LocalNet still works: set `ALGO_NETWORK=localnet`, `ALGOD_URL=http://localhost`, `ALGOD_PORT=4001`, `ALGOD_TOKEN`, and a funded `PAYER_MNEMONIC` in a `.env`.
+- LocalNet still works with local overrides for `ALGO_NETWORK`, `ALGOD_URL`, `ALGOD_PORT`, and `ALGOD_TOKEN`; set a private payer only if you intentionally do not want the public TestNet demo payer.
 
 **To run (LocalNet):**
 
@@ -69,7 +69,7 @@ algokit localnet start   # Docker must be running
 npm start                # funds agents automatically, prints option_ids on boot
 ```
 
-**3 demo agents seeded at startup** (addresses change each restart unless `AGENT_*_MNEMONIC` is set in `.env`):
+**3 demo agents seeded at startup** as fallback only; card-backed Honest/Cheat wallets are stable in `docs/agents/testnet/*.json`:
 
 - 🟢 Honest Agent — 0.1 ALGO, honest
 - 🟢 Budget Agent — 0.07 ALGO, honest
@@ -112,8 +112,8 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - Manifest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
 - Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
-- URL status: local Honest/Cheat card files are clean ARC-8004 cards; raw GitHub URLs need these changes pushed to `main`; runtime still falls back to direct card URLs if the manifest is unavailable.
-- TestNet registration blocker: current env has no `IDENTITY_APP_ID=764031067`.
+- URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; runtime still falls back to direct card URLs if the manifest is unavailable.
+- TestNet registration blocker: `.env.demo` provides `IDENTITY_APP_ID=764031067`; on-chain registration still needs a funded private `IDENTITY_SUBMITTER_MNEMONIC` in local `.env`.
 
 **What teammates can consume:**
 
@@ -207,4 +207,4 @@ POST /api/agents/register { name, agent_uri, address }
      → { agent_id, registry_agent_id?, tx_id, app_id, owner, agent_uri, explorer, on_chain }
 GET  /api/agents → { network, app_id, agents:[{ agent_id, registry_agent_id?, agent_uri, agent_wallet, services }] }
 ```
-Server: `routes.agents.ts` + `identity-onchain.ts` (env-gated `registerAgent`/`registerSeededAgents`, mirrors `onchain.ts`). On boot, seeded agents are registered on-chain + mapped `agent_id → registry_agent_id` when `IDENTITY_APP_ID` (`764031067`) + a funded `IDENTITY_SUBMITTER_MNEMONIC` are set; otherwise no-op. Mounted via `app.route('/', makeAgentRoutes(ctx))`. Uses Reza's `register(string,(string,byte[])[])→uint64` ABI (verified against the generated client). Env vars: `.env.example`. Spec: `docs/specs/TESTNET_AGENT_REGISTRATION_SPEC_2026-06-06.md`. _(No-impersonation reconciled with Pera: `setCaller` honors a real connected wallet, else pins to the fixed operator wallet.)_
+Server: `routes.agents.ts` + `identity-onchain.ts` (env-gated `registerAgent`/`registerSeededAgents`, mirrors `onchain.ts`). On boot, seeded agents are registered on-chain + mapped `agent_id → registry_agent_id` when `IDENTITY_APP_ID` (`764031067`, from `.env.demo`) + a funded private `IDENTITY_SUBMITTER_MNEMONIC` are set; otherwise no-op. Mounted via `app.route('/', makeAgentRoutes(ctx))`. Uses Reza's `register(string,(string,byte[])[])→uint64` ABI (verified against the generated client). Env vars: `.env.demo` + optional `.env`. Spec: `docs/specs/TESTNET_AGENT_REGISTRATION_SPEC_2026-06-06.md`. _(No-impersonation reconciled with Pera: `setCaller` honors a real connected wallet, else pins to the fixed operator wallet.)_

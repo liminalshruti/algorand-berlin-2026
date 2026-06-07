@@ -6,7 +6,7 @@
 // Env-gated + best-effort by design — if the registry isn't configured (or the call fails)
 // this returns null and the loop is unaffected (verdict still anchored hash-only). To enable:
 //   REPUTATION_APP_ID=<deployed app id>
-//   REPUTATION_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>   (falls back to PAYER_MNEMONIC)
+//   REPUTATION_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>
 //   ALGOD_URL / ALGOD_PORT / ALGOD_TOKEN  (or AlgorandClient.fromEnvironment defaults)
 //
 // ABI verified against ReputationRegistry.arc56.json: giveFeedback now takes the mandatory
@@ -61,14 +61,14 @@ export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response:
   if (!appId) return null;                                  // not configured → no-op
   const proof = txidToBytes(paymentTxid);
   if (isZero(proof)) return null;                           // contract rejects all-zero proof
+  const mnemonic = process.env.REPUTATION_SUBMITTER_MNEMONIC;
+  if (!mnemonic) return null;
   try {
     const { AlgorandClient } = await import('@algorandfoundation/algokit-utils');
     const { ReputationRegistryClient } = await import(
       '../../../contracts/artifacts/reputation_registry/ReputationRegistryClient.js'
     );
     const algorand = AlgorandClient.fromEnvironment();
-    const mnemonic = process.env.REPUTATION_SUBMITTER_MNEMONIC || process.env.PAYER_MNEMONIC;
-    if (!mnemonic) return null;
     const submitter = algorand.account.fromMnemonic(mnemonic);
 
     const client = algorand.client.getTypedAppClientById(ReputationRegistryClient, {

@@ -6,12 +6,12 @@
 //
 // Enable with:
 //   IDENTITY_APP_ID=<deployed IdentityRegistry app id>
-//   IDENTITY_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>   (falls back to PAYER_MNEMONIC)
+//   IDENTITY_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>
 //   ALGOD_URL / ALGOD_PORT / ALGOD_TOKEN  (or AlgorandClient.fromEnvironment defaults)
 //
 // The submitter becomes owner == agentWallet (Txn.sender), so every agent is owned
 // by one consistent wallet — matches the no-impersonation decision. No-op (returns
-// null) and safe when IDENTITY_APP_ID / mnemonic are unset.
+// null) and safe when IDENTITY_APP_ID / private submitter mnemonic are unset.
 //
 // ABI verified against contracts/artifacts/identity_registry/IdentityRegistry.arc56.json:
 //   register(agentURI: string, metadata: (string,byte[])[]) -> uint64
@@ -51,14 +51,14 @@ interface RegisterInput {
 export async function registerAgent(ctx: Ctx, input: RegisterInput): Promise<RegisteredAgent | null> {
   const appId = Number(process.env.IDENTITY_APP_ID || 0);
   if (!appId) return null;                                   // not configured → no-op
+  const mnemonic = process.env.IDENTITY_SUBMITTER_MNEMONIC;
+  if (!mnemonic) return null;
   try {
     const { AlgorandClient } = await import('@algorandfoundation/algokit-utils');
     const { IdentityRegistryClient } = await import(
       '../../../contracts/artifacts/identity_registry/IdentityRegistryClient.js'
     );
     const algorand = AlgorandClient.fromEnvironment();
-    const mnemonic = process.env.IDENTITY_SUBMITTER_MNEMONIC || process.env.PAYER_MNEMONIC;
-    if (!mnemonic) return null;
     const submitter = algorand.account.fromMnemonic(mnemonic);
 
     const client = algorand.client.getTypedAppClientById(IdentityRegistryClient, {
@@ -113,6 +113,7 @@ export async function registerAgent(ctx: Ctx, input: RegisterInput): Promise<Reg
 // remember agent_id → registry_agent_id. Best-effort; logs a line per agent. No-op when unconfigured.
 export async function registerSeededAgents(ctx: Ctx): Promise<void> {
   if (!Number(process.env.IDENTITY_APP_ID || 0)) return;
+  if (!process.env.IDENTITY_SUBMITTER_MNEMONIC) return;
   for (const agent of ctx.agents.values()) {
     if (registryAgentIdByAgentId.has(agent.id)) continue;
     const out = await registerAgent(ctx, {

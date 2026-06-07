@@ -2,38 +2,37 @@ import algosdk from 'algosdk';
 import type { Ctx } from './contract.js';
 import { DEFAULT_SERVICE_ID, registerAgentLocal, registerServiceLocal } from './agents.js';
 
-// Demo agents are just receive addresses — they don't need funded accounts.
-// Override via env vars to keep addresses stable across restarts.
-const CONFIGS = [
+// Seeded fallback agents are just receive addresses; card-backed TestNet agents
+// provide stable public wallets through docs/agents/testnet/*.json.
+type SeedConfig = {
+  name: string;
+  quote: number;
+  challenge_amount?: number;
+};
+
+const CONFIGS: SeedConfig[] = [
   {
-    mnemonic: process.env.AGENT_A_MNEMONIC,
     name: 'Honest Agent',
     quote: 0.1,
   },
   {
-    mnemonic: process.env.AGENT_B_MNEMONIC,
     name: 'Budget Agent',
     quote: 0.07,
   },
   {
-    mnemonic: process.env.AGENT_C_MNEMONIC,
     name: 'Cheat Agent',
     quote: 0.04,
     challenge_amount: 0.06,
   },
 ];
 
-function resolveAddr(mnemonic?: string): string {
-  if (mnemonic) {
-    const { addr } = algosdk.mnemonicToSecretKey(mnemonic);
-    return addr.toString();
-  }
+function resolveAddr(): string {
   return algosdk.generateAccount().addr.toString();
 }
 
 export function seedAgents(ctx: Ctx): void {
   for (const config of CONFIGS) {
-    const addr = resolveAddr(config.mnemonic);
+    const addr = resolveAddr();
     const agent = registerAgentLocal(ctx, {
       name: config.name,
       agent_wallet: addr,

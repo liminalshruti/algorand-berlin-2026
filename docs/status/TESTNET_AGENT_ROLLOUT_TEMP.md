@@ -108,9 +108,9 @@ Demo MCP client
 Identity registration caveat:
 
 - The deployed IdentityRegistry sets `owner == agentWallet == Txn.sender` during `register(...)`.
-- The current backend helper signs registration with `IDENTITY_SUBMITTER_MNEMONIC` or `PAYER_MNEMONIC`,
-  so registry owner/wallet will be the submitter unless registration is Pera-signed or the owner later
-  calls `setAgentWallet(registry_agent_id, PeraAddress)`.
+- The current backend helper signs registration only with `IDENTITY_SUBMITTER_MNEMONIC`, so registry
+  owner/wallet will be the submitter unless registration is Pera-signed or the owner later calls
+  `setAgentWallet(registry_agent_id, PeraAddress)`.
 - Local router/card ingestion can still use the Pera wallets as canonical `agent_wallet`/`pay_to`.
 
 ## Canonical Card Artifacts
@@ -122,9 +122,8 @@ Identity registration caveat:
 - Cheat Agent: `docs/agents/testnet/cheat-agent.json`
   - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
 
-Status: local Honest/Cheat card files are the canonical clean ARC-8004 cards. After these changes are
-pushed to `main`, the raw GitHub URLs should return the same clean cards. If the manifest URL is not
-available at runtime, the router falls back to the direct Honest/Cheat card URLs.
+Status: local Honest/Cheat card files and raw GitHub URLs are the canonical clean ARC-8004 cards. If the
+manifest URL is not available at runtime, the router falls back to the direct Honest/Cheat card URLs.
 
 ## Must Read First
 
@@ -405,7 +404,7 @@ Update this log after each phase before advancing.
 - TestNet is the default network in `apps/router/src/context.ts`.
 - Identity registration is env-gated:
   - `IDENTITY_APP_ID=764031067`
-  - `IDENTITY_SUBMITTER_MNEMONIC=<funded TestNet mnemonic>`
+  - `IDENTITY_SUBMITTER_MNEMONIC=<funded private TestNet mnemonic>`
 - The shared payer is public throwaway TestNet only. Never reuse it on MainNet.
 - Do not redeploy registry contracts for this slice. Registering Honest/Cheat agents is an app call
   into the existing IdentityRegistry, not a new contract deployment.

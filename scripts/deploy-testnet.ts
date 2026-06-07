@@ -11,14 +11,15 @@
  *   3. ValidationRegistry          → initialize(idAppId)   // points validation back at Identity
  *
  * Deployer = the already-funded shared throwaway TestNet payer (PAYER_MNEMONIC
- * in .env, address 24E3...). TestNet ALGO is valueless; never reuse on MainNet.
+ * from .env.demo unless overridden, address 24E3...). TestNet ALGO is valueless;
+ * never reuse on MainNet.
  *
  * Resolved app ids are written to apps/web/deployed.testnet.json so the UI can
  * consume the real ids instead of the mock placeholders in arc8004.js.
  *
  *   npx tsx scripts/deploy-testnet.ts      (or: npm run deploy:testnet)
  */
-import 'dotenv/config'
+import '../apps/router/src/load-env.js'
 import { writeFileSync } from 'node:fs'
 import { AlgorandClient } from '@algorandfoundation/algokit-utils'
 import { IdentityRegistryFactory } from '../contracts/artifacts/identity_registry/IdentityRegistryClient'
@@ -30,7 +31,7 @@ const TESTNET_GENESIS_PREFIX = 'SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe'
 
 async function main() {
   const mnemonic = process.env.PAYER_MNEMONIC
-  if (!mnemonic) throw new Error('PAYER_MNEMONIC missing in .env — cannot deploy.')
+  if (!mnemonic) throw new Error('PAYER_MNEMONIC missing — load .env.demo or set it in .env/shell.')
 
   const algorand = AlgorandClient.fromConfig({
     algodConfig: {
