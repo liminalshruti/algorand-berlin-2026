@@ -6,6 +6,8 @@ import type { Ctx } from './contract.js';
 import { validate } from './validation.js';
 import { createRepState } from './reputation-state.js';
 
+const VALIDATION_SCHEMA = 'trust-router.validation.v1';
+
 /**
  * Wires the reputation/validation API:
  *   POST /api/validate   { payment_id } → { validation_id, price_match, output_pass, response, new_reputation, verdict_txid }
@@ -42,11 +44,11 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
       .digest('hex');
     let verdict_txid = '';
     try {
-      const a = await ctx.deps.anchorNote(payment_id, 'liminal.validation.v1', hash);
+      const a = await ctx.deps.anchorNote(payment_id, VALIDATION_SCHEMA, hash);
       verdict_txid = a.txid;
       ctx.ledger.push({
         txid: a.txid,
-        schema: 'liminal.validation.v1',
+        schema: VALIDATION_SCHEMA,
         ref_id: payment_id,
         hash,
         round: a.round,
@@ -78,7 +80,7 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
       reads_logged: full.reads_logged,
       corrections_logged: full.corrections_logged,
       by_tag: full.by_tag,
-      uri: `liminal://corrections/${agent_id}`,
+      uri: `trust-router://corrections/${agent_id}`,
       hash: crypto.createHash('sha256').update(`${agent_id}:${full.reads_logged}:${full.corrections_logged}`).digest('hex'),
     });
   });

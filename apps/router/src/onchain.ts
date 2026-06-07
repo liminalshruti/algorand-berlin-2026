@@ -86,7 +86,7 @@ export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response:
         tag1: 'x402',
         tag2: response >= 100 ? 'satisfied' : 'corrected',
         endpoint: '',
-        feedbackUri: `liminal://verdict/${agent_id}`,
+        feedbackUri: `trust-router://verdict/${agent_id}`,
         feedbackHash: new Uint8Array(32),
         paymentTxid: proof,                                 // x402 settlement proof (byte[32])
         nonce: BigInt(Date.now()) * 1000n + BigInt((Math.random() * 1000) | 0),

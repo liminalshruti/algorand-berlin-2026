@@ -210,7 +210,7 @@ Purpose: define the smallest trustworthy registration-file contract before wirin
   - `services[]` containing `MCP` and `algorand-wallet`;
   - valid Algorand wallet format;
   - `x402Support: true`;
-  - `liminal.proxy_services[]`;
+  - `x402_router.proxy_services[]`;
   - `quote.pay_to == algorand-wallet endpoint`;
   - no required challenge/proof fields.
 
@@ -397,7 +397,7 @@ Update this log after each phase before advancing.
     }
   ],
   "supportedTrust": ["reputation", "validation"],
-  "liminal": {
+  "x402_router": {
     "proxy_services": [
       {
         "service_id": "diligence.report",
@@ -418,12 +418,12 @@ Update this log after each phase before advancing.
 
 Notes:
 
-- `type` should follow the ARC-8004 reference shape. Do not use `schema: "liminal.agent.v1"`.
+- `type` should follow the ARC-8004 reference shape. Do not use a project-local agent schema.
 - Do not add `$schema` yet unless we publish a real JSON Schema document. The ERC-8004 URL is the
   registration-file `type` discriminator, not a JSON Schema URL.
 - `services[]` stays ARC-8004-shaped. The router reads `MCP` for capability endpoint and
   `algorand-wallet` for the receiving wallet.
-- `liminal.proxy_services[]` is the demo extension that maps the ARC-8004 registration file into the
+- `x402_router.proxy_services[]` is the demo extension that maps the ARC-8004 registration file into the
   router's grouped `diligence.report` service catalog.
 - `quote.pay_to` should match the `algorand-wallet` endpoint for this slice.
 - Honest Agent wallet: `J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY`.

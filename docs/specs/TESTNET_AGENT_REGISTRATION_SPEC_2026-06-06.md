@@ -1,7 +1,7 @@
 # TestNet Agent Registration — Scope & Spec
 
 **Owner:** Shruti (UI + Narrative lane) · drafted 2026-06-06
-**Goal:** Stand up a TestNet-reachable path where an operator registers a **real Liminal agent** on-chain through the **existing ARC-8004 Identity registry interface**, and that agent shows up live in the Marketplace / Agent Studio. Replaces the mock-seeded `Helios/Vega/Comet` agents with the canonical Liminal roster, minted as real NFTs on Algorand TestNet.
+**Goal:** Stand up a TestNet-reachable path where an operator registers a **real agent** on-chain through the **existing ARC-8004 Identity registry interface**, and that agent shows up live in the Marketplace / Agent Studio. Replaces the mock-seeded `Helios/Vega/Comet` agents with the canonical roster, minted as real NFTs on Algorand TestNet.
 
 > One-line: *"Someone registers a test agent → it mints on TestNet → it appears in the marketplace with a real on-chain agentId + explorer link."*
 
@@ -13,7 +13,7 @@ Today the agent roster is **mock-only**. `arc8004.js::seed()` invents `Helios/Ve
 
 1. The deployed **IdentityRegistry** app on TestNet.
 2. A **register endpoint** (`POST /api/agents/register`) that calls `register(agentURI, metadata)` on-chain via the generated client — reusing the same ABI the mock console already mirrors.
-3. The roster seeded with the **real Liminal agents** (from `liminal-prototype/lib/agency.js`), each minted on-chain.
+3. The roster seeded with the **real agents**, each minted on-chain.
 4. The frontend pointed at **TestNet + real app-ids** instead of `localnet` + mock ids.
 
 This is the "deploy a test endpoint, register the real agents" task. It depends on the TestNet deploy gaps already catalogued; this spec assumes those get closed as part of step 1.
@@ -47,11 +47,11 @@ register(agentURI: string, metadata: (string,byte[])[]) -> uint64   // agentId
 
 ---
 
-## 2. The Liminal agent roster (canonical seed data)
+## 2. The Agent Roster (canonical seed data)
 
-Source of truth: `liminal-prototype/lib/agency.js::REGISTER_AGENTS` (the 12-agent agency, 4 registers). On-disk roster:
+Source of truth: canonical seed data for the 12-agent agency across 4 registers. On-disk roster:
 
-| Register (Liminal) | Agents | Router register (UI) |
+| Register | Agents | Router register (UI) |
 |---|---|---|
 | diligence | Operator, Synthesizer, Witness | **Diligence** |
 | outreach  | Planner, SDR | **Outreach** |
@@ -59,14 +59,14 @@ Source of truth: `liminal-prototype/lib/agency.js::REGISTER_AGENTS` (the 12-agen
 | judgment  | Contrarian, Manager | **Judgment** |
 
 Each agent registers as:
-- `agentURI` — a resolvable card. **Decision needed (§6):** `ipfs://…` pinned card, or `https://agents.liminal.../<slug>.json`. Interim: `https://agents.local/<slug>` (matches current `seed.ts` convention) until real cards are pinned.
+- `agentURI` — a resolvable card. **Decision needed (§6):** `ipfs://…` pinned card, or hosted HTTPS card. Interim: `https://agents.local/<slug>` (matches current `seed.ts` convention) until real cards are pinned.
 - `metadata` — at minimum:
   - `name` → e.g. `"Operator"`
   - `register` → e.g. `"Diligence"`
   - `role` → one-line from the agency canon (e.g. Witness = "reads what is materially/somatically true of an artifact").
   - (optional) `quote` / `asset` if we want these to also be routable agents in the trust router.
 
-> The **adversary stays**: keep ONE labeled `Cheat Agent` (test agent) per the earlier decision, so the demo's "caught + rerouted" beat still has a target. It is explicitly labeled a test fixture, not a Liminal agent.
+> The **adversary stays**: keep ONE labeled `Cheat Agent` (test agent) per the earlier decision, so the demo's "caught + rerouted" beat still has a target. It is explicitly labeled a test fixture, not a roster agent.
 
 ---
 
@@ -145,7 +145,7 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 1. **Network flip.** `apps/web/router.js` `NETWORK` and `apps/web/arc8004.js` `NET` → `"testnet"` (gate behind a single const so it's one edit). Explorer + chain-ctx badge then read TestNet.
 2. **Real app-ids.** Replace `arc8004.js` `APP = {identity,reputation,validation}` mock `1001/1002/1003` with the deployed ids (inject via a small `apps/web/chain-config.js` written at deploy time, or hand-edit tonight).
 3. **Live register.** In `registry.js`, add a `LIVE_AGENTS` flag + `BASE_URL`. When on, `ACTIONS.register` and `simulate-pay`-adjacent flows `fetch('/api/agents/register')` instead of the mock `A.id.register`; on success, hydrate the console from `GET /api/agents`. Mock fallback preserved (same pattern as `router.js`).
-4. **Roster seed.** Replace `arc8004.js::seed()`'s `Helios/Vega/Comet/Arbiter` with the §2 Liminal roster (keep one labeled test/cheat agent). This keeps the mock path showing the *real* names even before TestNet is wired.
+4. **Roster seed.** Replace `arc8004.js::seed()`'s `Helios/Vega/Comet/Arbiter` with the §2 roster (keep one labeled test/cheat agent). This keeps the mock path showing the *real* names even before TestNet is wired.
 5. **Consistent wallet.** Registered agents are owned by the fixed operator wallet already pinned in `arc8004.js` (`FIXED_WALLET`) — no change, just confirm the owner display matches.
 
 ---
@@ -154,7 +154,7 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 
 | # | Decision | Default |
 |---|---|---|
-| D1 | **Synthesis vs Operations** register name. Liminal canon = `synthesis`; router UI = `Operations`. | Map `synthesis → Operations` in the seed (one rename), OR add `Synthesis` as a 5th register chip. **Default: map to Operations** (fewer UI changes). |
+| D1 | **Synthesis vs Operations** register name. Canonical register = `synthesis`; router UI = `Operations`. | Map `synthesis → Operations` in the seed (one rename), OR add `Synthesis` as a 5th register chip. **Default: map to Operations** (fewer UI changes). |
 | D2 | **agentURI hosting** — ipfs vs https vs interim local. | Interim `https://agents.local/<slug>` tonight; swap to pinned `ipfs://` cards before judging. |
 | D3 | **Ownership** — all agents owned by one wallet (Reza's) vs per-agent wallets. | One wallet (matches the no-impersonation decision). Note: with one owner, the operator can't *review* its own agents (self-review guard) — fine, reviews come from buyer wallets in the marketplace flow. |
 | D4 | **Routable or display-only** — do registered agents also get `quote`/`asset` so they appear in `/api/route` ranking? | Yes for the 9 roster agents (give them quotes), so the trust router demos over real agents too. |
@@ -176,7 +176,7 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 2. **Configure + start the server.** Put in `.env` (gitignored): `IDENTITY_APP_ID`, `REPUTATION_APP_ID`, `VALIDATION_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC` (Reza's, funded). `npm start`.
 3. **Register the roster.** `curl -X POST localhost:3001/api/agents/register` per agent (or `POST /api/agents/seed` if built). Confirm each returns `on_chain:true` + an explorer link that resolves on `lora.algokit.io/testnet`.
 4. **Point the frontend at TestNet.** Flip `NETWORK`/`NET` to `testnet`; drop the real app-ids into `arc8004.js` (or `chain-config.js`); set `LIVE_AGENTS=true`.
-5. **Verify the loop.** Open Marketplace → real Liminal agents render with on-chain agentIds; open Agent Studio → register a new test agent through the form → see it mint on TestNet with an explorer link. Run the trust-router demo over the roster (cheat agent still gets caught + rerouted).
+5. **Verify the loop.** Open Marketplace → real roster agents render with on-chain agentIds; open Agent Studio → register a new test agent through the form → see it mint on TestNet with an explorer link. Run the trust-router demo over the roster (cheat agent still gets caught + rerouted).
 
 ---
 
@@ -184,7 +184,7 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 
 - [ ] IdentityRegistry deployed to TestNet; `app_id` known and in `.env`.
 - [ ] `POST /api/agents/register` returns a **real TestNet txid** (`on_chain:true`) that resolves on the explorer, and a monotonically increasing on-chain `agent_id`.
-- [ ] The 9 canonical Liminal agents (Operator, Synthesizer, Witness, Planner, SDR, Strategist, Editor, Contrarian, Manager) are registered on-chain and appear in `GET /api/agents` and the Marketplace.
+- [ ] The 9 canonical agents (Operator, Synthesizer, Witness, Planner, SDR, Strategist, Editor, Contrarian, Manager) are registered on-chain and appear in `GET /api/agents` and the Marketplace.
 - [ ] Agent Studio "Register a new agent" form mints on TestNet end-to-end (no mock) when `LIVE_AGENTS=true`, with a mock fallback when the server is down.
 - [ ] All registered agents are owned by the single consistent operator wallet; no impersonation affordances reintroduced.
 - [ ] One labeled test/adversary agent remains for the "caught + rerouted" beat.
@@ -200,7 +200,7 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 | `apps/router/src/identity-onchain.ts` | edit | server | env-gated `registerAgent` via generated `IdentityRegistryClient` |
 | `apps/router/bin/router-server.ts` | edit | Navid (ask) | one `app.route('/', makeAgentRoutes(ctx))` line |
 | `.env.example` | new | shared | document `IDENTITY_APP_ID`, `*_SUBMITTER_MNEMONIC`, algod vars |
-| `apps/web/arc8004.js` | edit | UI | `NET="testnet"`, real `APP` ids, roster = real Liminal agents |
+| `apps/web/arc8004.js` | edit | UI | `NET="testnet"`, real `APP` ids, roster = real agents |
 | `apps/web/registry.js` | edit | UI | `LIVE_AGENTS` flag + live `fetch` register/list with mock fallback |
 | `apps/web/router.js` | edit | UI | `NETWORK="testnet"` |
 | `INTEGRATION_HANDOFF.md` | edit | UI | add the agents endpoints under the relevant section when landed |

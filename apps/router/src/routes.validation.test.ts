@@ -79,7 +79,7 @@ test("honest payment -> full pass, reputation 100, verdict anchored to the ledge
   assert.match(body.verdict_txid as string, /^anchor-/);
   assert.equal(typeof body.validation_id, "string");
   assert.equal(ctx.ledger.length, 1);
-  assert.equal(ctx.ledger[0].schema, "liminal.validation.v1");
+  assert.equal(ctx.ledger[0].schema, "trust-router.validation.v1");
   assert.equal(ctx.ledger[0].ref_id, "pay-honest");
   assert.equal(ctx.ledger[0].network, "testnet");
 });
@@ -136,7 +136,7 @@ test("reputation reflects a caught quote drift with the correction tag", async (
   assert.equal(body.reads_logged, 1);
   assert.equal(body.corrections_logged, 1);
   assert.deepEqual(body.by_tag, { missed_compensation: 1 });
-  assert.equal(body.uri, "liminal://corrections/agent-cheat");
+  assert.equal(body.uri, "trust-router://corrections/agent-cheat");
   assert.ok((body.hash as string).length > 0);
 });
 

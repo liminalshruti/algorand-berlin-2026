@@ -99,7 +99,6 @@ operator task
 - Production DB, TTLs, or persistence beyond the demo state.
 - Desktop wiring.
 - General-purpose output oracle claims.
-- Reintroducing the prior Liminal-substrate demo or pre-Berlin logistics into active docs.
 
 ## Next Moves
 
