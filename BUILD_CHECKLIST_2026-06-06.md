@@ -59,13 +59,13 @@ the client agent to the selected agent wallet.
 
 | Status | Task | Owner | Evidence |
 |---|---|---|---|
-| [ ] | Define proxy invocation shape | Reza/Navid | Client calls our service/tool endpoint; request carries `service_id` or task intent |
+| [x] | Define proxy invocation shape | Reza/Navid | `POST /mcp` exposes Claude Code tools: list services, route task, request payment, record proof, invoke paid service |
 | [x] | Add quote policy layer | Reza/Navid | `refreshQuotes` stores quote-mode 402 snapshots in `ctx.quoteCache`; `/api/route` mints route-specific `ActiveQuote`s from fresh cache |
 | [ ] | Select concrete agent by trust + price | Reza/Shayaun | Selection reads reputation, active quote, and availability |
 | [x] | Forward agent x402 challenge | Navid/Reza | `POST /api/challenge`; returns execution 402 requirement with agent `pay_to`, nonce, resource, amount, asset, network, and `payment_note` |
 | [x] | Preserve challenge correlation | Navid | `ctx.challengeStore`; carries `route_id`, `option_id`, `agent_id`, active `quote_id`, x402 `nonce`, `resource`, amount, asset, network |
 | [x] | Record quote-vs-challenge mismatch | Navid/Reza | `/api/challenge` sets `quote_drift`; `/api/payment-proof` records ValidationRegistry/hash-anchor evidence without blocking payment |
-| [ ] | Decide post-payment invocation path | Reza/Navid | Either client calls agent directly, or client calls proxy with proof and proxy forwards the request |
+| [x] | Decide post-payment invocation path | Reza/Navid | `liminal_invoke_paid_service` requires accepted proof, then proxy-forwards to provider MCP endpoint with `X-PAYMENT` |
 | [x] | Capture payment proof | Navid | `POST /api/payment-proof {challenge_id, txid, payer}` stores accepted proof on the challenge |
 | [x] | Verify proof off-chain | Navid/Shayaun | `ctx.deps.lookupPayment`; confirms sender/receiver/amount/asset/network/note, rejects replay/mismatch/stale challenge |
 | [x] | Trigger automatic validation for quote drift | Shayaun/Reza | Quote drift only creates validation evidence; other failures reject proof/auth without reputation penalty |

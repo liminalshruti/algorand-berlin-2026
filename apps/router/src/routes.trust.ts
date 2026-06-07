@@ -49,7 +49,7 @@ type FeedbackBody = {
   auth_txid?: string;
 };
 
-function ensureTrustStores(ctx: Ctx): {
+export function ensureTrustStores(ctx: Ctx): {
   challenges: Map<string, PaymentChallenge>;
   feedbackIntents: Map<string, FeedbackIntent>;
   usedFeedback: Set<string>;
@@ -149,6 +149,85 @@ function findRouteOption(ctx: Ctx, route_id: string, option_id: string): RouteOp
   const option = route.options.find((candidate) => candidate.option_id === option_id);
   if (!option) fail('unknown option_id');
   return option;
+}
+
+export function getPaymentChallenge(ctx: Ctx, challenge_id: string): PaymentChallenge | null {
+  return ensureTrustStores(ctx).challenges.get(challenge_id) ?? null;
+}
+
+export function paymentChallengePayload(ctx: Ctx, challenge: PaymentChallenge): Record<string, unknown> {
+  const quote = ctx.activeQuotes.get(challenge.quote_id);
+  return {
+    challenge_id: challenge.challenge_id,
+    route_id: challenge.route_id,
+    option_id: challenge.option_id,
+    agent_id: challenge.agent_id,
+    service_id: challenge.service_id,
+    quote_id: challenge.quote_id,
+    amount: challenge.amount,
+    asset: challenge.asset,
+    pay_to: challenge.pay_to,
+    network: challenge.network,
+    nonce: challenge.nonce,
+    resource: challenge.resource,
+    expires_at: challenge.expires_at,
+    payment_note: challenge.payment_note,
+    quote: {
+      amount: challenge.quote_amount,
+      asset: quote?.asset ?? challenge.asset,
+      pay_to: challenge.quote_pay_to,
+      expires_at: challenge.quote_expires_at,
+    },
+    quote_drift: challenge.quote_drift,
+    ...(challenge.payment_txid ? { payment_txid: challenge.payment_txid } : {}),
+    ...(challenge.payer ? { payer: challenge.payer } : {}),
+    ...(challenge.proof_accepted_at ? { proof_accepted_at: challenge.proof_accepted_at } : {}),
+    ...(challenge.validation_id ? { validation_id: challenge.validation_id } : {}),
+    ...(challenge.validation_txid ? { validation_txid: challenge.validation_txid } : {}),
+    ...(challenge.ledger_txid ? { ledger_txid: challenge.ledger_txid } : {}),
+  };
+}
+
+export async function createPaymentChallenge(
+  ctx: Ctx,
+  route_id: string,
+  option_id: string,
+): Promise<{ challenge: PaymentChallenge; payload: Record<string, unknown> }> {
+  if (!route_id) fail('route_id is required');
+  if (!option_id) fail('option_id is required');
+
+  const option = findRouteOption(ctx, route_id, option_id);
+  const quote = ctx.activeQuotes.get(option.quote_id);
+  if (!quote || quote.agent_id !== option.agent_id) fail('unknown active quote');
+  if (!inFuture(quote.expires_at)) fail('active quote expired');
+
+  const requirement = await paymentRequirementForExecution(ctx, option);
+  const challenge_id = randomUUID();
+  const nonce = requirement.nonce ?? randomUUID();
+  const challenge: PaymentChallenge = {
+    challenge_id,
+    route_id,
+    option_id,
+    agent_id: option.agent_id,
+    service_id: option.service_id,
+    quote_id: option.quote_id,
+    nonce,
+    resource: requirement.resource ?? option.service_id,
+    amount: requirement.amount,
+    asset: requirement.asset,
+    pay_to: requirement.pay_to,
+    network: requirement.network ?? ctx.net,
+    quote_amount: quote.amount,
+    quote_pay_to: quote.pay_to,
+    quote_expires_at: quote.expires_at,
+    payment_note: paymentNote(challenge_id, nonce),
+    quote_drift: !sameAmount(requirement.amount, quote.amount),
+    observed_at: nowIso(),
+    expires_at: requirement.expires_at ?? ttlFromNow(DEFAULT_CHALLENGE_TTL_MS),
+  };
+
+  ensureTrustStores(ctx).challenges.set(challenge_id, challenge);
+  return { challenge, payload: paymentChallengePayload(ctx, challenge) };
 }
 
 function paymentProofAlreadyUsed(ctx: Ctx, txid: string, currentChallengeId: string): boolean {
@@ -294,6 +373,35 @@ async function acceptPaymentProof(
   return { payment, ...policy, new_reputation };
 }
 
+export async function acceptPaymentProofForChallenge(
+  ctx: Ctx,
+  challenge_id: string,
+  txid: string,
+  payer: string,
+): Promise<Record<string, unknown>> {
+  if (!challenge_id) fail('challenge_id is required');
+  if (!txid) fail('settlement_txid is required');
+  if (!payer) fail('user_id is required');
+
+  const challenge = ensureTrustStores(ctx).challenges.get(challenge_id);
+  if (!challenge) fail('unknown challenge_id');
+  const accepted = await acceptPaymentProof(ctx, challenge, txid, payer);
+  return {
+    accepted: true,
+    challenge_id,
+    user_id: payer,
+    settlement_txid: accepted.payment.txid,
+    payment_txid: accepted.payment.txid,
+    agent_id: challenge.agent_id,
+    policy_result: challenge.quote_drift ? 'quote_drift' : 'fair',
+    quote_drift: challenge.quote_drift,
+    validation_id: accepted.validation_id,
+    validation_txid: accepted.validation_txid,
+    ledger_txid: accepted.ledger_txid,
+    new_reputation: accepted.new_reputation,
+  };
+}
+
 async function verifyFeedbackAuth(
   ctx: Ctx,
   intent: FeedbackIntent,
@@ -411,66 +519,20 @@ function createFeedbackIntent(
 export function makeTrustRoutes(ctx: Ctx): Hono {
   const app = new Hono();
 
+  app.get('/api/challenge/:challenge_id', (c) => {
+    const challenge_id = c.req.param('challenge_id')?.trim();
+    const challenge = challenge_id ? getPaymentChallenge(ctx, challenge_id) : null;
+    if (!challenge) return c.json({ error: 'unknown challenge_id' }, 400);
+    return c.json(paymentChallengePayload(ctx, challenge));
+  });
+
   app.post('/api/challenge', async (c) => {
     try {
       const body = await c.req.json<ChallengeBody>().catch((): ChallengeBody => ({}));
       const route_id = body.route_id?.trim();
       const option_id = body.option_id?.trim();
-      if (!route_id) fail('route_id is required');
-      if (!option_id) fail('option_id is required');
-
-      const option = findRouteOption(ctx, route_id, option_id);
-      const quote = ctx.activeQuotes.get(option.quote_id);
-      if (!quote || quote.agent_id !== option.agent_id) fail('unknown active quote');
-      if (!inFuture(quote.expires_at)) fail('active quote expired');
-
-      const requirement = await paymentRequirementForExecution(ctx, option);
-      const challenge_id = randomUUID();
-      const nonce = requirement.nonce ?? randomUUID();
-      const challenge: PaymentChallenge = {
-        challenge_id,
-        route_id,
-        option_id,
-        agent_id: option.agent_id,
-        service_id: option.service_id,
-        quote_id: option.quote_id,
-        nonce,
-        resource: requirement.resource ?? option.service_id,
-        amount: requirement.amount,
-        asset: requirement.asset,
-        pay_to: requirement.pay_to,
-        network: requirement.network ?? ctx.net,
-        quote_amount: quote.amount,
-        quote_pay_to: quote.pay_to,
-        quote_expires_at: quote.expires_at,
-        payment_note: paymentNote(challenge_id, nonce),
-        quote_drift: !sameAmount(requirement.amount, quote.amount),
-        observed_at: nowIso(),
-        expires_at: requirement.expires_at ?? ttlFromNow(DEFAULT_CHALLENGE_TTL_MS),
-      };
-
-      ensureTrustStores(ctx).challenges.set(challenge_id, challenge);
-      return c.json({
-        challenge_id,
-        agent_id: challenge.agent_id,
-        service_id: challenge.service_id,
-        quote_id: challenge.quote_id,
-        amount: challenge.amount,
-        asset: challenge.asset,
-        pay_to: challenge.pay_to,
-        network: challenge.network,
-        nonce: challenge.nonce,
-        resource: challenge.resource,
-        expires_at: challenge.expires_at,
-        payment_note: challenge.payment_note,
-        quote: {
-          amount: challenge.quote_amount,
-          asset: quote.asset,
-          pay_to: challenge.quote_pay_to,
-          expires_at: challenge.quote_expires_at,
-        },
-        quote_drift: challenge.quote_drift,
-      });
+      const { payload } = await createPaymentChallenge(ctx, route_id ?? '', option_id ?? '');
+      return c.json(payload);
     } catch (error) {
       const err = error as Error & { status?: number };
       return c.json({ error: err.message }, errorStatus(err.status));
@@ -483,27 +545,7 @@ export function makeTrustRoutes(ctx: Ctx): Hono {
       const challenge_id = body.challenge_id?.trim();
       const txid = (body.txid ?? body.settlement_txid)?.trim();
       const payer = (body.payer ?? body.user_id)?.trim();
-      if (!challenge_id) fail('challenge_id is required');
-      if (!txid) fail('settlement_txid is required');
-      if (!payer) fail('user_id is required');
-
-      const challenge = ensureTrustStores(ctx).challenges.get(challenge_id);
-      if (!challenge) fail('unknown challenge_id');
-      const accepted = await acceptPaymentProof(ctx, challenge, txid, payer);
-      return c.json({
-        accepted: true,
-        challenge_id,
-        user_id: payer,
-        settlement_txid: accepted.payment.txid,
-        payment_txid: accepted.payment.txid,
-        agent_id: challenge.agent_id,
-        policy_result: challenge.quote_drift ? 'quote_drift' : 'fair',
-        quote_drift: challenge.quote_drift,
-        validation_id: accepted.validation_id,
-        validation_txid: accepted.validation_txid,
-        ledger_txid: accepted.ledger_txid,
-        new_reputation: accepted.new_reputation,
-      });
+      return c.json(await acceptPaymentProofForChallenge(ctx, challenge_id ?? '', txid ?? '', payer ?? ''));
     } catch (error) {
       const err = error as Error & { status?: number };
       return c.json({ error: err.message }, errorStatus(err.status));

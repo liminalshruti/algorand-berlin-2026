@@ -29,6 +29,43 @@ type RouteBody = {
   service_id?: string;
 };
 
+export async function createRoute(ctx: Ctx, input: RouteBody): Promise<{
+  route_id: string;
+  task: string;
+  service_id: string;
+  options: ReturnType<typeof discoveryOptions>;
+}> {
+  const service_id = input.service_id ?? DEFAULT_SERVICE_ID;
+  const task = input.task ?? '';
+  const services = discoverServices(ctx, service_id);
+
+  const candidates = (await Promise.all(services
+    .map(async (service) => {
+      const agent = ctx.agents.get(service.agent_id);
+      if (!agent) return null;
+      const rep = ctx.repState.getReputation(agent.id);
+      if (rep !== null && rep.score <= 0) return null;
+      return candidateFor(ctx, agent, service, rep?.score ?? DEFAULT_REPUTATION, task).catch(() => null);
+    })
+  )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
+
+  if (candidates.length === 0) {
+    throw Object.assign(new Error(`No agents for service: ${service_id}`), { status: 400 });
+  }
+
+  const route_id = randomUUID();
+  const options = discoveryOptions(ctx, candidates);
+
+  ctx.routeStore.set(route_id, { route_id, task, service_id, options });
+
+  return {
+    route_id,
+    task,
+    service_id,
+    options,
+  };
+}
+
 export function makeAgentRoutes(ctx: Ctx): Hono {
   const app = new Hono();
 
@@ -98,35 +135,12 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
 
   app.post('/api/route', async (c) => {
     const body: RouteBody = await c.req.json<RouteBody>().catch(() => ({}));
-    const service_id = body.service_id ?? DEFAULT_SERVICE_ID;
-    const task = body.task ?? '';
-    const services = discoverServices(ctx, service_id);
-
-    const candidates = (await Promise.all(services
-      .map(async (service) => {
-        const agent = ctx.agents.get(service.agent_id);
-        if (!agent) return null;
-        const rep = ctx.repState.getReputation(agent.id);
-        if (rep !== null && rep.score <= 0) return null;
-        return candidateFor(ctx, agent, service, rep?.score ?? DEFAULT_REPUTATION, task).catch(() => null);
-      })
-    )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
-
-    if (candidates.length === 0) {
-      return c.json({ error: `No agents for service: ${service_id}` }, 400);
+    try {
+      return c.json(await createRoute(ctx, body));
+    } catch (error) {
+      const err = error as { message?: string };
+      return c.json({ error: err.message ?? 'route failed' }, 400);
     }
-
-    const route_id = randomUUID();
-    const options = discoveryOptions(ctx, candidates);
-
-    ctx.routeStore.set(route_id, { route_id, task, service_id, options });
-
-    return c.json({
-      route_id,
-      task,
-      service_id,
-      options,
-    });
   });
 
   app.post('/api/agents/register', async (c) => {

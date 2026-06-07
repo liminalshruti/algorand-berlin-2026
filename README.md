@@ -31,6 +31,7 @@ Live API:
 ```txt
 POST /api/route       { task, service_id? } -> { route_id, task, service_id, options }
 POST /api/challenge   { route_id, option_id } -> { challenge_id, agent_id, quote_id, amount, asset, pay_to, network, nonce, payment_note, quote_drift }
+GET  /api/challenge/:challenge_id -> { challenge_id, amount, pay_to, payment_note, quote_drift, payment_txid? }
 POST /api/payment-proof { challenge_id, txid, payer } -> { accepted, policy_result, validation_id, new_reputation }
 POST /api/feedback/intent { challenge_id, payment_txid, payer, response } -> { feedback_intent_id, note, note_hash, expires_at }
 POST /api/feedback    { feedback_intent_id, auth_txid } -> { accepted, feedback_id, new_reputation, rebate_txid }
@@ -40,6 +41,7 @@ GET  /api/reputation?agent=... -> { agent_id, score, reads_logged, corrections_l
 GET  /api/ledger      -> { anchors }
 GET  /api/agents      -> { network, app_id, agents:[{ agent_id, registry_agent_id?, agent_uri, agent_wallet, services }] }
 GET  /api/services    -> { network, generated_at, services:[{ service_id, proxy, options }] }
+POST /mcp             -> Claude Code MCP Streamable HTTP tools
 ```
 
 ## Run It
@@ -68,6 +70,19 @@ deployment, or custom LocalNet credentials.
 Known Honest/Cheat quotes are pre-probed from the local x402 provider into the router's in-memory
 quote cache: Honest returns `0.10 ALGO` for quote and execution; Cheat returns `0.04 ALGO` for quote
 and `0.06 ALGO` for execution.
+
+Claude Code MCP demo:
+
+```sh
+npx serve -l 3000 apps/web
+LOW_SPEND_SMOKE=true WEB_BASE_URL=http://localhost:3000 npm start
+claude mcp add --transport http liminal http://localhost:3001/mcp
+```
+
+Ask Claude Code to list Liminal services, route a diligence task, request payment, open the returned
+`sign_url`, then record the payment proof and invoke the paid service. The `sign_url` opens
+`apps/web/mcp-sign.html`, which signs the exact x402 challenge with Pera on TestNet and posts
+`/api/payment-proof`.
 
 Live TestNet agent registration setup:
 
@@ -131,11 +146,15 @@ tsx scripts/localnet-e2e.ts
   `/api/feedback` requires payer wallet control through a 0-ALGO self-payment auth note. Optional
   router-sponsored feedback rebate is controlled by `FEEDBACK_REBATE_ENABLED` and
   `FEEDBACK_REBATE_ALGO`.
+- MCP facade is landed: `POST /mcp` exposes `liminal_list_services`, `liminal_route_task`,
+  `liminal_request_payment`, `liminal_record_payment_proof`, and `liminal_invoke_paid_service` for
+  Claude Code. Paid invocation forwards to the selected local MCP/x402 provider after proof.
 
 Known follow-ups:
 
-- Wire the frontend to the target no-custody x402 challenge/proof flow. The backend proof endpoints
-  are live; the Trust Router page still primarily drives the router-settled `/api/pay` shim.
+- Wire the main Trust Router page to the target no-custody x402 challenge/proof flow. The MCP Pera
+  signing page consumes the proof endpoints; the main page still primarily drives the router-settled
+  `/api/pay` shim.
 - Extend service/tool catalog discovery beyond the Honest/Cheat ARC-8004 card slice into full MCP
   metadata and A2A agent cards.
 - `apps/router/src/ranking.ts` is not the active ranking implementation; routing currently ranks in

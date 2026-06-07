@@ -16,6 +16,7 @@ export const TRUST_WEIGHTS = { price: 0.4, reputation: 0.6 };
 export const ROUTER_ROUTES = [
   "POST /api/route",
   "POST /api/challenge",
+  "GET /api/challenge/:challenge_id",
   "POST /api/payment-proof",
   "POST /api/feedback/intent",
   "POST /api/feedback",
@@ -24,6 +25,7 @@ export const ROUTER_ROUTES = [
   "GET /api/reputation",
   "GET /api/ledger",
   "GET /api/services",
+  "POST /mcp",
 ];
 
 export type AlgoAccount = {

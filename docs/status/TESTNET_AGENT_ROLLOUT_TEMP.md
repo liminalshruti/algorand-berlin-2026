@@ -28,8 +28,9 @@ for this slice.
 ## Current State
 
 - Live endpoints: `GET /api/agents`, `GET /api/services`, `POST /api/route`, `POST /api/challenge`,
-  `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`,
-  `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`.
+  `GET /api/challenge/:challenge_id`, `POST /api/payment-proof`, `POST /api/feedback/intent`,
+  `POST /api/feedback`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`,
+  `GET /api/ledger`, `POST /mcp`.
 - Honest/Cheat cards live in `docs/agents/testnet/` and expose clean ARC-8004 identity/service facts.
 - Router boot ingests the committed manifest or direct raw card URLs; fetch failure keeps seeded
   fallback agents alive.
@@ -138,8 +139,8 @@ This is live now through local agent-hosted 402 behavior plus the router-settled
 
 ### Level 3 - Direct-Payment Proof Path
 
-The router proof endpoints are live now. The no-custody UI/client payment and post-payment
-invocation path is still planned.
+The router proof endpoints are live now. Claude Code can use the no-custody path through the
+router-hosted MCP facade and `apps/web/mcp-sign.html`; the main Trust Router UI still uses `/api/pay`.
 
 - Selected local agent endpoint returns execution `402 PaymentRequirements` through `/api/challenge`.
 - Payment requirements use selected agent wallet as `payTo`.
@@ -160,11 +161,13 @@ GET  /api/agents
 GET  /api/services
 POST /api/route     { task, service_id? }
 POST /api/challenge { route_id, option_id }
+GET  /api/challenge/:challenge_id
 POST /api/payment-proof { challenge_id, settlement_txid|txid, user_id|payer }
 POST /api/feedback/intent { challenge_id, settlement_txid|payment_txid, user_id|payer, response }
 POST /api/feedback { feedback_intent_id, auth_txid }
 POST /api/pay       { route_id, option_id }
 POST /api/validate  { payment_id }
+POST /mcp           Claude Code MCP Streamable HTTP
 ```
 
 Local demo provider:
@@ -181,6 +184,9 @@ Current router-internal x402 helpers:
 fetchPaymentRequirementFromService(service, request)
 refreshQuotes(ctx, service_id?) -> ctx.quoteCache
 paymentRequirementForExecution(ctx, option)
+createPaymentChallenge(ctx, route_id, option_id)
+acceptPaymentProofForChallenge(ctx, challenge_id, txid, payer)
+invokePaidService(ctx, challenge_id, payload?)
 PaymentChallenge { challenge_id, route_id, option_id, agent_id, service_id, quote_id, nonce, resource, amount, asset, pay_to, network, observed_at, expires_at }
 ```
 
@@ -188,9 +194,11 @@ Direct-payment proof interfaces now live:
 
 ```txt
 POST /api/challenge         { route_id, option_id }
+GET  /api/challenge/:challenge_id
 POST /api/payment-proof     { challenge_id, settlement_txid|txid, user_id|payer }
 POST /api/feedback/intent   { challenge_id, settlement_txid|payment_txid, user_id|payer, response }
 POST /api/feedback          { feedback_intent_id, auth_txid }
+POST /mcp                  tools: liminal_list_services, liminal_route_task, liminal_request_payment, liminal_record_payment_proof, liminal_invoke_paid_service
 ```
 
 Keep `/api/pay` documented as the current router-settled demo shim until the no-custody flow lands.
@@ -377,6 +385,10 @@ Demo checks:
 - Honest settles at quote through current shim.
 - Cheat settles above quote through current shim.
 - `/api/validate` lowers Cheat reputation.
+- `POST /mcp` lists five Liminal tools and routes `diligence.report` through Honest/Cheat.
+- `liminal_request_payment` returns `sign_url` for `apps/web/mcp-sign.html`.
+- `liminal_invoke_paid_service` rejects unpaid challenges and forwards accepted proof calls with
+  `X-PAYMENT`.
 
 Future x402 checks:
 
@@ -395,7 +407,8 @@ Future x402 checks:
   not required.
 - Real external provider-hosted x402 challenge endpoints are not required yet; local demo providers
   run via `npm run agents:local`.
-- `/api/pay` remains the current router-settled demo shim until direct payment is implemented.
+- `/api/pay` remains the current main-UI router-settled demo shim; MCP uses the direct payment proof
+  path plus the Pera signing bridge.
 - Current storage remains in-memory Maps plus hash-only ledger anchors.
 - Registry contracts stay at the deployed TestNet app ids listed above.
 

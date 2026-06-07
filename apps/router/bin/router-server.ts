@@ -11,6 +11,7 @@ import {
 import { makeValidationRoutes } from "../src/routes.validation.js";
 import { makeAgentRoutes } from "../src/routes.agents.js";
 import { makeTrustRoutes } from "../src/routes.trust.js";
+import { makeMcpRoutes } from "../src/routes.mcp.js";
 import { applyKnownAgentRegistrations } from "../src/identity-onchain.js";
 import { ingestAgentCardsFromManifest, refreshQuotes } from "../src/agents.js";
 
@@ -97,6 +98,7 @@ async function main() {
   app.route("/", makeValidationRoutes(ctx));
   app.route("/", makeTrustRoutes(ctx));
   app.route("/", makeAgentRoutes(ctx));
+  app.route("/", makeMcpRoutes(ctx));
 
   serve({ fetch: app.fetch, port }, () => {
     console.log(`\nrouter-server :${port}  network=${ctx.net}`);
@@ -113,6 +115,7 @@ async function main() {
     console.log("\n--- endpoints ---");
     console.log("  POST /api/route   { task, service_id? }");
     console.log("  POST /api/challenge { route_id, option_id }");
+    console.log("  GET  /api/challenge/:challenge_id");
     console.log("  POST /api/payment-proof { challenge_id, txid, payer }");
     console.log("  POST /api/feedback/intent { challenge_id, payment_txid, payer, response }");
     console.log("  POST /api/feedback { feedback_intent_id, auth_txid }");
@@ -123,6 +126,7 @@ async function main() {
     console.log("  GET  /api/agents");
     console.log("  GET  /api/services");
     console.log("  POST /api/agents/register { name, agent_uri, address }");
+    console.log("  POST /mcp        (Claude Code MCP Streamable HTTP)");
   });
 }
 

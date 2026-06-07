@@ -5,11 +5,11 @@ Everyone's Claude should read this before writing anything.
 
 ## Current state (origin/main) — core loop landed ✅
 
-- **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/challenge`, `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/services`.
+- **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/challenge`, `GET /api/challenge/:challenge_id`, `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/services`, `POST /mcp`.
 - **On-chain:** ARC-8004 Identity + Reputation + Validation registries (Algorand TS) with deploy configs, unit specs, and `scripts/localnet-e2e.ts`.
 - **✅ DEPLOYED ON TESTNET (wired):** Identity `764031067`, Reputation `764031363`, Validation `764031094` — both Reputation & Validation are `initialize()`'d so their global `idApp` = `764031067` (verified on-chain). Reputation `764031363` ships the x402 `giveFeedback` coupling (supersedes earlier `764031075`). Deployer/creator = shared payer `24E3…`. **See `docs/status/DEPLOYED.md`** for code hashes + creation txids; app ids also in `apps/web/deployed.testnet.json`; UI (`arc8004.js`) consumes them. Redeploy: `npm run deploy:testnet` (orchestrator: `scripts/deploy-testnet.ts`, idempotent via indexer).
 - **Frontend:** 5 pages + a left sidebar (Trust Router · Marketplace · Agent Studio · Contracts · Admin) under `apps/web/`.
-- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog + local 402 quote ingestion are wired; proof-backed `/api/challenge` -> `/api/payment-proof` and payer-authorized `/api/feedback` are wired in the router; full chain scan/MCP tool-list/A2A discovery is not wired; `/api/pay` still exists as the router-settled demo shim; registry writes are env-gated with hash-anchor fallback; UI has not consumed the new proof endpoints yet; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
+- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog + local 402 quote ingestion are wired; proof-backed `/api/challenge` -> `/api/payment-proof` and payer-authorized `/api/feedback` are wired in the router; router-hosted MCP facade is wired for Claude Code; full chain scan/provider MCP tool-list/A2A discovery is not wired; `/api/pay` still exists as the router-settled demo shim; registry writes are env-gated with hash-anchor fallback; main Trust Router UI has not consumed the new proof endpoints yet; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
 
 ---
 
@@ -17,6 +17,8 @@ Everyone's Claude should read this before writing anything.
 
 - Server runs on `:3001` — `npm start` from project root. **Defaults to TestNet** via committed `.env.demo` (shared throwaway payer + deployed app ids); local `.env` is optional for non-secret network/port overrides.
 - Local demo x402 providers run on `:4021` — `npm run agents:local`; endpoints: `POST /honest/mcp`, `POST /cheat/mcp`.
+- Claude Code MCP facade runs on the router: `POST http://localhost:3001/mcp`; add with `claude mcp add --transport http liminal http://localhost:3001/mcp`. Tools: `liminal_list_services`, `liminal_route_task`, `liminal_request_payment`, `liminal_record_payment_proof`, `liminal_invoke_paid_service`.
+- MCP Pera handoff: serve `apps/web` on `:3000`; `WEB_BASE_URL=http://localhost:3000` makes `liminal_request_payment` return `/mcp-sign?challenge_id=...`; the page signs the TestNet payment and posts `/api/payment-proof`.
 - Markdown source of truth: `README.md` (run/status), `BUILD_CHECKLIST_2026-06-06.md` (done/left tracker), `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md` (demo scope), `apps/web/README.md` (frontend), `docs/pitch/*` (submission), `docs/reference/ERC8004_AVM_MAPPING.md` + `docs/reference/ARC-8004.md` (standards).
 - Temporary execution handoff: `docs/status/TESTNET_AGENT_ROLLOUT_TEMP.md` (Known-agent x402 rollout: curated Honest/Cheat discovery, Identity registration, x402 readiness/proof path; completed card-catalog rollout is superseded).
 - All router wire types live in `apps/router/src/contract.ts` — import from there and coordinate before changing shared shapes.
@@ -112,6 +114,7 @@ Current ranking is in `agents.ts::discoveryOptions` (`ranking.ts` is an unused s
 GET  /api/agents → { network, app_id, agents:[{ agent_id, registry_agent_id?, agent_uri, agent_wallet, services }] }
 GET  /api/services → { network, generated_at, services:[{ service_id, name, description, proxy, options }] }
 POST /api/route { task, service_id? } → { route_id, task, service_id, options:[RouteOption] }
+POST /mcp → Claude Code MCP tools over Streamable HTTP
 ```
 
 **Honest/Cheat card URLs:**
@@ -157,6 +160,8 @@ ctx.routeStore.set(route_id, {
 
 - `/api/pay` looks up `route_id` from `ctx.routeStore` — if it's not there, pay returns 400
 - Legacy `/api/pay` now uses `paymentRequirementForExecution(ctx, option)` before router-settled shim payment, so drift behavior lives in the local agent server.
+- `routes.agents.ts::createRoute(ctx,{task,service_id?})` is the shared route creation helper used by REST and MCP.
+- `routes.mcp.ts::invokePaidService(ctx,challenge_id,payload?)` forwards accepted proof challenges to the selected provider with `X-PAYMENT:<payment_txid>`.
 
 **Where to write your code:**
 
@@ -169,7 +174,7 @@ ctx.routeStore.set(route_id, {
 ## Shayaun — Reputation Registry + Validation Registry ✅ PROOF ROUTER GLUE WIRED
 
 - Live legacy shim validation: `POST /api/validate {payment_id}` → `{validation_id, price_match, output_pass:null, response, new_reputation, verdict_txid}`; this is automatic quote-vs-settlement validation, not user feedback. `GET /api/reputation?agent=` → `{agent_id, score, reads_logged, corrections_logged, by_tag, uri, hash}`.
-- Live proof path: `POST /api/challenge {route_id, option_id}` → execution x402 challenge + `payment_note` + `quote_drift`; `POST /api/payment-proof {challenge_id, settlement_txid|txid, user_id|payer}` verifies confirmed payment sender/receiver/amount/network/note and lowers reputation only for quote drift; `POST /api/feedback/intent {challenge_id, settlement_txid|payment_txid, user_id|payer, response}` returns a 0-ALGO self-payment auth note; `POST /api/feedback {feedback_intent_id, auth_txid}` accepts payer-authorized feedback, dedupes payment txids, updates `ctx.repState`, and optionally pays `FEEDBACK_REBATE_ALGO` when `FEEDBACK_REBATE_ENABLED=true`.
+- Live proof path: `POST /api/challenge {route_id, option_id}` → execution x402 challenge + `payment_note` + `quote_drift`; `GET /api/challenge/:challenge_id` returns stored challenge/signing facts; `POST /api/payment-proof {challenge_id, settlement_txid|txid, user_id|payer}` verifies confirmed payment sender/receiver/amount/network/note and lowers reputation only for quote drift; `POST /api/feedback/intent {challenge_id, settlement_txid|payment_txid, user_id|payer, response}` returns a 0-ALGO self-payment auth note; `POST /api/feedback {feedback_intent_id, auth_txid}` accepts payer-authorized feedback, dedupes payment txids, updates `ctx.repState`, and optionally pays `FEEDBACK_REBATE_ALGO` when `FEEDBACK_REBATE_ENABLED=true`.
 - `makeValidationRoutes(ctx)` **injects `ctx.repState`** (in-memory effective reputation: prior score `60`, prior weight `3`, blended with observed clean/corrected reads) so `/api/route` reranks after a write-back without one-event route death — no `router-server.ts` change needed.
 - Verdict anchored hash-only via `ctx.deps.anchorNote` (real txid on LocalNet; skipped if algod down).
 - On-chain registries deploy via new `contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
@@ -177,6 +182,7 @@ ctx.routeStore.set(route_id, {
 - ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`.
 - `onchain.ts` feedback helper: `maybeWriteReputation(ctx, agent_id, response, paymentTxid, payer, nonce, "user_feedback")` passes `paymentTxid` (real x402 settlement txid -> 32 bytes via base32 decode) + nonce, uses the Identity `registry_agent_id` loaded from known-agent evidence when present, and refuses to backend-sign as anyone except the proven payer.
 - Router glue tests cover quote-vs-settlement validation, proof challenge creation, proof rejection cases, quote-drift reputation drop/reroute, payer self-auth feedback, feedback replay guard, rebate, reputation score math, correction tags, reroute hook, and per-agent isolation. Run with `npm test`. Pure logic, no network.
+- Shared proof helpers: `createPaymentChallenge`, `getPaymentChallenge`, `paymentChallengePayload`, and `acceptPaymentProofForChallenge` in `routes.trust.ts`; REST and MCP both use them.
 
 **What's ready for you to consume:**
 
@@ -215,6 +221,7 @@ const ctx = await buildContext(repState);
   - Registry/Marketplace/Studio: connect → `ARC8004.setCaller(address)` (acts as that wallet; disconnect reverts to a fresh demo addr).
   - **Network = TestNet, pinned everywhere — never switched.** `router.js NETWORK` and `arc8004.js NET` are hardcoded `"testnet"`; the `nav.js`/`registry.js` fallbacks are also `"testnet"`, matching `wallet.js` and `context.ts`'s TestNet default. Explorer/genesis/banner all resolve to TestNet. Real Pera signing needs the Pera mobile app paired + TestNet funds.
   - **Required on every page that loads `wallet.js`:** an `<script type="importmap">` redirecting `https://esm.sh/js-sha3@0.8.0/es2022/js-sha3.mjs` → `/vendor/js-sha3-shim.js` (in `<head>`, before the module). esm.sh's `js-sha3` build only default-exports, so Pera's `import { keccak_256 }` fails without the shim. Wired into: `router.html`, `marketplace/studio/contracts/admin.html`. `wallet.js` auto-injects its Connect button into `.surface-meta`/titlebar if a page has no static `[data-pera-connect]`.
+- **MCP signing bridge:** `apps/web/mcp-sign.html` + `mcp-sign.js` read `challenge_id` and optional `api_base`, load `GET /api/challenge/:challenge_id`, sign `pay_to`/`amount`/`payment_note` through `wallet.js`, and post `/api/payment-proof`. Used by `liminal_request_payment.sign_url`.
 
 **All endpoints consumed (live):** `POST /api/route`, `POST /api/challenge`, `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`.
 

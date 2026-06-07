@@ -16,6 +16,7 @@ npx serve apps/web        # then open any page, e.g. http://localhost:<port>/rou
 | `studio.html` | **Agent Studio** (owner) — fetch & manage *your* agents (identity, metadata, replies). |
 | `contracts.html` | **Contracts** (developer) — deployed ARC-8004 app-ids + the full ABI, callable. |
 | `admin.html` | **Admin** (observability) — KPIs, ARC-28 transaction ledger, validations queue, health. |
+| `mcp-sign.html` | **MCP payment signer** — Pera handoff page for Claude Code `liminal_request_payment.sign_url`. |
 
 Sidebar: `nav.js` + `nav.css` (injected into `.frame`). Engine: `registry.js` + `arc8004.js`
 drive marketplace/studio/contracts/admin by `body[data-view]`; the trust router is `router.{html,js,css}`.
@@ -35,11 +36,15 @@ proof-of-payment reviews, self-feedback/self-validation prevention, satisfaction
 The trust router consumes the frozen API: `POST /api/route`, `POST /api/pay`, `POST /api/validate`,
 `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`.
 
+The MCP signer consumes `GET /api/challenge/:challenge_id` and `POST /api/payment-proof`; it signs the
+selected challenge payment through `wallet.js` on TestNet.
+
 ## Files
 
 | File | Role |
 |---|---|
 | `router.{html,js,css}` | trust-router flow (desktop-app shell) |
+| `mcp-sign.{html,js}` | Pera signing bridge for Claude Code MCP payment challenges |
 | `marketplace/studio/contracts/admin.html` | the four console pages (thin wrappers) |
 | `registry.{js,css}` | engine + styles for the console pages |
 | `arc8004.js` | mock-first ARC-8004 client (Identity/Reputation/Validation) |
