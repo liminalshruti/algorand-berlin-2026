@@ -1,0 +1,167 @@
+{
+  "title": "Validator happy path — real TestNet audit trail",
+  "network": "testnet",
+  "generated_at": "2026-06-07T07:13:42.595Z",
+  "status": "complete",
+  "failure": null,
+  "apps": {
+    "identity": {
+      "app_id": 764031067,
+      "explorer": "https://lora.algokit.io/testnet/application/764031067"
+    },
+    "validation": {
+      "app_id": 764031094,
+      "explorer": "https://lora.algokit.io/testnet/application/764031094"
+    }
+  },
+  "participants": {
+    "owner": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+    "validator1": "762MG7ZNCLO7JROLSXPDX2KREVYJTM32PUXVWDUVXPNZKBMFADWFW63XHQ",
+    "validator2": "GSQVRSRWOY34G6WXCPDF6CFBKVDXTJYHEZJ23OGVL3JVSHP4EZ2S6FYJ24"
+  },
+  "agent": {
+    "registry_agent_id": "4",
+    "agent_uri": "https://agents.liminal.local/validator-demo/1780816371431"
+  },
+  "transactions": [
+    {
+      "step": 1,
+      "category": "setup",
+      "action": "fund validator #1",
+      "contract": null,
+      "method": "payment",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "receiver": "762MG7ZNCLO7JROLSXPDX2KREVYJTM32PUXVWDUVXPNZKBMFADWFW63XHQ",
+        "amount_algo": 0.3
+      },
+      "txid": "QXWM746QDDA2ULLOMMEF76DDV737Q2BKWGFSSSOTG5LZC3WXM3LQ",
+      "confirmed_round": 64126120,
+      "explorer": "https://lora.algokit.io/testnet/transaction/QXWM746QDDA2ULLOMMEF76DDV737Q2BKWGFSSSOTG5LZC3WXM3LQ"
+    },
+    {
+      "step": 2,
+      "category": "setup",
+      "action": "fund validator #2",
+      "contract": null,
+      "method": "payment",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "receiver": "GSQVRSRWOY34G6WXCPDF6CFBKVDXTJYHEZJ23OGVL3JVSHP4EZ2S6FYJ24",
+        "amount_algo": 0.3
+      },
+      "txid": "EIYPVKXBPGFQNZWRUFO3TBGYGX2MH2IVJFVZH3VGWE6NW75A3FYA",
+      "confirmed_round": 64126122,
+      "explorer": "https://lora.algokit.io/testnet/transaction/EIYPVKXBPGFQNZWRUFO3TBGYGX2MH2IVJFVZH3VGWE6NW75A3FYA"
+    },
+    {
+      "step": 3,
+      "category": "identity",
+      "action": "register agent under validation",
+      "contract": "IdentityRegistry",
+      "method": "register",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "registry_agent_id": "4",
+        "agent_uri": "https://agents.liminal.local/validator-demo/1780816371431"
+      },
+      "txid": "6H2AGUDQSI6R4AWEFATDCLM4XAYOLLMSKWZ4DHCZTQSKHWSGP5ZQ",
+      "confirmed_round": 64126126,
+      "explorer": "https://lora.algokit.io/testnet/transaction/6H2AGUDQSI6R4AWEFATDCLM4XAYOLLMSKWZ4DHCZTQSKHWSGP5ZQ"
+    },
+    {
+      "step": 4,
+      "category": "validation",
+      "action": "validation request → validator #1",
+      "contract": "ValidationRegistry",
+      "method": "validationRequest",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "registry_agent_id": "4",
+        "validator": "762MG7ZNCLO7JROLSXPDX2KREVYJTM32PUXVWDUVXPNZKBMFADWFW63XHQ",
+        "request_hash": "d929a789e998595f92a73513bebe55cf967b1c1eaf867523554ce4d934837a8f"
+      },
+      "txid": "FCDAKHNQL2QYEWD5UWLB77PJLCHJN5CF7EMAWVZLBS4GRYHHKN5Q",
+      "confirmed_round": 64126129,
+      "explorer": "https://lora.algokit.io/testnet/transaction/FCDAKHNQL2QYEWD5UWLB77PJLCHJN5CF7EMAWVZLBS4GRYHHKN5Q"
+    },
+    {
+      "step": 5,
+      "category": "validation",
+      "action": "validator #1 soft interim result (85)",
+      "contract": "ValidationRegistry",
+      "method": "validationResponse",
+      "sender": "762MG7ZNCLO7JROLSXPDX2KREVYJTM32PUXVWDUVXPNZKBMFADWFW63XHQ",
+      "detail": {
+        "registry_agent_id": "4",
+        "response": 85,
+        "finality": "soft"
+      },
+      "txid": "ZRQH4GESMLL3N7AQTZCCCVLZBP4IMSXOCJDS623XDJTZJ3IOFOHA",
+      "confirmed_round": 64126132,
+      "explorer": "https://lora.algokit.io/testnet/transaction/ZRQH4GESMLL3N7AQTZCCCVLZBP4IMSXOCJDS623XDJTZJ3IOFOHA"
+    },
+    {
+      "step": 6,
+      "category": "validation",
+      "action": "validator #1 hard PASS (100)",
+      "contract": "ValidationRegistry",
+      "method": "validationResponse",
+      "sender": "762MG7ZNCLO7JROLSXPDX2KREVYJTM32PUXVWDUVXPNZKBMFADWFW63XHQ",
+      "detail": {
+        "registry_agent_id": "4",
+        "response": 100,
+        "finality": "hard"
+      },
+      "txid": "UY4VKA3EBIDQYNPZ2CFT54PQTI5LBNYFMJACBQJELCD2FSHT662A",
+      "confirmed_round": 64126135,
+      "explorer": "https://lora.algokit.io/testnet/transaction/UY4VKA3EBIDQYNPZ2CFT54PQTI5LBNYFMJACBQJELCD2FSHT662A"
+    },
+    {
+      "step": 7,
+      "category": "validation",
+      "action": "validation request → validator #2",
+      "contract": "ValidationRegistry",
+      "method": "validationRequest",
+      "sender": "24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI",
+      "detail": {
+        "registry_agent_id": "4",
+        "validator": "GSQVRSRWOY34G6WXCPDF6CFBKVDXTJYHEZJ23OGVL3JVSHP4EZ2S6FYJ24",
+        "request_hash": "2b852201144c36f9a6896e5905196afc9a6a7f149fe7c280ed1936f7fd9a5889"
+      },
+      "txid": "CFFCKXFJ6MJYCIJRNSMZQLOZLQUARYRO55CWITYT5WFFCUN2PSAQ",
+      "confirmed_round": 64126138,
+      "explorer": "https://lora.algokit.io/testnet/transaction/CFFCKXFJ6MJYCIJRNSMZQLOZLQUARYRO55CWITYT5WFFCUN2PSAQ"
+    },
+    {
+      "step": 8,
+      "category": "validation",
+      "action": "validator #2 hard PASS (100)",
+      "contract": "ValidationRegistry",
+      "method": "validationResponse",
+      "sender": "GSQVRSRWOY34G6WXCPDF6CFBKVDXTJYHEZJ23OGVL3JVSHP4EZ2S6FYJ24",
+      "detail": {
+        "registry_agent_id": "4",
+        "response": 100,
+        "finality": "hard"
+      },
+      "txid": "WBG7HRI2DKE5VGPD3IIKUNLYHSFOD4376HDHYDLNMV4KX5ORHDKQ",
+      "confirmed_round": 64126141,
+      "explorer": "https://lora.algokit.io/testnet/transaction/WBG7HRI2DKE5VGPD3IIKUNLYHSFOD4376HDHYDLNMV4KX5ORHDKQ"
+    }
+  ],
+  "verification": [
+    {
+      "check": "validator #1 request finalized",
+      "response": 100,
+      "tag": "hard",
+      "expected": "100 / hard"
+    },
+    {
+      "check": "agent validation summary",
+      "count": 2,
+      "average_response": 100,
+      "expected": "count=2, average=100"
+    }
+  ]
+}
