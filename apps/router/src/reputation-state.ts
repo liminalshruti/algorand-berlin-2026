@@ -16,14 +16,18 @@ export interface RouterRepState extends RepState {
 
 /**
  * In-memory Reputation Registry. Reputation is *earned*:
- *   score = round(100 * (landed - corrected) / landed); null when there's no history.
+ *   score = round((prior_weight * prior_score + 100 * clean) / (prior_weight + landed));
+ * null when there's no history.
  * Ranking / the /api/route handler read getReputation, so a write-back here
- * reroutes the next request (caught once → routed around). On a failed verdict we tag
- * the correction with the 9-tag taxonomy (`missed_compensation` for quote drift).
+ * reranks the next request. The prior avoids one-event death for sparse agents; repeated
+ * verified failures still dominate over time.
  *
  * Production seam: quote drift should be mirrored to the ValidationRegistry /
  * validation anchors. User satisfaction feedback remains the ReputationRegistry lane.
  */
+export const REPUTATION_PRIOR_SCORE = 60;
+export const REPUTATION_PRIOR_WEIGHT = 3;
+
 export function createRepState(): RouterRepState {
   const m = new Map<string, { reads: number; corrections: number; by_tag: Record<string, number> }>();
   const ensure = (id: string) => {
@@ -32,7 +36,14 @@ export function createRepState(): RouterRepState {
     return e;
   };
   const score = (e: { reads: number; corrections: number }): number | null =>
-    e.reads > 0 ? Math.round((100 * (e.reads - e.corrections)) / e.reads) : null;
+    e.reads > 0
+      ? Math.round(
+        // Blend sparse observed evidence with a prior so one complaint lowers trust
+        // without permanently killing cold-start agents; repeated evidence dominates.
+        ((REPUTATION_PRIOR_WEIGHT * REPUTATION_PRIOR_SCORE) + (100 * (e.reads - e.corrections))) /
+        (REPUTATION_PRIOR_WEIGHT + e.reads),
+      )
+      : null;
 
   return {
     getReputation(id: string) {

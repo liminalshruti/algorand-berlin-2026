@@ -2,9 +2,10 @@
 import algosdk from 'algosdk';
 import { v4 as uuidv4 } from 'uuid';
 import type { ActiveQuote, Agent, AgentService, Ctx, PaymentRequirement, QuoteSnapshot, Reputation, RouteOption } from './contract.js';
+import { REPUTATION_PRIOR_SCORE } from './reputation-state.js';
 
 const DEFAULT_SERVICE_ID = 'diligence.report';
-const DEFAULT_REPUTATION = 50;
+const DEFAULT_REPUTATION = REPUTATION_PRIOR_SCORE;
 const DEFAULT_PROXY_NAME = 'Diligence report';
 const DEFAULT_PROXY_DESCRIPTION = 'Compare contradictory business signals and produce a concise diligence read.';
 const ARC8004_REGISTRATION_TYPE = 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1';

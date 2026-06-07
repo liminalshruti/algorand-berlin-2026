@@ -545,7 +545,7 @@ test('GET /api/services returns grouped diligence catalog without hidden cheat b
     assert.equal(body.services[0].options.every((option) => option.capability.source === 'agent_uri'), true);
     assert.equal(body.services[0].options.every((option) => option.quote.asset === 'ALGO'), true);
     assert.deepEqual(body.services[0].options.map((option) => option.quote.amount).sort(), [0.04, 0.1]);
-    assert.equal(body.services[0].options.every((option) => option.trust.reputation === 50), true);
+    assert.equal(body.services[0].options.every((option) => option.trust.reputation === 60), true);
     assert.equal(JSON.stringify(body).includes('challenge'), false);
     assert.equal(ctx.quoteCache.size, 2);
     assert.equal(ctx.activeQuotes.size, 0);

@@ -4,7 +4,7 @@
 // QuoteSnapshot:{ agent_id, service_id, amount, asset, pay_to, observed_at, expires_at, source }
 // ActiveQuote:  { quote_id, agent_id, service_id, amount, asset, pay_to, observed_at, expires_at }
 // PaymentChallenge:{ challenge_id, route_id, option_id, agent_id, service_id, quote_id, nonce,
-//                    resource, amount, asset, pay_to, network, observed_at, expires_at }
+//                    resource, amount, asset, pay_to, network, payment_note, observed_at, expires_at }
 // RouteOption:  { option_id, agent_id, service_id, quote_id, name, price, asset, pay_to, reputation, trust_score }
 // PaymentResult:{ payment_id, agent_id, quote_id, quoted, settled, txids:[], read }
 // Verdict:      { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
@@ -146,6 +146,12 @@ export type OnChainPayment = {
   round?: number;
 };
 
+export type AccountBalance = {
+  amount: number;
+  min_balance: number;
+  available: number;
+};
+
 export type FeedbackIntent = {
   feedback_intent_id: string;
   challenge_id: string;
@@ -221,6 +227,7 @@ export type Ctx = {
     settle: (to: string, amountAlgo: number, note: object) => Promise<{ txid: string; round: number }>;
     anchorNote: (ref_id: string, schema: string, hash: string) => Promise<{ txid: string; round: number }>;
     lookupPayment?: (txid: string) => Promise<OnChainPayment | null>;
+    accountBalance?: (address: string) => Promise<AccountBalance | null>;
     buildReputationEntry: (agent_id: string, score: number) => unknown;
     anchorReputationEntry: (entry: unknown) => Promise<string>;
     explorerFor: (txid: string) => string;

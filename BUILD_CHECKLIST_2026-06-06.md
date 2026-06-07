@@ -127,7 +127,7 @@ Run before calling the current build demo-ready:
 - [ ] Honest agent: `settled_amount == quoted_amount`
 - [ ] Cheat agent: `settled_amount > quoted_amount`
 - [ ] `/api/validate` lowers the cheat agent reputation
-- [ ] Re-running `/api/route` avoids the caught agent
+- [ ] Re-running `/api/route` reflects the caught agent's trust penalty
 - [ ] `/api/ledger` contains hash-only anchors with explorer-ready txids
 - [x] Discovery catalog groups at least one service with multiple agents
 - [x] Route request can target a service/tool rather than a register lane

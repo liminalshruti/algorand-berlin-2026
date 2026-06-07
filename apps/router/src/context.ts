@@ -1,6 +1,6 @@
 import algosdk from 'algosdk';
 import crypto from 'crypto';
-import type { AlgoAccount, Ctx, OnChainPayment, RepState } from './contract.js';
+import type { AccountBalance, AlgoAccount, Ctx, OnChainPayment, RepState } from './contract.js';
 
 // --- TestNet by default, zero setup ------------------------------------------
 // `apps/router/src/load-env.ts` loads committed `.env.demo` before this context is
@@ -108,6 +108,26 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     }
   }
 
+  async function accountBalance(address: string): Promise<AccountBalance | null> {
+    try {
+      const raw = await algodClient.accountInformation(address).do() as {
+        amount?: number | bigint;
+        minBalance?: number | bigint;
+        min_balance?: number | bigint;
+        'min-balance'?: number | bigint;
+      };
+      const amountMicro = Number(raw.amount ?? 0);
+      const minMicro = Number(raw.minBalance ?? raw.min_balance ?? raw['min-balance'] ?? 0);
+      return {
+        amount: amountMicro / MICROALGO,
+        min_balance: minMicro / MICROALGO,
+        available: Math.max(0, amountMicro - minMicro) / MICROALGO,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   return {
     net: network,
     store: algodClient,
@@ -128,6 +148,7 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
       settle: (to, amountAlgo, note) => submitTxn(payer, to, amountAlgo, note),
       anchorNote,
       lookupPayment,
+      accountBalance,
       buildReputationEntry: (agent_id, score) => ({ agent_id, score }),
       anchorReputationEntry: async (entry) => {
         const hash = crypto

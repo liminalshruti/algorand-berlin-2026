@@ -49,6 +49,12 @@ for this slice.
 - `/api/feedback/intent` + `/api/feedback` require payer authorization through a 0-ALGO self-payment
   auth tx; feedback txid replay is pre-checked in app and guarded by ReputationRegistry `usedPayment`
   when on-chain feedback is available.
+- Low-spend proof smoke mode is wired: `LOW_SPEND_SMOKE=true npm start` skips already-funded agent
+  wallets and aborts before any top-up if a required wallet is underfunded.
+- Spending runner is explicit: `npm run smoke:testnet:proof` runs the Cheat-only direct settlement
+  + 0-ALGO auth feedback path and rejects duplicate feedback.
+- Proof APIs accept `user_id` (= payer Algorand address) and `settlement_txid` aliases while preserving
+  the older `payer`, `txid`, and `payment_txid` names.
 - Honest/Cheat are registered in the TestNet IdentityRegistry and recorded in
   `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; router boot consumes this evidence and does
   not mint records.
@@ -154,8 +160,8 @@ GET  /api/agents
 GET  /api/services
 POST /api/route     { task, service_id? }
 POST /api/challenge { route_id, option_id }
-POST /api/payment-proof { challenge_id, txid, payer }
-POST /api/feedback/intent { challenge_id, payment_txid, payer, response }
+POST /api/payment-proof { challenge_id, settlement_txid|txid, user_id|payer }
+POST /api/feedback/intent { challenge_id, settlement_txid|payment_txid, user_id|payer, response }
 POST /api/feedback { feedback_intent_id, auth_txid }
 POST /api/pay       { route_id, option_id }
 POST /api/validate  { payment_id }
@@ -182,8 +188,8 @@ Direct-payment proof interfaces now live:
 
 ```txt
 POST /api/challenge         { route_id, option_id }
-POST /api/payment-proof     { challenge_id, txid, payer }
-POST /api/feedback/intent   { challenge_id, payment_txid, payer, response }
+POST /api/payment-proof     { challenge_id, settlement_txid|txid, user_id|payer }
+POST /api/feedback/intent   { challenge_id, settlement_txid|payment_txid, user_id|payer, response }
 POST /api/feedback          { feedback_intent_id, auth_txid }
 ```
 
@@ -197,6 +203,8 @@ Keep `/api/pay` documented as the current router-settled demo shim until the no-
 - Keep route handlers inside route factories, especially `apps/router/src/routes.agents.ts`.
 - Do not run `npm start` casually on TestNet; it can spend TestNet funds by funding demo agents.
   It consumes known-agent registration evidence but does not register agents.
+- Use `LOW_SPEND_SMOKE=true npm start` for sub-0.1 ALGO proof smoke prep; this mode aborts instead
+  of topping up an underfunded agent wallet.
 - Do not redeploy registry contracts for this slice.
 - Do not add a persistent production DB in this slice unless this file is updated first.
 - Keep `INTEGRATION_HANDOFF.md` current when endpoint signatures, env requirements, app ids, or
@@ -319,7 +327,7 @@ Purpose: prove the current demo remains intact and the next x402 path is ready t
   - `POST /api/validate { payment_id }`.
 - Verify Honest settles at quote through the current shim.
 - Verify Cheat settles above quote through the current shim.
-- Verify `/api/validate` lowers Cheat reputation and reroute avoids the caught agent.
+- Verify `/api/validate` lowers Cheat effective reputation and subsequent routing reflects the trust penalty.
 - Update `INTEGRATION_HANDOFF.md`, `BUILD_CHECKLIST_2026-06-06.md`, and pitch docs only when their
   visible facts change.
 
@@ -339,7 +347,7 @@ Gate:
 | Phase 2 - x402 Readiness Checklist | PASS | `npm test` PASS; in-process `GET /api/services` shows Honest/Cheat `registry_agent_id` values with `quote.pay_to` equal to agent wallets and no hidden challenge field; in-process `POST /api/route` created 2 active quotes and 2 payment requirements. | Cards remain declaration-only x402; Phase 3 supersedes router-derived quote fixtures with 402 probes. |
 | Phase 3 - Agent-Hosted x402 Quote Ingestion | PASS | `npm test` PASS; `npm run check-types` PASS; tests mock Honest/Cheat 402 quote probes, quote-cache refresh, stale refresh, unreachable-agent skip, and execution challenges. | `npm run agents:local` serves `:4021`; quote-mode 402s warm/lazy-refresh into `ctx.quoteCache`; `/api/route` mints route-specific `ActiveQuote`s from fresh cached quotes; legacy `/api/pay` asks execution 402 before settling. |
 | Phase 4 - Validation And Reputation From Proof | PASS | `npm test` PASS; `npm run check-types` PASS; `routes.trust.test.ts` covers challenge creation, quote drift, fair proof, proof rejection, replay, quote-drift reputation/reroute, payer self-auth feedback, duplicate feedback rejection, and rebate. | Quote drift is the only automatic reputation policy; wrong payer/receiver/amount/nonce/stale/replay are proof/auth failures, not reputation penalties. |
-| Phase 5 - Live Smoke And Handoff | PENDING SPENDING SMOKE | 2026-06-07 non-spending checks: `npm test` PASS (56 tests); `npm run check-types` PASS; `npm run setup:testnet-identity -- --check` PASS; `npm run setup:testnet-known-agents -- --check` PASS; `npm run register:testnet-agents -- --check` PASS with 2 canonical Honest/Cheat cards validated and no registration txs sent. Direct TestNet algod query: shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` has `2.657 ALGO` total / `2.0145 ALGO` available; identity submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `13.996 ALGO` total / `13.896 ALGO` available; Honest wallet has `1.6 ALGO`; Cheat wallet has `1.5 ALGO`. | `npm start` / live TestNet shim smoke not rerun yet because it spends TestNet funds through `fundAgents` and `/api/pay`; run only when the team gives explicit go-ahead. Existing Honest/Cheat Identity registrations remain recorded and consumed from `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. |
+| Phase 5 - Live Smoke And Handoff | PENDING SPENDING SMOKE | 2026-06-07 non-spending checks: `npm test` PASS (62 tests); `npm run check-types` PASS; `npm run register:testnet-agents -- --check` PASS with 2 canonical Honest/Cheat cards validated and no registration txs sent; `npx tsx scripts/low-spend-proof-smoke.ts` refused to spend without `--spend`. Low-spend proof smoke code is wired: idempotent funding skips funded wallets, strict mode aborts before funding, `user_id`/`settlement_txid` aliases are tested, and `npm run smoke:testnet:proof` runs the Cheat-only proof path. Direct TestNet algod query from prior preflight: shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` has `2.657 ALGO` total / `2.0145 ALGO` available; identity submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `13.996 ALGO` total / `13.896 ALGO` available; Honest wallet has `1.6 ALGO`; Cheat wallet has `1.5 ALGO`. | Spending smoke not run yet. Intended low-spend path: `LOW_SPEND_SMOKE=true npm start`, then `npm run smoke:testnet:proof` for one Cheat direct settlement `0.06 ALGO` with challenge note, one 0-ALGO self-payment auth, accepted feedback, and duplicate feedback rejection. Existing Honest/Cheat Identity registrations remain recorded and consumed from `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. |
 
 ## Test Plan
 
@@ -377,6 +385,8 @@ Future x402 checks:
   route/agent/quote.
 - Quote drift can update validation/reputation without user feedback.
 - Feedback requires payer wallet control via 0-ALGO self-payment auth; txid possession alone is not enough.
+- Low-spend proof smoke stays below `0.1 ALGO` only when boot funding is skipped; if strict mode
+  reports `abort low-spend smoke`, top up the affected wallet or stop.
 
 ## Assumptions
 
