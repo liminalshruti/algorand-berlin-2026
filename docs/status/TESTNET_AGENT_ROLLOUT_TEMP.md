@@ -17,7 +17,8 @@ Known Honest/Cheat agents
   -> registered by us in the TestNet IdentityRegistry when submitter env is ready
   -> x402 readiness is explicit in cards and cached 402 quote probes
   -> current /api/pay remains the router-settled demo shim
-  -> future direct-payment proof path is planned but not live yet
+  -> direct-payment proof endpoints are live in the router
+  -> no-custody UI/client invocation remains the next slice
 ```
 
 The key product stance: discovery is curated/static for this hack demo. We know the agents already.
@@ -26,7 +27,8 @@ for this slice.
 
 ## Current State
 
-- Live endpoints: `GET /api/agents`, `GET /api/services`, `POST /api/route`, `POST /api/pay`,
+- Live endpoints: `GET /api/agents`, `GET /api/services`, `POST /api/route`, `POST /api/challenge`,
+  `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`,
   `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`.
 - Honest/Cheat cards live in `docs/agents/testnet/` and expose clean ARC-8004 identity/service facts.
 - Router boot ingests the committed manifest or direct raw card URLs; fetch failure keeps seeded
@@ -39,13 +41,20 @@ for this slice.
   an execution 402 before settling; the router no longer authors Honest/Cheat drift.
 - `/api/validate` compares `PaymentResult.settled <= PaymentResult.quoted` and updates in-memory
   reputation through validation evidence, not user feedback.
+- `/api/challenge` asks the selected agent for execution 402, stores a short-lived challenge, and
+  marks quote drift only when execution amount differs from the fresh active quote.
+- `/api/payment-proof` verifies confirmed Algorand payment sender/receiver/amount/asset/network and
+  challenge-bound note; quote drift lowers in-memory reputation and writes ValidationRegistry evidence
+  when configured, otherwise hash-anchor fallback.
+- `/api/feedback/intent` + `/api/feedback` require payer authorization through a 0-ALGO self-payment
+  auth tx; feedback txid replay is pre-checked in app and guarded by ReputationRegistry `usedPayment`
+  when on-chain feedback is available.
 - Honest/Cheat are registered in the TestNet IdentityRegistry and recorded in
   `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; router boot consumes this evidence and does
   not mint records.
 - Payment state is currently in-memory Maps plus ledger anchors. There is no production DB in this
   slice.
-- There is no `GET /api/tools`, no `/api/challenge`, no `/api/payment-proof`, and no `POST /api/feedback`
-  yet.
+- There is no `GET /api/tools` yet; MCP tool-list parsing and A2A discovery remain deferred.
 
 ## App IDs And Known Agents
 
@@ -121,13 +130,15 @@ This is live now through local agent-hosted 402 behavior plus the router-settled
   agent wallet after asking the selected local agent for its execution 402.
 - `/api/validate` catches quote drift after payment by comparing settled amount to active quote.
 
-### Level 3 - Future Real x402
+### Level 3 - Direct-Payment Proof Path
 
-This is planned, not live.
+The router proof endpoints are live now. The no-custody UI/client payment and post-payment
+invocation path is still planned.
 
-- Selected agent or provider returns real `402 PaymentRequirements`.
+- Selected local agent endpoint returns execution `402 PaymentRequirements` through `/api/challenge`.
 - Payment requirements use selected agent wallet as `payTo`.
-- Client pays the selected agent wallet directly; the router does not custody funds.
+- Client/direct payer settlement to the selected agent wallet is the target no-custody path; the
+  current `/api/pay` shim still exists separately for the legacy demo.
 - Router records `route_id`, `agent_id`, `quote_id`, challenge nonce, resource, amount, asset,
   network, payer, and settlement txid.
 - Router verifies proof off-chain and rejects wrong wallet, wrong amount, replay, mismatched payer,
@@ -142,6 +153,10 @@ Current live interfaces:
 GET  /api/agents
 GET  /api/services
 POST /api/route     { task, service_id? }
+POST /api/challenge { route_id, option_id }
+POST /api/payment-proof { challenge_id, txid, payer }
+POST /api/feedback/intent { challenge_id, payment_txid, payer, response }
+POST /api/feedback { feedback_intent_id, auth_txid }
 POST /api/pay       { route_id, option_id }
 POST /api/validate  { payment_id }
 ```
@@ -163,12 +178,13 @@ paymentRequirementForExecution(ctx, option)
 PaymentChallenge { challenge_id, route_id, option_id, agent_id, service_id, quote_id, nonce, resource, amount, asset, pay_to, network, observed_at, expires_at }
 ```
 
-Future direct-payment interfaces to design in this plan before implementation:
+Direct-payment proof interfaces now live:
 
 ```txt
-POST /api/challenge      { route_id, option_id }
-POST /api/payment-proof  { challenge_id, txid, payer }
-POST /api/feedback       { proof_id, response }
+POST /api/challenge         { route_id, option_id }
+POST /api/payment-proof     { challenge_id, txid, payer }
+POST /api/feedback/intent   { challenge_id, payment_txid, payer, response }
+POST /api/feedback          { feedback_intent_id, auth_txid }
 ```
 
 Keep `/api/pay` documented as the current router-settled demo shim until the no-custody flow lands.
@@ -261,7 +277,7 @@ breaking the current demo shim.
 - Add local Honest/Cheat MCP/x402 endpoints on `:4021`.
 - Probe each card-backed service endpoint in quote mode and store the returned 402 as `ActiveQuote`.
 - Keep `AgentService` as endpoint metadata only; no quote, challenge, or hidden cheat fields.
-- Add `PaymentChallenge` as a separate future wire type.
+- Add `PaymentChallenge` as a separate wire type.
 - Make the legacy `/api/pay` shim ask the selected agent endpoint for execution 402 before settling.
 - Keep `/api/pay` available as the demo shim until the direct-payment path is proven.
 
@@ -278,9 +294,11 @@ Gate:
 Purpose: validate objectively captured quote/challenge/proof evidence without modeling it as user
 feedback.
 
-- Compare active quote to x402 challenge amount and `payTo`.
-- Compare verified proof to selected agent, expected wallet, amount, asset, network, and payer.
-- Record quote drift, wrong `payTo`, invalid proof, replay, and timeout as validation evidence.
+- Compare active quote to x402 challenge amount while the active quote is fresh.
+- Compare verified proof to selected agent, expected wallet, amount, asset, network, payer, and
+  challenge-bound note.
+- Record quote drift as validation evidence. Treat wrong payer/receiver/amount/asset/network, stale
+  challenge, bad nonce, and replay as proof/auth failures, not reputation penalties.
 - Update in-memory reputation from automatic validation.
 - Keep ReputationRegistry `giveFeedback(paymentTxid, nonce, ...)` reserved for explicit user feedback.
 
@@ -320,8 +338,8 @@ Gate:
 | Phase 1 - Known-Agent Identity Registration | PASS | `npm run register:testnet-agents -- --check` PASS; `npm run register:testnet-agents` registered Honest `registry_agent_id=1` and Cheat `registry_agent_id=2`; evidence recorded in `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. | Owner `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU`; Honest txs `ZQ4VZVKAHKPTA7GZSGRFZ7CF3EPXSF3G4IBG5UWPWTPLOTF2WVAQ` / `G6M6XS6NK2Y3K4DI66KDPD64PZCWYPYCOOM7OKJ73HM6TXSYFQWQ`; Cheat txs `IO4QNVCWR6MRWCUJDLNDWUA2ZIJ35OXQLK4ITX76EPLTGSETQSYQ` / `MWI56EUVNEUJWNXOJGT2KPLYYMKO7QS6LZHDSPWR3OQB5MKQEZUA`. |
 | Phase 2 - x402 Readiness Checklist | PASS | `npm test` PASS; in-process `GET /api/services` shows Honest/Cheat `registry_agent_id` values with `quote.pay_to` equal to agent wallets and no hidden challenge field; in-process `POST /api/route` created 2 active quotes and 2 payment requirements. | Cards remain declaration-only x402; Phase 3 supersedes router-derived quote fixtures with 402 probes. |
 | Phase 3 - Agent-Hosted x402 Quote Ingestion | PASS | `npm test` PASS; `npm run check-types` PASS; tests mock Honest/Cheat 402 quote probes, quote-cache refresh, stale refresh, unreachable-agent skip, and execution challenges. | `npm run agents:local` serves `:4021`; quote-mode 402s warm/lazy-refresh into `ctx.quoteCache`; `/api/route` mints route-specific `ActiveQuote`s from fresh cached quotes; legacy `/api/pay` asks execution 402 before settling. |
-| Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
-| Phase 5 - Live Smoke And Handoff | TODO | Early `npm start` attempt loaded 2 cards and 2 known registrations, then stopped in `fundAgents`. | Shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` needs a top-up before live payment smoke; `algokit dispenser fund` was unavailable because local dispenser login is required. |
+| Phase 4 - Validation And Reputation From Proof | PASS | `npm test` PASS; `npm run check-types` PASS; `routes.trust.test.ts` covers challenge creation, quote drift, fair proof, proof rejection, replay, quote-drift reputation/reroute, payer self-auth feedback, duplicate feedback rejection, and rebate. | Quote drift is the only automatic reputation policy; wrong payer/receiver/amount/nonce/stale/replay are proof/auth failures, not reputation penalties. |
+| Phase 5 - Live Smoke And Handoff | PENDING SPENDING SMOKE | 2026-06-07 non-spending checks: `npm test` PASS (56 tests); `npm run check-types` PASS; `npm run setup:testnet-identity -- --check` PASS; `npm run setup:testnet-known-agents -- --check` PASS; `npm run register:testnet-agents -- --check` PASS with 2 canonical Honest/Cheat cards validated and no registration txs sent. Direct TestNet algod query: shared demo payer `24E3VEEJYQZAEZ6YQEVNVMP2A5R4HLSSOL6WKPBKBYLBJF4KE7D577V4XI` has `2.657 ALGO` total / `2.0145 ALGO` available; identity submitter `ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `13.996 ALGO` total / `13.896 ALGO` available; Honest wallet has `1.6 ALGO`; Cheat wallet has `1.5 ALGO`. | `npm start` / live TestNet shim smoke not rerun yet because it spends TestNet funds through `fundAgents` and `/api/pay`; run only when the team gives explicit go-ahead. Existing Honest/Cheat Identity registrations remain recorded and consumed from `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. |
 
 ## Test Plan
 
@@ -338,7 +356,8 @@ Registration checks:
 - If `IDENTITY_SUBMITTER_MNEMONIC` resolves to the pre-funded submitter, run `npm run register:testnet-agents -- --check`, then
   `npm run register:testnet-agents`, and record `registry_agent_id`, txid, owner, wallet txid, and
   explorer links.
-- If it resolves to the wrong submitter, record blocker and keep local/card ingestion working.
+- If it resolves to the wrong submitter or is below the script readiness threshold, record blocker and
+  keep local/card ingestion working.
 
 Demo checks:
 
@@ -357,6 +376,7 @@ Future x402 checks:
 - Proof verification rejects wrong wallet, wrong amount, replay, stale challenge, and mismatched
   route/agent/quote.
 - Quote drift can update validation/reputation without user feedback.
+- Feedback requires payer wallet control via 0-ALGO self-payment auth; txid possession alone is not enough.
 
 ## Assumptions
 

@@ -1,12 +1,14 @@
 import algosdk from 'algosdk';
 import crypto from 'crypto';
-import type { AlgoAccount, Ctx, RepState } from './contract.js';
+import type { AlgoAccount, Ctx, OnChainPayment, RepState } from './contract.js';
 
 // --- TestNet by default, zero setup ------------------------------------------
 // `apps/router/src/load-env.ts` loads committed `.env.demo` before this context is
 // built. Use `.env` only for private/local overrides such as a personal payer.
 const DEFAULT_ALGOD_URL = 'https://testnet-api.algonode.cloud';
 const DEFAULT_ALGOD_PORT = 443;
+const DEFAULT_INDEXER_URL = 'https://testnet-idx.algonode.cloud';
+const DEFAULT_INDEXER_PORT = 443;
 const DEFAULT_NETWORK = 'testnet';
 
 const MICROALGO = 1_000_000;
@@ -34,8 +36,12 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
   const algodUrl = process.env.ALGOD_URL ?? DEFAULT_ALGOD_URL;
   const algodPort = Number(process.env.ALGOD_PORT ?? DEFAULT_ALGOD_PORT);
   const algodToken = process.env.ALGOD_TOKEN ?? '';
+  const indexerUrl = process.env.INDEXER_URL ?? DEFAULT_INDEXER_URL;
+  const indexerPort = Number(process.env.INDEXER_PORT ?? DEFAULT_INDEXER_PORT);
+  const indexerToken = process.env.INDEXER_TOKEN ?? algodToken;
   const network = process.env.ALGO_NETWORK ?? DEFAULT_NETWORK;
   const algodClient = new algosdk.Algodv2(algodToken, algodUrl, algodPort);
+  const indexerClient = new algosdk.Indexer(indexerToken, indexerUrl, indexerPort);
 
   const payer       = loadAccount(requireEnv('PAYER_MNEMONIC'));
   const facilitator = loadAccount();
@@ -69,6 +75,39 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     return submitTxn(payer, payer.addr, 0, { schema, ref_id, hash });
   }
 
+  async function lookupPayment(txid: string): Promise<OnChainPayment | null> {
+    try {
+      const raw = await indexerClient.lookupTransactionByID(txid).do() as {
+        transaction?: {
+          id?: string;
+          sender?: string;
+          note?: string;
+          'confirmed-round'?: number | bigint;
+          'payment-transaction'?: {
+            receiver?: string;
+            amount?: number | bigint;
+          };
+        };
+      };
+      const txn = raw.transaction;
+      const payment = txn?.['payment-transaction'];
+      if (!txn?.sender || !payment?.receiver) return null;
+      const note = txn.note ? Buffer.from(txn.note, 'base64').toString('utf8') : undefined;
+      return {
+        txid: txn.id ?? txid,
+        sender: txn.sender,
+        receiver: payment.receiver,
+        amount: Number(payment.amount ?? 0) / MICROALGO,
+        asset: 'ALGO',
+        network,
+        ...(note ? { note } : {}),
+        ...(txn['confirmed-round'] !== undefined ? { round: Number(txn['confirmed-round']) } : {}),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   return {
     net: network,
     store: algodClient,
@@ -80,11 +119,15 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     paymentRequirements: new Map(),
     routeStore: new Map(),
     paymentStore: new Map(),
+    challengeStore: new Map(),
+    feedbackIntentStore: new Map(),
+    usedFeedbackPaymentTxids: new Set(),
     repState,
     ledger: [],
     deps: {
       settle: (to, amountAlgo, note) => submitTxn(payer, to, amountAlgo, note),
       anchorNote,
+      lookupPayment,
       buildReputationEntry: (agent_id, score) => ({ agent_id, score }),
       anchorReputationEntry: async (entry) => {
         const hash = crypto

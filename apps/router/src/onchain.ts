@@ -1,12 +1,15 @@
-// Shayaun's lane — optional on-chain reputation write (the verdict → real giveFeedback).
+// Shayaun's lane — optional on-chain registry writes.
 //
-// Puts ONE real on-chain write in the trust loop: after /api/validate computes a verdict,
-// it calls `giveFeedback` on the deployed ARC-8004 Reputation registry, returning the txid.
+// Quote-drift policy evidence goes to the Validation registry when configured. Explicit
+// user satisfaction feedback may call `giveFeedback` on the Reputation registry when
+// the configured signer matches the proven payer.
 //
 // Env-gated + best-effort by design — if the registry isn't configured (or the call fails)
-// this returns null and the loop is unaffected (verdict still anchored hash-only). To enable:
+// helpers return null and the loop is unaffected (evidence still anchors hash-only). To enable:
 //   REPUTATION_APP_ID=<deployed app id>
 //   REPUTATION_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>
+//   VALIDATION_APP_ID=<deployed app id>
+//   VALIDATION_SUBMITTER_MNEMONIC=<25-word mnemonic, funded>
 //   ALGOD_URL / ALGOD_PORT / ALGOD_TOKEN  (or AlgorandClient.fromEnvironment defaults)
 //
 // ABI verified against ReputationRegistry.arc56.json: giveFeedback now takes the mandatory
@@ -53,10 +56,19 @@ function txidToBytes(txid: string): Uint8Array {
 const isZero = (b: Uint8Array) => b.every((x) => x === 0);
 
 export interface OnChainFeedback { txid: string; round?: number; appId: number; agentId: string; }
+export interface OnChainValidation { txid: string; responseTxid?: string; appId: number; agentId: string; }
 
 // paymentTxid = the x402 settlement txid (from ctx.paymentStore → pay.txids[0]); required by the
 // coupled contract. Returns null (no-op) when unconfigured OR when no valid proof is available.
-export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response: number, paymentTxid = ''): Promise<OnChainFeedback | null> {
+export async function maybeWriteReputation(
+  ctx: Ctx,
+  agent_id: string,
+  response: number,
+  paymentTxid = '',
+  payer?: string,
+  nonce?: bigint | number,
+  tag2 = 'user_feedback',
+): Promise<OnChainFeedback | null> {
   const appId = Number(process.env.REPUTATION_APP_ID || 0);
   if (!appId) return null;                                  // not configured → no-op
   const proof = txidToBytes(paymentTxid);
@@ -70,6 +82,7 @@ export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response:
     );
     const algorand = AlgorandClient.fromEnvironment();
     const submitter = algorand.account.fromMnemonic(mnemonic);
+    if (payer && submitter.addr.toString() !== payer) return null;
 
     const client = algorand.client.getTypedAppClientById(ReputationRegistryClient, {
       appId: BigInt(appId),
@@ -84,12 +97,12 @@ export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response:
         value: i128(response),
         dec: 0,
         tag1: 'x402',
-        tag2: response >= 100 ? 'satisfied' : 'corrected',
+        tag2,
         endpoint: '',
-        feedbackUri: `trust-router://verdict/${agent_id}`,
+        feedbackUri: `trust-router://feedback/${agent_id}`,
         feedbackHash: new Uint8Array(32),
         paymentTxid: proof,                                 // x402 settlement proof (byte[32])
-        nonce: BigInt(Date.now()) * 1000n + BigInt((Math.random() * 1000) | 0),
+        nonce: nonce ?? (BigInt(Date.now()) * 1000n + BigInt((Math.random() * 1000) | 0)),
       },
     });
 
@@ -98,5 +111,61 @@ export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response:
     return txid ? { txid, round, appId, agentId: agentId.toString() } : null;
   } catch (_) {
     return null;                                            // best-effort: never break the loop
+  }
+}
+
+export async function maybeWriteValidation(
+  _ctx: Ctx,
+  agent_id: string,
+  requestHash: Uint8Array,
+  responseHash: Uint8Array,
+  response: number,
+  tag: string,
+): Promise<OnChainValidation | null> {
+  const appId = Number(process.env.VALIDATION_APP_ID || 0);
+  if (!appId) return null;
+  const mnemonic = process.env.VALIDATION_SUBMITTER_MNEMONIC;
+  if (!mnemonic) return null;
+  try {
+    const { AlgorandClient } = await import('@algorandfoundation/algokit-utils');
+    const { ValidationRegistryClient } = await import(
+      '../../../contracts/artifacts/validation_registry/ValidationRegistryClient.js'
+    );
+    const algorand = AlgorandClient.fromEnvironment();
+    const submitter = algorand.account.fromMnemonic(mnemonic);
+
+    const client = algorand.client.getTypedAppClientById(ValidationRegistryClient, {
+      appId: BigInt(appId),
+      defaultSender: submitter.addr,
+    });
+
+    const agentId = agentIdFor(agent_id);
+    const requestUri = `trust-router://validation/${Buffer.from(requestHash).toString('hex')}`;
+    const req = await client.send.validationRequest({
+      sender: submitter.addr,
+      args: {
+        validator: submitter.addr.toString(),
+        agentId,
+        requestUri,
+        requestHash,
+      },
+    });
+
+    const res = await client.send.validationResponse({
+      sender: submitter.addr,
+      args: {
+        requestHash,
+        response: Math.max(0, Math.min(100, Math.trunc(response))),
+        responseUri: `${requestUri}/response`,
+        responseHash,
+        tag,
+      },
+    });
+
+    const txid = req?.txIds?.[0] ?? req?.transaction?.txID?.() ?? '';
+    const responseTxid = res?.txIds?.[0] ?? res?.transaction?.txID?.() ?? undefined;
+    return txid ? { txid, ...(responseTxid ? { responseTxid } : {}), appId, agentId: agentId.toString() } : null;
+  } catch (_) {
+    return null;
   }
 }

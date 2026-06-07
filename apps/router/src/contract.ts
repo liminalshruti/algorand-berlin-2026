@@ -15,6 +15,10 @@
 export const TRUST_WEIGHTS = { price: 0.4, reputation: 0.6 };
 export const ROUTER_ROUTES = [
   "POST /api/route",
+  "POST /api/challenge",
+  "POST /api/payment-proof",
+  "POST /api/feedback/intent",
+  "POST /api/feedback",
   "POST /api/pay",
   "POST /api/validate",
   "GET /api/reputation",
@@ -93,8 +97,19 @@ export type PaymentChallenge = {
   asset: string;
   pay_to: string;
   network: string;
+  quote_amount: number;
+  quote_pay_to: string;
+  quote_expires_at: string;
+  payment_note: string;
+  quote_drift: boolean;
   observed_at: string;
   expires_at: string;
+  payment_txid?: string;
+  payer?: string;
+  proof_accepted_at?: string;
+  validation_id?: string;
+  validation_txid?: string;
+  ledger_txid?: string;
 };
 
 export type RouteOption = {
@@ -118,6 +133,33 @@ export type PaymentResult = {
   settled: number;
   txids: string[];
   read: string;
+};
+
+export type OnChainPayment = {
+  txid: string;
+  sender: string;
+  receiver: string;
+  amount: number;
+  asset: string;
+  network: string;
+  note?: string;
+  round?: number;
+};
+
+export type FeedbackIntent = {
+  feedback_intent_id: string;
+  challenge_id: string;
+  payment_txid: string;
+  payer: string;
+  agent_id: string;
+  quote_id: string;
+  response: number;
+  nonce: string;
+  note: string;
+  note_hash: string;
+  created_at: string;
+  expires_at: string;
+  accepted_at?: string;
 };
 
 export type Verdict = {
@@ -169,12 +211,16 @@ export type Ctx = {
   paymentRequirements: Map<string, PaymentRequirement>;
   routeStore: Map<string, RouteEntry>;
   paymentStore: Map<string, PaymentResult>;
+  challengeStore?: Map<string, PaymentChallenge>;
+  feedbackIntentStore?: Map<string, FeedbackIntent>;
+  usedFeedbackPaymentTxids?: Set<string>;
   repState: RepState;
   ledger: LedgerEntry[];
   deps: {
     // settle a payment on-chain; injected so pay.ts stays testable
     settle: (to: string, amountAlgo: number, note: object) => Promise<{ txid: string; round: number }>;
     anchorNote: (ref_id: string, schema: string, hash: string) => Promise<{ txid: string; round: number }>;
+    lookupPayment?: (txid: string) => Promise<OnChainPayment | null>;
     buildReputationEntry: (agent_id: string, score: number) => unknown;
     anchorReputationEntry: (entry: unknown) => Promise<string>;
     explorerFor: (txid: string) => string;
