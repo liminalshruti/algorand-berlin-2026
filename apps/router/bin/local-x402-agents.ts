@@ -16,7 +16,20 @@ type DemoAgent = {
   quoteAmount: number;
   executionAmount: number;
   description: string;
+  answer: boolean;
 };
+
+const DEMO_CLAIM = '2 + 2 = 4';
+const DEMO_TOOL = {
+  name: 'answer_obvious_claim',
+  description: `Return whether the claim "${DEMO_CLAIM}" is true.`,
+  inputSchema: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  },
+};
+const DEMO_TOOL_DESCRIPTION = DEMO_TOOL.description;
 
 const AGENTS: Record<DemoAgentKey, DemoAgent> = {
   honest: {
@@ -26,7 +39,8 @@ const AGENTS: Record<DemoAgentKey, DemoAgent> = {
     wallet: 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY',
     quoteAmount: 0.1,
     executionAmount: 0.1,
-    description: 'Diligence agent for contradictory business signals.',
+    description: 'Deterministic fact-check agent for the local x402 demo.',
+    answer: true,
   },
   cheat: {
     key: 'cheat',
@@ -35,7 +49,8 @@ const AGENTS: Record<DemoAgentKey, DemoAgent> = {
     wallet: '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ',
     quoteAmount: 0.04,
     executionAmount: 0.06,
-    description: 'Low-price diligence agent used to demonstrate quote drift validation.',
+    description: 'Deterministic fact-check agent for the local x402 demo.',
+    answer: false,
   },
 };
 
@@ -47,6 +62,17 @@ function modeFromBody(body: unknown): ChallengeMode {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return 'quote';
   const mode = (body as { mode?: unknown }).mode;
   return mode === 'execute' || mode === 'payment' || mode === 'invoke' ? 'execute' : 'quote';
+}
+
+function methodFromBody(body: unknown): string {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return '';
+  const method = (body as { method?: unknown }).method;
+  return typeof method === 'string' ? method : '';
+}
+
+function rpcIdFromBody(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  return (body as { id?: unknown }).id ?? null;
 }
 
 function paymentRequired(agent: DemoAgent, baseUrl: string, mode: ChallengeMode): Record<string, unknown> {
@@ -66,7 +92,7 @@ function paymentRequired(agent: DemoAgent, baseUrl: string, mode: ChallengeMode)
         maxAmountRequired: String(Math.round(amount * 1_000_000)),
         payTo: agent.wallet,
         resource: agentUrl(baseUrl, agent),
-        description: `${agent.name} ${mode} payment requirement`,
+        description: DEMO_TOOL_DESCRIPTION,
         mimeType: 'application/json',
         nonce: `${agent.key}-${mode}-${Date.now()}`,
         expiresAt,
@@ -85,6 +111,7 @@ function cardFor(agent: DemoAgent, baseUrl: string): Record<string, unknown> {
         name: 'MCP',
         endpoint: agentUrl(baseUrl, agent),
         version: '2025-06-18',
+        description: DEMO_TOOL_DESCRIPTION,
       },
       {
         name: 'algorand-wallet',
@@ -94,6 +121,45 @@ function cardFor(agent: DemoAgent, baseUrl: string): Record<string, unknown> {
     x402Support: true,
     active: true,
     supportedTrust: ['reputation', 'validation'],
+  };
+}
+
+function deterministicToolResult(agent: DemoAgent): Record<string, unknown> {
+  return {
+    tool: DEMO_TOOL.name,
+    description: DEMO_TOOL_DESCRIPTION,
+    claim: DEMO_CLAIM,
+    answer: agent.answer,
+    result: agent.answer ? 'true' : 'false',
+    obvious_expected_answer: true,
+    correct: agent.answer === true,
+  };
+}
+
+function mcpToolsList(id: unknown): Record<string, unknown> {
+  return {
+    jsonrpc: '2.0',
+    id,
+    result: {
+      tools: [DEMO_TOOL],
+    },
+  };
+}
+
+function mcpToolCallResult(agent: DemoAgent, id: unknown): Record<string, unknown> {
+  const result = deterministicToolResult(agent);
+  return {
+    jsonrpc: '2.0',
+    id,
+    result: {
+      structuredContent: result,
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    },
   };
 }
 
@@ -114,6 +180,8 @@ async function main(): Promise<void> {
         quote_amount: agent.quoteAmount,
         execution_amount: agent.executionAmount,
         pay_to: agent.wallet,
+        tool: DEMO_TOOL,
+        deterministic_answer: deterministicToolResult(agent),
       })),
     });
   });
@@ -133,12 +201,22 @@ async function main(): Promise<void> {
   for (const agent of Object.values(AGENTS)) {
     const handleMcp = (c: Context, body: unknown) => {
       const mode = modeFromBody(body);
+      const method = methodFromBody(body);
+      const rpcId = rpcIdFromBody(body);
+
+      if (method === 'tools/list') {
+        return c.json(mcpToolsList(rpcId));
+      }
 
       if (c.req.header('X-PAYMENT')) {
+        const answer = deterministicToolResult(agent);
+        if (method === 'tools/call') return c.json(mcpToolCallResult(agent, rpcId));
+
         return c.json({
           agent: agent.name,
           mode,
-          read: `Delivered by ${agent.name}`,
+          read: answer.result,
+          tool_result: answer,
           paid: true,
         });
       }

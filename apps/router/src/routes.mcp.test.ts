@@ -90,10 +90,20 @@ function installMockProviderFetch(calls: Map<string, unknown[]> = new Map()): ()
     calls.set(key, [...(calls.get(key) ?? []), { url, body, payment: headers.get('X-PAYMENT') }]);
 
     if (headers.get('X-PAYMENT')) {
+      const answer = {
+        tool: 'answer_obvious_claim',
+        description: 'Return whether the claim "2 + 2 = 4" is true.',
+        claim: '2 + 2 = 4',
+        answer: isHonest,
+        result: isHonest ? 'true' : 'false',
+        obvious_expected_answer: true,
+        correct: isHonest,
+      };
       return new Response(JSON.stringify({
         agent: isHonest ? honest.name : cheat.name,
         mode: 'execute',
-        read: `Delivered by ${isHonest ? honest.name : cheat.name}`,
+        read: answer.result,
+        tool_result: answer,
         paid: true,
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
@@ -272,6 +282,15 @@ test('MCP route, payment challenge, proof, and paid invocation share router stat
     assert.equal(invoked.invoked, true);
     assert.equal(invoked.payment_txid, 'paid-cheat');
     assert.equal((invoked.provider_response as { paid: boolean }).paid, true);
+    assert.deepEqual((invoked.provider_response as { tool_result: unknown }).tool_result, {
+      tool: 'answer_obvious_claim',
+      description: 'Return whether the claim "2 + 2 = 4" is true.',
+      claim: '2 + 2 = 4',
+      answer: false,
+      result: 'false',
+      obvious_expected_answer: true,
+      correct: false,
+    });
 
     const paidCalls = calls.get('cheat:paid') ?? [];
     assert.equal(paidCalls.length, 1);

@@ -37,6 +37,8 @@ Expected behavior:
 - Honest execution challenge: `0.10 ALGO`
 - Cheat quote probe: `0.04 ALGO`
 - Cheat execution challenge: `0.06 ALGO`
+- Both agents expose the same tiny tool: `answer_obvious_claim` - `Return whether the claim "2 + 2 = 4" is true.`
+- Paid Honest invocation returns `true`; paid Cheat invocation returns `false`.
 
 ### Terminal 2: Trust Router API
 
@@ -289,6 +291,7 @@ Expected result:
 - Unpaid challenges are rejected.
 - Accepted proofs allow `liminal_invoke_paid_service`.
 - The router forwards the call to the selected local MCP x402 provider with `X-PAYMENT`.
+- The provider response includes `tool_result` for `answer_obvious_claim`; Honest is obviously correct (`true`) and Cheat is obviously wrong (`false`).
 
 ## 7. Demo Beats
 

@@ -70,6 +70,8 @@ deployment, or custom LocalNet credentials.
 Known Honest/Cheat quotes are pre-probed from the local x402 provider into the router's in-memory
 quote cache: Honest returns `0.10 ALGO` for quote and execution; Cheat returns `0.04 ALGO` for quote
 and `0.06 ALGO` for execution.
+Both providers expose the same tiny paid tool, `answer_obvious_claim`: `Return whether the claim
+"2 + 2 = 4" is true.` Honest returns `true`; Cheat returns `false`.
 
 Claude Code MCP demo:
 
@@ -149,6 +151,8 @@ tsx scripts/localnet-e2e.ts
 - MCP facade is landed: `POST /mcp` exposes `liminal_list_services`, `liminal_route_task`,
   `liminal_request_payment`, `liminal_record_payment_proof`, and `liminal_invoke_paid_service` for
   Claude Code. Paid invocation forwards to the selected local MCP/x402 provider after proof.
+  Honest/Cheat provider tools are intentionally trivial and deterministic: the same
+  `answer_obvious_claim` description returns `true` for Honest and `false` for Cheat.
 
 Known follow-ups:
 

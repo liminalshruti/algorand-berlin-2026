@@ -124,6 +124,7 @@ POST /mcp → Claude Code MCP tools over Streamable HTTP
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
 - Local demo MCP endpoints: Honest `http://localhost:4021/honest/mcp`; Cheat `http://localhost:4021/cheat/mcp`.
 - URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; known Honest/Cheat service endpoints are normalized to local `:4021` demo providers by default (`LOCAL_X402_AGENT_BASE_URL=card` disables that override). Runtime still falls back to direct card URLs if the manifest is unavailable.
+- Local provider tool: `answer_obvious_claim`; description `Return whether the claim "2 + 2 = 4" is true.`; paid Honest returns `true`; paid Cheat returns `false`.
 - Phase 1 known-agent setup: `npm run setup:testnet-identity` or alias `npm run setup:testnet-known-agents` only prepares/checks the identity operator and prints next steps.
 - Phase 1 known-agent batch registration: `npm run register:testnet-agents` registers only the canonical Honest/Cheat card URLs, calls `setAgentWallet`, and writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; use `--check` for no-tx preflight.
 - Required order: `npm run setup:testnet-identity` (or `setup:testnet-known-agents`) → `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents` → `npm start` to consume evidence.

@@ -87,6 +87,14 @@ Local x402 provider behavior (`npm run agents:local`):
 | Honest Agent | `0.10 ALGO` | `0.10 ALGO` |
 | Cheat Agent | `0.04 ALGO` | `0.06 ALGO` |
 
+Both local providers expose the same paid tool:
+
+```txt
+answer_obvious_claim - Return whether the claim "2 + 2 = 4" is true.
+```
+
+Paid Honest invocation returns `true`; paid Cheat invocation returns `false`.
+
 Raw card URLs:
 
 - Manifest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
@@ -176,6 +184,8 @@ Local demo provider:
 npm run agents:local
 POST http://localhost:4021/honest/mcp { mode:"quote"|"execute" } -> 402 PaymentRequirements
 POST http://localhost:4021/cheat/mcp  { mode:"quote"|"execute" } -> 402 PaymentRequirements
+POST http://localhost:4021/honest/mcp + X-PAYMENT -> tool_result.answer=true
+POST http://localhost:4021/cheat/mcp  + X-PAYMENT -> tool_result.answer=false
 ```
 
 Current router-internal x402 helpers:
