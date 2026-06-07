@@ -1,534 +1,324 @@
-# TestNet Agent Rollout Handoff
+# Known-Agent x402 Rollout Handoff
 
-Execution handoff for the next implementation chat. This slice moves the demo from purely seeded
-agents toward real TestNet-registered agent identities, while keeping the current router demo loop
-intact.
+Temporary execution handoff for the next implementation slice.
+
+This file replaces the completed `TestNet Agent Rollout Handoff`. That previous plan finished all
+phases for Honest/Cheat card ingestion, `/api/services`, and route-time demo quotes. Keep this path
+stable because `INTEGRATION_HANDOFF.md` points here; use git history if the completed card-catalog
+plan is needed again.
 
 ## Objective
 
-Implement this first real-agent rollout slice:
+Move the demo from "card-backed catalog + router-settled payment shim" toward known-agent x402:
 
 ```txt
-Honest Agent + Cheat Agent
-  -> off-chain agent_uri service cards
-  -> registered on the existing TestNet IdentityRegistry
-  -> router ingests cards into ctx.agents and ctx.services
-  -> GET /api/services exposes one grouped diligence.report proxy service
+Known Honest/Cheat agents
+  -> curated ARC-8004 cards
+  -> registered by us in the TestNet IdentityRegistry when env/funds allow
+  -> x402 readiness is explicit in cards and route-time requirements
+  -> current /api/pay remains the router-settled demo shim
+  -> future direct-payment proof path is planned but not live yet
 ```
 
-Keep the work demo-focused. The goal is to make the discovery/proxy layer real enough that the
-router is no longer only seeded by `seed.ts`, without taking on full ARC-8004/MCP/A2A discovery.
+The key product stance: discovery is curated/static for this hack demo. We know the agents already.
+We do not crawl the chain, wait for providers to self-register, or depend on full MCP/A2A discovery
+for this slice.
 
-## In Scope
+## Current State
 
-- Define the minimal ARC-8004 `agent_uri` registration-file shape without router-owned proxy fields.
-- Create or document hosted cards for Honest Agent and Cheat Agent.
-- Give both agents stable TestNet wallets.
-- Mark both agents x402-compatible in their ARC-8004 registration files.
-- Register both `agent_uri` values on the existing TestNet IdentityRegistry, or document the blocker.
-- Add router ingestion from `agent_uri` card into existing local state for identity, wallet, and MCP endpoint facts.
-- Add a router-owned demo quote adapter for route-time quote/payment requirement creation.
-- Add `GET /api/services`, grouped by proxy service.
-- Keep existing `GET /api/agents` and `POST /api/route` compatible.
-- Add tests for card parsing, service grouping, route-time quote metadata, and route-by-service.
+- Live endpoints: `GET /api/agents`, `GET /api/services`, `POST /api/route`, `POST /api/pay`,
+  `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`.
+- Honest/Cheat cards live in `docs/agents/testnet/` and expose clean ARC-8004 identity/service facts.
+- Router boot ingests the committed manifest or direct raw card URLs; fetch failure keeps seeded
+  fallback agents alive.
+- `GET /api/services` exposes one grouped `diligence.report` proxy catalog.
+- `/api/route` creates active route-time quotes and payment requirements.
+- `/api/pay` settles through the shared router demo payer, writes `ctx.paymentStore`, and anchors a
+  hash-only ledger entry.
+- `/api/validate` compares `PaymentResult.settled <= PaymentResult.quoted` and updates in-memory
+  reputation through validation evidence, not user feedback.
+- Payment state is currently in-memory Maps plus ledger anchors. There is no production DB in this
+  slice.
+- There is no `GET /api/tools`, no `/api/challenge`, no `/api/payment-proof`, and no `POST /api/feedback`
+  yet.
 
-## Out Of Scope
+## App IDs And Known Agents
 
-- Do not remove or rewrite the current `/api/pay` route.
-- Do not remove or rewrite the current `/api/validate` route.
-- Do not remove the current cheat quote-drift demo behavior.
-- Do not add `/api/challenge` in this slice.
-- Do not implement no-custody x402 payment in this slice.
-- Do not implement external payment proof verification in this slice.
-- Do not implement `POST /api/feedback` in this slice.
-- Do not require frontend consumption of `/api/services` in this slice.
-- Do not implement full ARC-8004 chain scan, MCP tool-list parsing, A2A adapter, or semantic clustering.
-- Do not redeploy the registry contracts.
+Use the existing TestNet registries. Do not redeploy contracts for this slice.
 
-## Current Repo State
+| Registry | App ID |
+|---|---:|
+| IdentityRegistry | `764031067` |
+| ReputationRegistry | `764031363` |
+| ValidationRegistry | `764031094` |
 
-- Current agents are seeded in memory by `apps/router/src/seed.ts` as fallback.
-- Router boot attempts Honest/Cheat card ingestion from the raw GitHub URL for `docs/agents/testnet/manifest.json`, then falls back to the direct Honest/Cheat card URLs; fetch failure is non-fatal.
-- Current live discovery endpoints are `GET /api/agents`, `GET /api/services`, and `POST /api/route`.
-- There is no `GET /api/tools` yet.
-- `/api/pay` is router-settled through the shared demo payer.
-- `/api/validate` currently compares `PaymentResult.settled <= PaymentResult.quoted`.
-- `apps/router/src/identity-onchain.ts` has env-gated Identity registration helpers.
-- TestNet registry contracts are already deployed:
-  - IdentityRegistry: `764031067`
-  - ReputationRegistry: `764031363`
-  - ValidationRegistry: `764031094`
+Canonical cards:
 
-## Stable TestNet Agent Wallets
+| Agent | Card | Wallet |
+|---|---|---|
+| Honest Agent | `docs/agents/testnet/honest-agent.json` | `J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY` |
+| Cheat Agent | `docs/agents/testnet/cheat-agent.json` | `3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ` |
 
-Use these Pera-created TestNet wallets for the first Honest/Cheat rollout cards:
+Raw card URLs:
 
-- Honest Agent: `J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY`
-- Cheat Agent: `3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ`
+- Manifest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
+- Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
+- Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
 
-For this slice, each card's `algorand-wallet` service entry should be the address above. These wallets
-are the receiving wallets for router-settled demo payments and for the router-owned demo quote adapter.
-Both Honest and Cheat cards should set `x402Support: true`; all exposed `diligence.report` options
-are treated as x402-compatible, even though settlement still uses the demo facilitator shim below.
+Identity registration is env-gated:
 
-Current `/api/pay` role:
+- `IDENTITY_APP_ID=764031067`
+- `IDENTITY_SUBMITTER_MNEMONIC=<funded private TestNet mnemonic>`
 
-- `/api/pay` acts as the demo x402 facilitator shim.
-- It receives `{ route_id, option_id }`, looks up the active quote/payment requirement, and settles
-  TestNet ALGO from the shared router payer to the selected option's `pay_to` wallet.
-- It then records `ctx.paymentStore` and anchors the hash-only ledger entry.
-- True no-custody x402 payment, payment proof capture, and external proof verification are deferred.
+The backend registration helper signs with `IDENTITY_SUBMITTER_MNEMONIC`, so the submitter is the
+initial registry owner. The helper should call `setAgentWallet(registry_agent_id, cardWallet)` so
+`getAgentWallet` matches the card wallet when registration succeeds. If the submitter is missing or
+unfunded, document the blocker and keep local/card ingestion working.
 
-Current quote role:
+## x402 Compliance Levels
 
-- ARC-8004 agent cards do not carry router proxy service ids or quote amounts.
-- Card ingestion stores identity, wallet, and MCP endpoint facts only.
-- The router-owned demo quote adapter derives route-time quotes:
-  - Honest Agent: `0.1 ALGO` quoted and requested.
-  - Cheat Agent: `0.04 ALGO` quoted, `0.06 ALGO` requested for quote-drift validation.
-- Later real agent x402 quote/challenge endpoints should replace the demo adapter.
+Use these levels consistently in code, docs, and pitch language.
 
-## MCP Demo Topology
+### Level 1 - Current Required Card Declaration
+
+This is live now and required for catalog ingestion.
+
+- Card has `type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1"`.
+- Card has `active: true`.
+- Card has `x402Support: true`.
+- Card has an `MCP` service with an HTTP endpoint.
+- Card has an `algorand-wallet` service with a valid Algorand address.
+- Card does not include router-owned service ids, quote fields, hidden cheat behavior, or proof fields.
+
+### Level 2 - Current Demo x402 Shim
+
+This is live now through router-owned logic.
+
+- Cards declare x402 support but do not serve real x402 challenges.
+- The router derives route-time quote snapshots and active payment requirements.
+- Honest Agent: `0.1 ALGO` quoted and `0.1 ALGO` requested.
+- Cheat Agent: `0.04 ALGO` quoted and `0.06 ALGO` requested.
+- `/api/pay` acts as the demo facilitator shim and settles from the router payer to the selected
+  agent wallet.
+- `/api/validate` catches quote drift after payment by comparing settled amount to active quote.
+
+### Level 3 - Future Real x402
+
+This is planned, not live.
+
+- Selected agent or provider returns real `402 PaymentRequirements`.
+- Payment requirements use selected agent wallet as `payTo`.
+- Client pays the selected agent wallet directly; the router does not custody funds.
+- Router records `route_id`, `agent_id`, `quote_id`, challenge nonce, resource, amount, asset,
+  network, payer, and settlement txid.
+- Router verifies proof off-chain and rejects wrong wallet, wrong amount, replay, mismatched payer,
+  mismatched quote/challenge, and stale challenges.
+- Quote-vs-challenge drift becomes automatic validation evidence. It is not user feedback.
+
+## Interfaces To Track
+
+Current live interfaces:
 
 ```txt
-Demo MCP client
-  -> Trust Router MCP server / router proxy
-      -> Honest Agent MCP endpoint
-      -> Cheat Agent MCP endpoint
+GET  /api/agents
+GET  /api/services
+POST /api/route     { task, service_id? }
+POST /api/pay       { route_id, option_id }
+POST /api/validate  { payment_id }
 ```
 
-- The Trust Router owns the proxy tool surface, including `diligence.report`.
-- Honest and Cheat each expose one logical partner-agent MCP endpoint through `services[]`.
-- The router ingests those endpoint facts, ranks eligible agents, chooses the settlement partner, and
-  forwards work to the selected partner endpoint.
-- Localhost partner endpoints are acceptable for a local demo run, but they belong in router-owned
-  runtime config or overrides, not in portable public card metadata unless the card is explicitly
-  local-only.
+Future direct-payment interfaces to design in this plan before implementation:
 
-Identity registration caveat:
+```txt
+POST /api/challenge      { route_id, option_id }
+POST /api/payment-proof  { challenge_id, txid, payer }
+POST /api/feedback       { proof_id, response }
+```
 
-- The deployed IdentityRegistry sets `owner == agentWallet == Txn.sender` during `register(...)`.
-- The current backend helper signs registration only with `IDENTITY_SUBMITTER_MNEMONIC`, so registry
-  owner/wallet will be the submitter unless registration is Pera-signed or the owner later calls
-  `setAgentWallet(registry_agent_id, PeraAddress)`.
-- Local router/card ingestion can still use the Pera wallets as canonical `agent_wallet`/`pay_to`.
-
-## Canonical Card Artifacts
-
-- Manifest: `docs/agents/testnet/manifest.json`
-  - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
-- Honest Agent: `docs/agents/testnet/honest-agent.json`
-  - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
-- Cheat Agent: `docs/agents/testnet/cheat-agent.json`
-  - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
-
-Status: local Honest/Cheat card files and raw GitHub URLs are the canonical clean ARC-8004 cards. If the
-manifest URL is not available at runtime, the router falls back to the direct Honest/Cheat card URLs.
-
-## Must Read First
-
-- `INTEGRATION_HANDOFF.md`
-- `BUILD_CHECKLIST_2026-06-06.md`
-- `docs/status/DEPLOYED.md`
-- This file
-
-Optional background:
-
-- `docs/reference/END_TO_END_HACK_SCOPE_2026-06-06.md`
+Keep `/api/pay` documented as the current router-settled demo shim until the no-custody flow lands.
 
 ## Guardrails
 
 - Do not read or use anything under `ref/archive/` or any path containing `/archive/`.
 - Do not restore deleted legacy router or x402 files.
-- Treat `apps/router/src/contract.ts` as shared API. Make additive shape changes only when needed.
+- Treat `apps/router/src/contract.ts` as shared API; make additive shape changes only when needed.
 - Keep route handlers inside route factories, especially `apps/router/src/routes.agents.ts`.
-- Do not run `npm start` casually on TestNet; it can spend TestNet funds by funding/registering seeded agents.
-- Keep this file and `INTEGRATION_HANDOFF.md` current as implementation lands.
-
-## Tightened Decisions Before Implementation
-
-These decisions are fixed for this slice unless this file is updated first.
-
-- Card hosting: create canonical Honest/Cheat JSON artifacts in this public GitHub repo. During
-  implementation, tests should use the same repo files as fixtures. After the artifacts are pushed,
-  record the final raw GitHub or GitHub Pages HTTPS URLs in this file and use those as `agent_uri`.
-- Runtime ingestion: start with local fixture/card ingestion in tests. Once final GitHub URLs are
-  known, router boot should attempt card ingestion automatically from a committed manifest, but card
-  fetch failure must be non-fatal and fall back to the seeded demo path.
-- Seed replacement: when card ingestion succeeds, card-backed Honest/Cheat entries replace the seeded
-  Honest/Cheat catalog entries. Avoid duplicate Honest/Cheat options if both paths are enabled.
-- Services catalog: `GET /api/services` exposes a combined `diligence.report` service group. In the
-  successful real-agent path, that group contains only the two card-backed Honest/Cheat options. Budget
-  Agent may remain available as seeded fallback, but it is not part of the real-agent catalog unless a
-  real card is added for it.
-- Quote freshness: cards do not publish quotes. `/api/services` may expose router-derived demo quote
-  snapshots with `amount`, `asset`, and `pay_to`; active `/api/route` quotes are created at route time
-  with both `observed_at` and `expires_at`.
-- Registration path: prefer backend-signed TestNet registration for this slice, followed by
-  `setAgentWallet(registry_agent_id, PeraAddress)` so `getAgentWallet` can match the Pera receiving
-  wallet. Pera-signed registration is more ownership-correct, but it adds wallet app-call plumbing that
-  is not needed for this discovery slice. If no funded submitter is available, keep local/card ingestion
-  working and record registration as blocked.
-- Phase log updates: implementation should update the Phase Validation Log programmatically as each
-  phase gate passes or blocks. Do not rely on memory-only status updates.
-
-## Work Sequence
-
-1. Pick and document the hosting location for the two JSON cards.
-   - Use this public GitHub repo for canonical JSON artifacts.
-   - Raw GitHub or GitHub Pages HTTPS URLs are acceptable after the artifacts are pushed.
-   - A temporary HTTPS tunnel is acceptable only if the final GitHub URI is recorded before TestNet
-     registration.
-
-2. Define the `agent_uri` registration-file TypeScript shape and validation helper.
-   - Use the ARC-8004 registration discriminator `type`, not a local `schema` field.
-   - Required fields: agent name, MCP endpoint, Algorand wallet service, `x402Support: true`, `active: true`.
-   - Do not read or require `trust_router`, router service ids, or quote fields from public agent cards.
-   - Do not require challenge/proof fields yet.
-
-3. Add a card resolver.
-   - Fetch a JSON card from `agent_uri`.
-   - Validate service and wallet fields.
-   - Return a typed normalized card.
-
-4. Add ingestion helpers.
-   - Convert card identity into `registerAgentLocal`.
-   - Convert card MCP endpoint into a router-owned `diligence.report` proxy service via `registerServiceLocal`.
-   - Do not store card-authored quote templates; route-time quote collection owns payment requirements.
-   - Preserve existing seeded fallback behavior.
-
-5. Add `GET /api/services`.
-   - Group by `service_id`.
-   - Return service-level proxy name and description.
-   - Inline compact option snapshots for each candidate agent.
-   - Derive quote snapshots from the router-owned demo quote adapter.
-   - Do not expose hidden cheat behavior in the public catalog.
-
-6. Register Honest and Cheat on TestNet.
-   - Use the existing IdentityRegistry app id `764031067`.
-   - Record `registry_agent_id`, owner, txid, and explorer link.
-   - If blocked, document exactly why and leave local ingestion working.
-
-7. Verify.
-   - `npm test`
-   - `npm run check-types`
-   - `POST /api/route { "service_id": "diligence.report" }` still works.
+- Do not run `npm start` casually on TestNet; it can spend TestNet funds by funding/registering agents.
+- Do not redeploy registry contracts for this slice.
+- Do not add a persistent production DB in this slice unless this file is updated first.
+- Keep `INTEGRATION_HANDOFF.md` current when endpoint signatures, env requirements, app ids, or
+  teammate-visible blockers change.
 
 ## Phased Execution And Gates
 
-Use these phases in order. At the end of each phase, update the Phase Validation Log below and do
-not move to the next phase until the gate is `PASS`, or `BLOCKED` with a concrete workaround recorded
-in this file.
+Use these phases in order. At the end of each phase, update the Phase Validation Log below before
+advancing.
 
-### Phase 0 - Baseline, Hosting, And Registration Decision
+### Phase 0 - Retire Old Plan And Record Baseline
 
-Purpose: make the external surfaces stable before code starts depending on them.
+Purpose: make this file the active temp tracker for known-agent x402.
 
-- Read the Must Read First docs and confirm the current TestNet app ids.
-- Pick the repo path for the Honest/Cheat JSON artifacts and record the expected final GitHub HTTPS
-  URL shape.
-- Decide the registration path:
-  - backend-signed registration followed by `setAgentWallet(registry_agent_id, PeraAddress)`
-    (recommended for this slice); or
-  - Pera-signed registration by each wallet; or
-  - backend-signed registration with the on-chain wallet mismatch documented as a blocker.
-- Do not redeploy registry contracts.
+- Replace the completed card-catalog rollout plan in this file.
+- Confirm TestNet app ids from `docs/status/DEPLOYED.md`.
+- Record that discovery is curated/static, not crawled.
+- Record that payment state is in-memory Maps plus ledger anchors, not a DB.
+- Update `INTEGRATION_HANDOFF.md` so this temp handoff points at known-agent x402.
 
 Gate:
 
-- Final card URL plan is recorded, even if the cards are not hosted yet.
-- IdentityRegistry remains `764031067`; ReputationRegistry remains `764031363`; ValidationRegistry
-  remains `764031094`.
-- The owner/wallet registration caveat has a chosen path or a documented blocker.
-- No TestNet-spending command is required for this phase.
+- This file is replaced in place.
+- `INTEGRATION_HANDOFF.md` points to this new purpose.
+- No TestNet-spending command is run.
 
-### Phase 1 - Card Shape, Fixtures, And Parser
+### Phase 1 - Known-Agent Identity Registration
 
-Purpose: define the smallest trustworthy ARC-8004 registration-file contract before wiring network
-fetches.
+Purpose: register Honest/Cheat cards in the deployed TestNet IdentityRegistry when env/funds allow.
 
-- Add TypeScript types only where needed for shared wire shapes.
-- Add fixtures for Honest Agent and Cheat Agent cards.
-- Add the validation helper for:
-  - `type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1"`;
-  - `services[]` containing `MCP` and `algorand-wallet`;
-  - valid Algorand wallet format;
-  - `x402Support: true`;
-  - `active: true`;
-  - no required challenge/proof fields.
-- Do not parse router-owned service ids, proxy metadata, or quote fields from public agent cards.
+- Use IdentityRegistry app id `764031067`.
+- Register only Honest Agent and Cheat Agent for this slice.
+- Use the canonical raw card URLs as `agent_uri`.
+- After `register(...)`, call `setAgentWallet(registry_agent_id, cardWallet)` when supported by the
+  current helper.
+- Record `registry_agent_id`, owner, txid, wallet txid, explorer link, and any blocker.
+- If `IDENTITY_SUBMITTER_MNEMONIC` is missing or unfunded, mark this phase `BLOCKED` and keep local
+  ingestion working.
 
 Gate:
 
-- Tests cover valid Honest/Cheat fixtures.
-- Tests reject missing MCP, missing wallet, invalid wallet, missing `x402Support`, inactive card, and
-  invalid MCP endpoint.
-- `npm test` passes.
+- Both agents have on-chain `registry_agent_id` values recorded, or the exact funding/env blocker is
+  recorded.
+- Card-backed `/api/agents` and `/api/services` still work without on-chain registration.
 
-### Phase 2 - Resolver And Local Ingestion
+### Phase 2 - x402 Readiness Checklist
 
-Purpose: load hosted or fixture-backed cards into the existing router state without card-authored
-quotes or router-specific metadata.
+Purpose: make x402 readiness explicit before building direct payment.
 
-- Add a card resolver that fetches JSON from `agent_uri` and returns a normalized card.
-- Add ingestion helpers that call `registerAgentLocal` for card identity facts.
-- Register a router-owned `diligence.report` proxy service for each card-backed MCP endpoint.
-- Preserve current seeded fallback/demo agents.
-- Dedupe by stable agent identity and service option key so Honest/Cheat do not appear twice if seed
-  and card ingestion both run.
-- When final GitHub URLs are known, load them from a committed manifest on boot. Fetch failure should
-  log a clear warning and keep the seeded fallback path alive.
+- Keep parser requirements for `x402Support: true`, `active: true`, valid MCP endpoint, and valid
+  Algorand wallet.
+- Add or document a checklist that distinguishes card declaration from real x402 challenge support.
+- Confirm public catalog does not expose hidden Cheat behavior.
+- Confirm `/api/services` quote snapshots remain router-derived, not card-authored.
+- Confirm `/api/route` creates active quotes and payment requirements at route time.
 
 Gate:
 
-- Tests prove ingestion populates `ctx.agents` and `ctx.services`.
-- Tests prove card-backed services do not depend on card-authored quote metadata.
-- Tests prove seeded fallback still works when card fetch is unavailable or disabled.
-- Tests prove `GET /api/agents` remains compatible.
-- Tests prove duplicate Honest/Cheat entries are not emitted.
-- `npm test` passes.
+- Tests still reject missing x402 declaration, inactive cards, invalid wallets, and invalid MCP
+  endpoints.
+- `GET /api/services` shows agent wallet as `pay_to` without hidden cheat fields.
 
-### Phase 3 - MCP Proxy Catalog And Route Compatibility
+### Phase 3 - Direct-Payment Proof Path Design
 
-Purpose: expose the Trust Router proxy surface and keep the current route/pay/validate loop intact.
+Purpose: define the future no-custody flow without breaking the current demo shim.
 
-- Add `GET /api/services` in `makeAgentRoutes(ctx)`.
-- Group options by `service_id`.
-- Include compact option snapshots: agent identity, `registry_agent_id?`, `agent_uri`, wallet, MCP
-  endpoint, router-derived quote snapshot, and reputation.
-- When card ingestion succeeds, expose one combined `diligence.report` group with only card-backed
-  Honest/Cheat options.
-- Keep `POST /api/route { "service_id": "diligence.report" }` compatible with `/api/pay`.
-- Do not expose hidden cheat behavior in the public catalog.
+- Specify `POST /api/challenge { route_id, option_id }` response shape for x402-style payment
+  requirements.
+- Specify `POST /api/payment-proof { challenge_id, txid, payer }` input and stored proof shape.
+- Preserve challenge correlation: `route_id`, `option_id`, `agent_id`, `quote_id`, nonce, resource,
+  amount, asset, payTo, network, observed/expires timestamps.
+- Decide whether post-payment invocation is client-to-agent direct or proxy-with-proof; record the
+  decision here before implementation.
+- Keep `/api/pay` available as the demo shim until the direct-payment path is proven.
 
 Gate:
 
-- `GET /api/services` returns one `diligence.report` group with Honest and Cheat options.
-- Catalog output includes quote/trust metadata and omits `challenge_behavior` or any hidden cheat flag.
-- `POST /api/route { "service_id": "diligence.report" }` returns route options that `/api/pay` can
-  consume.
-- `npm test` and `npm run check-types` pass.
+- New wire shapes are documented before code changes.
+- Replay, wrong wallet, wrong amount, mismatched route/agent/quote, and stale challenge behavior are
+  specified.
 
-### Phase 4 - Route-Time Quote Collection And Payment Requirements
+### Phase 4 - Validation And Reputation From Proof
 
-Purpose: move payment requirement creation out of agent cards and into the router's invocation path.
+Purpose: validate objectively captured quote/challenge/proof evidence without modeling it as user
+feedback.
 
-- Keep seeded/manual service quotes working through existing quote templates.
-- For card-backed services, use the router-owned demo quote adapter:
-  - Honest Agent: quote `0.1 ALGO`, payment requirement `0.1 ALGO`.
-  - Cheat Agent: quote `0.04 ALGO`, payment requirement `0.06 ALGO`.
-- Create `ActiveQuote` and `PaymentRequirement` during `/api/route`, not during card ingestion.
-- Let `/api/services` show router-derived quote snapshots without mutating active quote state.
-- Keep hidden Cheat drift out of public catalog output.
+- Compare active quote to x402 challenge amount and `payTo`.
+- Compare verified proof to selected agent, expected wallet, amount, asset, network, and payer.
+- Record quote drift, wrong `payTo`, invalid proof, replay, and timeout as validation evidence.
+- Update in-memory reputation from automatic validation.
+- Keep ReputationRegistry `giveFeedback(paymentTxid, nonce, ...)` reserved for explicit user feedback.
 
 Gate:
 
-- `/api/route` creates active quotes and payment requirements for card-backed Honest/Cheat agents.
-- `/api/pay` settles against the payment requirement, so Cheat still settles above the active quote.
-- `/api/validate` still catches the quote drift.
-- `npm test` and `npm run check-types` pass.
+- Automatic validation can lower reputation without calling user-feedback code.
+- Feedback, when added, requires valid `paymentTxid` and nonce and dedupes proof use.
 
-### Phase 5 - End-To-End Verification And Handoff
+### Phase 5 - Live Smoke And Handoff
 
-Purpose: prove the slice works as a demo surface and leave the shared docs current.
+Purpose: prove the current demo remains intact and the next x402 path is ready to implement.
 
-- Run the non-spending checks first: `npm test` and `npm run check-types`.
-- If TestNet payer funds are available, carefully smoke the live flow:
+- Run non-spending checks first: `npm test` and `npm run check-types`.
+- If TestNet funds are available and the team agrees, smoke:
   - `GET /api/services`;
   - `POST /api/route { "service_id": "diligence.report", "task": "..." }`;
-  - `POST /api/pay { route_id, option_id }`;
+  - current shim: `POST /api/pay { route_id, option_id }`;
   - `POST /api/validate { payment_id }`.
-- Verify Honest still settles at quote and Cheat still settles above quote in the existing demo.
-- Update `INTEGRATION_HANDOFF.md` with new endpoint signatures, card URLs, registry ids, and blockers.
-- Update the Phase Validation Log programmatically after the gate status is known.
+- Verify Honest settles at quote through the current shim.
+- Verify Cheat settles above quote through the current shim.
+- Verify `/api/validate` lowers Cheat reputation and reroute avoids the caught agent.
+- Update `INTEGRATION_HANDOFF.md`, `BUILD_CHECKLIST_2026-06-06.md`, and pitch docs only when their
+  visible facts change.
 
 Gate:
 
 - `npm test` passes.
 - `npm run check-types` passes.
 - Live smoke evidence is recorded, or skipped with the exact reason.
-- `/api/pay` and `/api/validate` behavior remains intact.
-- `INTEGRATION_HANDOFF.md` is current.
+- Current `/api/pay` and `/api/validate` behavior remains intact.
 
-### Phase Validation Log
-
-Update this log after each phase before advancing.
+## Phase Validation Log
 
 | Phase | Status | Validation evidence | Notes |
 |---|---|---|---|
-| Phase 0 - Baseline, Hosting, And Registration Decision | PASS | Must-read docs read; TestNet app ids confirmed in `docs/status/DEPLOYED.md`; canonical raw GitHub URL shape recorded above. | Registration path: backend-signed `register` then generated `setAgentWallet(uint256,address)void`; no TestNet-spending command run. |
-| Phase 1 - Card Shape, Fixtures, And Parser | PASS | `docs/agents/testnet/{honest-agent,cheat-agent}.json`; `agents.ts::parseAgentCard`; `npm test` pass. | Parser requires ARC-8004 `type`, active card, MCP, `algorand-wallet`, `x402Support:true`; public cards no longer include `trust_router`. |
-| Phase 2 - Resolver And Local Ingestion | PASS | `agents.ts::resolveCardsFromManifest` + `resolveDefaultTestnetCards` + `ingestAgentCardsFromManifest`; tests cover success, manifest-404 direct URL fallback, failure fallback, disabled fallback, idempotency. | Successful card ingestion replaces seeded `diligence.report`; card-backed services store endpoint facts only. |
-| Phase 3 - MCP Proxy Catalog And Route Compatibility | PASS | `GET /api/services`; tests cover grouped catalog, router-derived quote/trust metadata, no hidden challenge fields, route-by-service compatibility. | Trust Router owns the `diligence.report` proxy mapping; partner cards provide MCP endpoint + wallet only. |
-| Phase 4 - Route-Time Quote Collection And Payment Requirements | PASS | `agents.ts::quoteForService`; `/api/route` tests cover Honest `0.1` and Cheat `0.04` quoted / `0.06` requested. | `ActiveQuote` includes `observed_at` and `expires_at`; Cheat drift remains a router-owned demo adapter override. |
-| Phase 5 - End-To-End Verification And Handoff | PASS | `npm test` pass; `npm run check-types` pass; `INTEGRATION_HANDOFF.md` updated. | Live smoke skipped because `npm start` spends TestNet funds; TestNet registration remains env-gated. |
+| Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
+| Phase 1 - Known-Agent Identity Registration | TODO | Pending. | Use `IDENTITY_APP_ID=764031067` and funded `IDENTITY_SUBMITTER_MNEMONIC`; otherwise record blocker. |
+| Phase 2 - x402 Readiness Checklist | TODO | Pending. | Current cards already declare `x402Support: true`; confirm parser/tests remain aligned. |
+| Phase 3 - Direct-Payment Proof Path Design | TODO | Pending. | Future interfaces are planned, not live. |
+| Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
+| Phase 5 - Live Smoke And Handoff | TODO | Pending. | Run non-spending checks before any TestNet smoke. |
 
-## Implementation Entry Points
+## Test Plan
 
-- `apps/router/src/contract.ts`
-  - Add catalog/card types only if they become shared wire shapes.
-- `apps/router/src/agents.ts`
-  - Card parsing, ingestion, service grouping, catalog construction.
-- `apps/router/src/routes.agents.ts`
-  - Add `GET /api/services`.
-  - Keep `/api/agents` and `/api/route` behavior compatible.
-- `apps/router/src/identity-onchain.ts`
-  - Reuse existing TestNet registration helper.
-- `apps/router/src/seed.ts`
-  - Keep as fallback/demo source. Do not delete unless the whole boot path is updated.
-- `apps/router/src/agents.test.ts`
-  - Add focused tests for card parsing, catalog grouping, and route compatibility.
+Non-spending checks:
 
-## Acceptance Criteria
+- `npm test`
+- `npm run check-types`
 
-- Two agents exist as named Honest/Cheat service cards.
-- Both agents have stable TestNet wallets.
-- Both agent registration files set `x402Support: true`.
-- Honest/Cheat agent cards do not include `trust_router`, router service ids, or quote fields.
-- Both agents are registered on TestNet IdentityRegistry, or this file records the registration blocker.
-- Router can ingest both cards into `ctx.agents` and `ctx.services` using identity, wallet, and MCP
-  endpoint facts only.
-- `GET /api/services` returns one `diligence.report` group with two options.
-- When card ingestion succeeds, those two options are the card-backed Honest/Cheat agents, not seeded
-  duplicates.
-- Each option includes agent identity, agent URI, wallet, capability endpoint, router-derived quote, and
-  reputation snapshot.
-- Public catalog does not expose hidden cheat behavior.
-- `/api/route` creates active quotes and payment requirements at route time.
-- Existing `/api/pay` and `/api/validate` demo flow remains intact.
-- `POST /api/route { "service_id": "diligence.report" }` still works.
-- `npm test` and `npm run check-types` pass.
+Registration checks:
 
-## TestNet And App ID Policy
+- If `IDENTITY_SUBMITTER_MNEMONIC` is funded, register Honest/Cheat and record `registry_agent_id`,
+  txid, owner, wallet, and explorer link.
+- If not funded, record blocker and keep local/card ingestion working.
 
-- TestNet is the default network in `apps/router/src/context.ts`.
-- Identity registration is env-gated:
-  - `IDENTITY_APP_ID=764031067`
-  - `IDENTITY_SUBMITTER_MNEMONIC=<funded private TestNet mnemonic>`
-- The shared payer is public throwaway TestNet only. Never reuse it on MainNet.
-- Do not redeploy registry contracts for this slice. Registering Honest/Cheat agents is an app call
-  into the existing IdentityRegistry, not a new contract deployment.
-- Current TestNet app ids should stay:
-  - IdentityRegistry: `764031067`
-  - ReputationRegistry: `764031363`
-  - ValidationRegistry: `764031094`
-- If contract source changed but was not redeployed, TestNet still runs the old deployed bytecode.
-- If contract source must be redeployed with the current scripts, expect new app ids because deploy
-  config uses `onUpdate: "append"` and `onSchemaBreak: "append"`.
-- If new app ids are produced, immediately update `docs/status/DEPLOYED.md`,
-  `apps/web/deployed.testnet.json`, `.env` / `.env.example` references, and `INTEGRATION_HANDOFF.md`.
+Demo checks:
 
-## Minimal ARC-8004 Agent URI Shape
+- `GET /api/services` returns one `diligence.report` group with Honest/Cheat.
+- `POST /api/route` creates active quotes.
+- Honest settles at quote through current shim.
+- Cheat settles above quote through current shim.
+- `/api/validate` lowers Cheat reputation.
 
-```json
-{
-  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  "name": "Honest Agent",
-  "description": "Diligence agent for contradictory business signals.",
-  "services": [
-    {
-      "name": "MCP",
-      "endpoint": "https://honest-agent.example.com/mcp",
-      "version": "2025-06-18"
-    },
-    {
-      "name": "algorand-wallet",
-      "endpoint": "J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY"
-    }
-  ],
-  "x402Support": true,
-  "active": true,
-  "registrations": [
-    {
-      "agentId": "REGISTRY_AGENT_ID_ONCE_KNOWN",
-      "agentRegistry": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe:764031067"
-    }
-  ],
-  "supportedTrust": ["reputation", "validation"]
-}
-```
+Future x402 checks:
 
-Notes:
+- Payment requirements include selected agent wallet as `payTo`.
+- Proof verification rejects wrong wallet, wrong amount, replay, stale challenge, and mismatched
+  route/agent/quote.
+- Quote drift can update validation/reputation without user feedback.
 
-- `type` should follow the ARC-8004 reference shape. Do not use a project-local agent schema.
-- Do not add `$schema` yet unless we publish a real JSON Schema document. The ERC-8004 URL is the
-  registration-file `type` discriminator, not a JSON Schema URL.
-- `services[]` stays ARC-8004-shaped. The router reads `MCP` for capability endpoint and
-  `algorand-wallet` for the receiving wallet.
-- Do not put `trust_router`, router service ids, proxy metadata, or quote fields in public agent cards.
-- The router maps eligible MCP endpoints into the grouped `diligence.report` proxy catalog.
-- Route-time quote/payment requirements are router-derived for this demo slice.
-- Honest Agent wallet: `J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY`.
-- Cheat Agent wallet: `3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ`.
-- Challenge/proof fields are intentionally not part of the required card shape yet.
-- If a hosted agent already exposes `/x402/challenge`, do not depend on it in this slice.
+## Assumptions
 
-## Grouped Catalog Shape
-
-```json
-{
-  "network": "testnet",
-  "generated_at": "2026-06-07T00:00:00.000Z",
-  "services": [
-    {
-      "service_id": "diligence.report",
-      "name": "Diligence report",
-      "description": "Compare contradictory business signals and produce a concise diligence read.",
-      "proxy": {
-        "route_endpoint": "POST /api/route",
-        "route_body": {
-          "service_id": "diligence.report",
-          "task": "string"
-        }
-      },
-      "options": [
-        {
-          "option_key": "algorand:testnet:AGENT...::diligence.report",
-          "agent_id": "algorand:testnet:AGENT...",
-          "registry_agent_id": "1",
-          "agent": {
-            "name": "Honest Agent",
-            "agent_uri": "https://honest-agent.example.com/agent.json",
-            "agent_wallet": "ALGOTESTNETADDRESS..."
-          },
-          "capability": {
-            "source": "agent_uri",
-            "protocol": "MCP",
-            "endpoint": "https://honest-agent.example.com/mcp",
-            "name": "Diligence report",
-            "description": "Compare contradictory business signals and produce a concise diligence read."
-          },
-          "quote": {
-            "amount": 0.1,
-            "asset": "ALGO",
-            "pay_to": "ALGOTESTNETADDRESS..."
-          },
-          "trust": {
-            "reputation": 50,
-            "reads_logged": 0,
-            "corrections_logged": 0
-          }
-        }
-      ]
-    }
-  ]
-}
-```
-
-Do not include `challenge_behavior` in the public catalog. The cheat is revealed only in a later
-challenge/payment slice. Quote snapshots in this catalog are router-derived, not card-authored.
+- Honest/Cheat are the only known-agent rollout targets for now.
+- Curated discovery is acceptable for the demo; full chain scan and provider self-registration are
+  not required.
+- Real provider-hosted x402 challenge endpoints are not required yet.
+- `/api/pay` remains the current router-settled demo shim until direct payment is implemented.
+- Current storage remains in-memory Maps plus hash-only ledger anchors.
+- Registry contracts stay at the deployed TestNet app ids listed above.
 
 ## Deferred Later Slices
 
-- `/api/challenge`
-- No-custody x402 payment
-- Real partner-agent x402 quote/challenge endpoints
-- Payment proof capture and verification
-- Quote vs challenge vs proof validation
-- `POST /api/feedback`
-- Frontend consumption of `/api/services`
-- Full ARC-8004 chain scan
-- MCP tool-list parsing
-- A2A agent-card adapter
-- Semantic service clustering
-- Production persistence and TTLs
+- Full ARC-8004 chain scan.
+- MCP tool-list parsing.
+- A2A agent-card adapter.
+- Semantic service clustering.
+- Production persistence and TTLs.
+- Provider self-service registration UI.
+- MainNet deployment policy.
