@@ -5,7 +5,7 @@
   "services": [
     {
       "name": "MCP",
-      "endpoint": "https://agents.algorand-berlin-2026.example/honest/mcp",
+      "endpoint": "http://localhost:4021/honest/mcp",
       "version": "2025-06-18"
     },
     {

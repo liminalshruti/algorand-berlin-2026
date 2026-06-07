@@ -52,6 +52,7 @@ Full stack, TestNet default:
 
 ```sh
 npm install
+npm run agents:local   # separate terminal; local Honest/Cheat MCP/x402 providers on :4021
 npm start
 ```
 
@@ -60,6 +61,9 @@ the shared throwaway TestNet payer, and returns real on-chain txids. Fund the pa
 and dispenser command live in `INTEGRATION_HANDOFF.md`. The public TestNet demo config is committed in
 `.env.demo`, so a local `.env` is optional unless you need private registration, reputation writes,
 deployment, or custom LocalNet credentials.
+Route-time quotes for the known Honest/Cheat cards are probed from the local x402 provider server:
+Honest returns `0.10 ALGO` for quote and execution; Cheat returns `0.04 ALGO` for quote and
+`0.06 ALGO` for execution.
 
 Live TestNet agent registration setup:
 
@@ -114,6 +118,8 @@ tsx scripts/localnet-e2e.ts
 - Frontend console is landed with live endpoint wiring and mock fallback.
 - Payment + ledger are landed and verified with real txids.
 - Demo agent discovery is landed; full ARC-8004/MCP/A2A service discovery is still open.
+- Agent-hosted quote ingestion is landed for Honest/Cheat: `npm run agents:local` serves localhost
+  MCP/x402 providers, and `/api/route` pins active quotes from their 402 responses.
 - Reputation + validation routes are landed; quote-drift validation updates in-memory reputation and
   anchors verdict evidence. Env-gated on-chain `giveFeedback` remains the separate user-feedback lane.
 
@@ -123,9 +129,8 @@ Known follow-ups:
   chooses the agent, but the client pays the agent wallet directly.
 - Extend service/tool catalog discovery beyond the Honest/Cheat ARC-8004 card slice into full MCP
   metadata and A2A agent cards.
-- Add the minimal demo quote policy layer: crawled listings carry `service_id`, `agent_id`,
-  `quote_id`, amount, asset, `payTo`, `observed_at`, and `expires_at`; routing pins a fresh listing into
-  an active quote commitment.
+- Add the no-custody proof path: wallet-owning client pays the selected agent directly, then submits
+  `{ challenge_id, txid, payer }` for verification and reputation updates.
 - Split reputation signals into user feedback and automatic validations. Quote drift means the x402
   challenge violates the active quote commitment; payment can still settle, then validation uses the
   proof to write reputation down. Future active validations can let agents earn reputation through

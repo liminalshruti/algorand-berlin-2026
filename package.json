@@ -20,6 +20,7 @@
     "setup:testnet-known-agents": "tsx scripts/setup-testnet-identity.ts",
     "register:testnet-agents": "tsx scripts/register-testnet-agents.ts",
     "check-types": "tsc --noEmit",
+    "agents:local": "tsx apps/router/bin/local-x402-agents.ts",
     "web": "npx --yes serve apps/web",
     "start": "tsx apps/router/bin/router-server.ts",
     "dev": "tsx watch apps/router/bin/router-server.ts",

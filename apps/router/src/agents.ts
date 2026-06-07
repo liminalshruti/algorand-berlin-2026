@@ -9,6 +9,8 @@ const DEFAULT_PROXY_NAME = 'Diligence report';
 const DEFAULT_PROXY_DESCRIPTION = 'Compare contradictory business signals and produce a concise diligence read.';
 const ARC8004_REGISTRATION_TYPE = 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1';
 const QUOTE_TTL_MS = 5 * 60 * 1000;
+const MICROALGO = 1_000_000;
+const DEFAULT_LOCAL_X402_AGENT_BASE_URL = 'http://localhost:4021';
 
 export const TESTNET_CARD_MANIFEST_URL =
   'https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json';
@@ -19,9 +21,9 @@ export const TESTNET_CARD_URLS = [
 
 const HONEST_AGENT_WALLET = 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY';
 const CHEAT_AGENT_WALLET = '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ';
-const demoAgentQuotes = new Map<string, { amount: number; challenge_amount?: number; challenge_pay_to?: string }>([
-  [HONEST_AGENT_WALLET, { amount: 0.1 }],
-  [CHEAT_AGENT_WALLET, { amount: 0.04, challenge_amount: 0.06 }],
+const localDemoMcpPaths = new Map<string, string>([
+  [HONEST_AGENT_WALLET, '/honest/mcp'],
+  [CHEAT_AGENT_WALLET, '/cheat/mcp'],
 ]);
 
 type RegistryCtx = Pick<Ctx, 'net' | 'agents' | 'services' | 'activeQuotes' | 'paymentRequirements'>;
@@ -34,8 +36,6 @@ export type AgentRegistration = Omit<Agent, 'id'> & {
 export type ServiceRegistration = AgentService & {
   quote?: number;
   asset?: string;
-  challenge_amount?: number;
-  challenge_pay_to?: string;
 };
 
 export type AgentRow = {
@@ -86,9 +86,26 @@ type QuoteTemplate = {
   amount: number;
   asset: string;
   pay_to: string;
-  challenge_amount?: number;
-  challenge_pay_to?: string;
 };
+
+type X402ChallengeMode = 'quote' | 'execute';
+
+type X402Requirement = Omit<PaymentRequirement, 'quote_id'>;
+
+type X402FetchRequest = {
+  mode: X402ChallengeMode;
+  agent_id: string;
+  service_id: string;
+  network: string;
+  task?: string;
+  quote_id?: string;
+  option_id?: string;
+};
+
+export type X402RequirementFetcher = (
+  service: AgentService,
+  request: X402FetchRequest,
+) => Promise<X402Requirement>;
 
 type FetchJson = (url: string) => Promise<unknown>;
 
@@ -140,6 +157,100 @@ async function fetchJsonFromUrl(url: string): Promise<unknown> {
     throw new Error(`fetch ${url} failed: ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<unknown>;
+}
+
+function localX402AgentBaseUrl(): string | null {
+  const configured = process.env.LOCAL_X402_AGENT_BASE_URL?.trim();
+  if (configured === 'off' || configured === 'card') return null;
+  return configured || DEFAULT_LOCAL_X402_AGENT_BASE_URL;
+}
+
+function localDemoMcpEndpoint(agent_wallet: string): string | null {
+  const path = localDemoMcpPaths.get(agent_wallet);
+  const baseUrl = localX402AgentBaseUrl();
+  if (!path || !baseUrl) return null;
+  return new URL(path, baseUrl).toString();
+}
+
+function firstX402Requirement(raw: unknown): Record<string, unknown> {
+  if (!isRecord(raw)) validationError('x402 response must be an object');
+  const accepts = raw.accepts;
+  if (Array.isArray(accepts) && accepts.length > 0 && isRecord(accepts[0])) return accepts[0];
+  const paymentRequirements = raw.paymentRequirements ?? raw.payment_requirements;
+  if (isRecord(paymentRequirements)) return paymentRequirements;
+  return raw;
+}
+
+function readPositiveAmount(record: Record<string, unknown>): number {
+  const amount = record.amount;
+  if (typeof amount === 'number' && Number.isFinite(amount) && amount > 0) return amount;
+  if (typeof amount === 'string' && amount.trim()) {
+    const parsed = Number(amount);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  const maxAmountRequired = record.maxAmountRequired ?? record.max_amount_required;
+  if (typeof maxAmountRequired === 'string' && maxAmountRequired.trim()) {
+    const microAlgos = Number(maxAmountRequired);
+    if (Number.isFinite(microAlgos) && microAlgos > 0) return microAlgos / MICROALGO;
+  }
+  if (typeof maxAmountRequired === 'number' && Number.isFinite(maxAmountRequired) && maxAmountRequired > 0) {
+    return maxAmountRequired / MICROALGO;
+  }
+
+  validationError('x402 payment requirement amount is required');
+}
+
+function optionalRequirementString(record: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return undefined;
+}
+
+export function paymentRequirementFromX402Response(raw: unknown): X402Requirement {
+  const requirement = firstX402Requirement(raw);
+  const pay_to = optionalRequirementString(requirement, 'payTo', 'pay_to');
+  if (!pay_to) validationError('x402 payment requirement payTo is required');
+  if (!algosdk.isValidAddress(pay_to)) validationError(`Invalid x402 payTo address: ${pay_to}`);
+
+  const asset = optionalRequirementString(requirement, 'asset', 'assetId') ?? 'ALGO';
+  const parsed: X402Requirement = {
+    amount: readPositiveAmount(requirement),
+    asset,
+    pay_to,
+  };
+
+  const network = optionalRequirementString(requirement, 'network');
+  const resource = optionalRequirementString(requirement, 'resource');
+  const nonce = optionalRequirementString(requirement, 'nonce');
+  const expires_at = optionalRequirementString(requirement, 'expiresAt', 'expires_at');
+
+  return {
+    ...parsed,
+    ...(network ? { network } : {}),
+    ...(resource ? { resource } : {}),
+    ...(nonce ? { nonce } : {}),
+    ...(expires_at ? { expires_at } : {}),
+  };
+}
+
+export async function fetchPaymentRequirementFromService(
+  service: AgentService,
+  request: X402FetchRequest,
+): Promise<X402Requirement> {
+  const res = await fetch(service.endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  const raw = await res.json().catch(() => ({}));
+  if (res.status !== 402) {
+    throw Object.assign(new Error(`Expected 402 from ${service.endpoint}; got ${res.status}`), { status: 502 });
+  }
+  return paymentRequirementFromX402Response(raw);
 }
 
 export function agentId(net: string, address: string): string {
@@ -345,8 +456,6 @@ export function registerServiceLocal(ctx: RegistryCtx, input: ServiceRegistratio
       amount: input.quote,
       asset: input.asset ?? 'ALGO',
       pay_to: agent.agent_wallet,
-      challenge_amount: input.challenge_amount,
-      challenge_pay_to: input.challenge_pay_to,
     });
   }
   return service;
@@ -364,7 +473,7 @@ export function ingestAgentCard(ctx: RegistryCtx, card: NormalizedAgentCard): Ag
     service_id: DEFAULT_SERVICE_ID,
     agent_id: agent.id,
     protocol: 'MCP',
-    endpoint: card.mcp_endpoint,
+    endpoint: localDemoMcpEndpoint(card.agent_wallet) ?? card.mcp_endpoint,
     name: DEFAULT_PROXY_NAME,
     description: DEFAULT_PROXY_DESCRIPTION,
     source: 'agent_uri',
@@ -390,56 +499,116 @@ export function agentRow(agent: Agent, services: AgentService[], registry_agent_
   };
 }
 
-function quoteForService(agent: Agent, service: AgentService): QuoteTemplate | null {
+function staticQuoteForService(agent: Agent, service: AgentService): X402Requirement | null {
   const template = quoteTemplates.get(serviceKey(agent.id, service.service_id));
-  if (template) return template;
-
-  if (service.source !== 'agent_uri' || service.service_id !== DEFAULT_SERVICE_ID) return null;
-
-  const demoQuote = demoAgentQuotes.get(agent.agent_wallet) ?? { amount: 0.1 };
+  if (!template) return null;
   return {
-    agent_id: agent.id,
-    service_id: service.service_id,
-    amount: demoQuote.amount,
-    asset: 'ALGO',
-    pay_to: agent.agent_wallet,
-    challenge_amount: demoQuote.challenge_amount,
-    challenge_pay_to: demoQuote.challenge_pay_to,
+    amount: template.amount,
+    asset: template.asset,
+    pay_to: template.pay_to,
   };
 }
 
-export function candidateFor(
+async function requirementForService(
+  ctx: Pick<Ctx, 'net'>,
+  agent: Agent,
+  service: AgentService,
+  mode: X402ChallengeMode,
+  options: {
+    task?: string;
+    quote_id?: string;
+    option_id?: string;
+    fetchPaymentRequirement?: X402RequirementFetcher;
+  } = {},
+): Promise<X402Requirement> {
+  const staticQuote = staticQuoteForService(agent, service);
+  if (service.source !== 'agent_uri') {
+    if (staticQuote) return staticQuote;
+    throw Object.assign(new Error(`Missing quote template: ${serviceKey(agent.id, service.service_id)}`), { status: 500 });
+  }
+
+  const fetchPaymentRequirement = options.fetchPaymentRequirement ?? fetchPaymentRequirementFromService;
+  return fetchPaymentRequirement(service, {
+    mode,
+    agent_id: agent.id,
+    service_id: service.service_id,
+    network: ctx.net,
+    task: options.task,
+    quote_id: options.quote_id,
+    option_id: options.option_id,
+  });
+}
+
+export async function candidateFor(
   ctx: RegistryCtx,
   agent: Agent,
   service: AgentService,
   reputation: number,
-): RoutedCandidate {
-  const template = quoteForService(agent, service);
-  if (!template) {
-    throw Object.assign(new Error(`Missing quote template: ${serviceKey(agent.id, service.service_id)}`), { status: 500 });
-  }
+  task = '',
+  options: { fetchPaymentRequirement?: X402RequirementFetcher } = {},
+): Promise<RoutedCandidate> {
+  const requirement = await requirementForService(ctx, agent, service, 'quote', {
+    task,
+    fetchPaymentRequirement: options.fetchPaymentRequirement,
+  });
 
   const observedAt = new Date();
+  const fallbackExpiresAt = new Date(observedAt.getTime() + QUOTE_TTL_MS).toISOString();
   const quote: ActiveQuote = {
     quote_id: uuidv4(),
     agent_id: agent.id,
     service_id: service.service_id,
-    amount: template.amount,
-    asset: template.asset,
-    pay_to: template.pay_to,
+    amount: requirement.amount,
+    asset: requirement.asset,
+    pay_to: requirement.pay_to,
     observed_at: observedAt.toISOString(),
-    expires_at: new Date(observedAt.getTime() + QUOTE_TTL_MS).toISOString(),
+    expires_at: requirement.expires_at ?? fallbackExpiresAt,
   };
   const paymentRequirement: PaymentRequirement = {
     quote_id: quote.quote_id,
-    amount: template.challenge_amount ?? template.amount,
-    asset: template.asset,
-    pay_to: template.challenge_pay_to ?? template.pay_to,
+    amount: requirement.amount,
+    asset: requirement.asset,
+    pay_to: requirement.pay_to,
+    ...(requirement.network ? { network: requirement.network } : {}),
+    ...(requirement.resource ? { resource: requirement.resource } : {}),
+    ...(requirement.nonce ? { nonce: requirement.nonce } : {}),
+    ...(requirement.expires_at ? { expires_at: requirement.expires_at } : {}),
   };
 
   ctx.activeQuotes.set(quote.quote_id, quote);
   ctx.paymentRequirements.set(quote.quote_id, paymentRequirement);
   return { agent, service, quote, paymentRequirement, reputation };
+}
+
+export async function paymentRequirementForExecution(ctx: Pick<Ctx, 'net' | 'agents' | 'services' | 'paymentRequirements'>, option: RouteOption): Promise<PaymentRequirement> {
+  const stored = ctx.paymentRequirements.get(option.quote_id);
+  const agent = ctx.agents.get(option.agent_id);
+  if (!agent) throw Object.assign(new Error(`Unknown agent: ${option.agent_id}`), { status: 400 });
+
+  const service = ctx.services.find((candidate) => {
+    return candidate.agent_id === option.agent_id && candidate.service_id === option.service_id;
+  });
+
+  if (!service || service.source !== 'agent_uri') {
+    if (stored) return stored;
+    throw Object.assign(new Error(`Unknown payment requirement: ${option.quote_id}`), { status: 400 });
+  }
+
+  const requirement = await requirementForService(ctx, agent, service, 'execute', {
+    quote_id: option.quote_id,
+    option_id: option.option_id,
+  });
+
+  return {
+    quote_id: option.quote_id,
+    amount: requirement.amount,
+    asset: requirement.asset,
+    pay_to: requirement.pay_to,
+    ...(requirement.network ? { network: requirement.network } : {}),
+    ...(requirement.resource ? { resource: requirement.resource } : {}),
+    ...(requirement.nonce ? { nonce: requirement.nonce } : {}),
+    ...(requirement.expires_at ? { expires_at: requirement.expires_at } : {}),
+  };
 }
 
 export function discoveryOptions(candidates: RoutedCandidate[]): RouteOption[] {
@@ -469,10 +638,10 @@ export function discoveryOptions(candidates: RoutedCandidate[]): RouteOption[] {
     .sort((a, b) => b.trust_score - a.trust_score);
 }
 
-export function buildServicesCatalog(
+export async function buildServicesCatalog(
   ctx: CatalogCtx,
   registryAgentIdFor: (agent_id: string) => string | null = () => null,
-): {
+): Promise<{
   network: string;
   generated_at: string;
   services: Array<{
@@ -514,17 +683,19 @@ export function buildServicesCatalog(
       };
     }>;
   }>;
-} {
+}> {
   const serviceIds = [...new Set(ctx.services.map((service) => service.service_id))].sort();
-  const services = serviceIds.flatMap((service_id) => {
+  const services = await Promise.all(serviceIds.map(async (service_id) => {
     const groupServices = discoverServices(ctx, service_id);
-    if (groupServices.length === 0) return [];
+    if (groupServices.length === 0) return null;
 
     const first = groupServices[0];
-    const options = groupServices.flatMap((service) => {
+    const options = (await Promise.all(groupServices.map(async (service) => {
       const agent = ctx.agents.get(service.agent_id);
-      const template = agent ? quoteForService(agent, service) : null;
-      if (!agent || !template) return [];
+      if (!agent) return [];
+
+      const requirement = await requirementForService(ctx, agent, service, 'quote').catch(() => null);
+      if (!requirement) return [];
 
       const rep = reputationFor(ctx.repState.getReputation(agent.id));
       const registry_agent_id = registryAgentIdFor(agent.id);
@@ -546,9 +717,9 @@ export function buildServicesCatalog(
           description: service.description ?? '',
         },
         quote: {
-          amount: template.amount,
-          asset: template.asset,
-          pay_to: template.pay_to,
+          amount: requirement.amount,
+          asset: requirement.asset,
+          pay_to: requirement.pay_to,
         },
         trust: {
           reputation: rep.score,
@@ -556,11 +727,11 @@ export function buildServicesCatalog(
           corrections_logged: rep.corrections_logged,
         },
       }];
-    }).sort((a, b) => a.agent.name.localeCompare(b.agent.name));
+    }))).flat().sort((a, b) => a.agent.name.localeCompare(b.agent.name));
 
-    if (options.length === 0) return [];
+    if (options.length === 0) return null;
 
-    return [{
+    return {
       service_id,
       name: first.name,
       description: first.description ?? '',
@@ -572,13 +743,13 @@ export function buildServicesCatalog(
         },
       },
       options,
-    }];
-  });
+    };
+  }));
 
   return {
     network: ctx.net,
     generated_at: new Date().toISOString(),
-    services,
+    services: services.filter((service): service is NonNullable<typeof service> => service !== null),
   };
 }
 

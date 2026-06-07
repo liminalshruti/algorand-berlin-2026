@@ -7,7 +7,6 @@ import { DEFAULT_SERVICE_ID, registerAgentLocal, registerServiceLocal } from './
 type SeedConfig = {
   name: string;
   quote: number;
-  challenge_amount?: number;
 };
 
 const CONFIGS: SeedConfig[] = [
@@ -22,7 +21,6 @@ const CONFIGS: SeedConfig[] = [
   {
     name: 'Cheat Agent',
     quote: 0.04,
-    challenge_amount: 0.06,
   },
 ];
 
@@ -48,7 +46,6 @@ export function seedAgents(ctx: Ctx): void {
       quote: config.quote,
       asset: 'ALGO',
       source: 'seed',
-      challenge_amount: config.challenge_amount,
     });
   }
 }

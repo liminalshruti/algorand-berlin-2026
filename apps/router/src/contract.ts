@@ -2,6 +2,8 @@
 // Agent:        { id, name, agent_uri, agent_wallet }
 // AgentService: { service_id, agent_id, protocol, endpoint, name, description?, source? }
 // ActiveQuote:  { quote_id, agent_id, service_id, amount, asset, pay_to, observed_at, expires_at }
+// PaymentChallenge:{ challenge_id, route_id, option_id, agent_id, service_id, quote_id, nonce,
+//                    resource, amount, asset, pay_to, network, observed_at, expires_at }
 // RouteOption:  { option_id, agent_id, service_id, quote_id, name, price, asset, pay_to, reputation, trust_score }
 // PaymentResult:{ payment_id, agent_id, quote_id, quoted, settled, txids:[], read }
 // Verdict:      { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
@@ -57,6 +59,27 @@ export type PaymentRequirement = {
   amount: number;
   asset: string;
   pay_to: string;
+  network?: string;
+  resource?: string;
+  nonce?: string;
+  expires_at?: string;
+};
+
+export type PaymentChallenge = {
+  challenge_id: string;
+  route_id: string;
+  option_id: string;
+  agent_id: string;
+  service_id: string;
+  quote_id: string;
+  nonce: string;
+  resource: string;
+  amount: number;
+  asset: string;
+  pay_to: string;
+  network: string;
+  observed_at: string;
+  expires_at: string;
 };
 
 export type RouteOption = {

@@ -36,7 +36,7 @@ service/tool groups; then routes by requested service instead of a single `regis
 | [x] | Define service/tool schema | Reza | Demo fields only: `service_id`, `agent_id`, protocol, endpoint, name |
 | [x] | Agent registration/intake | Reza | Honest/Cheat cards in `docs/agents/testnet/`; `ingestAgentCardsFromManifest` |
 | [x] | Parse ARC-8004 agent registration files | Reza | `agents.ts::parseAgentCard`; reads clean `services[]`, MCP endpoint, wallet, x402/active flags |
-| [x] | Route-time demo quote adapter | Reza/Navid | Card-backed Honest/Cheat quotes are router-derived; Cheat still requests 0.06 vs 0.04 quoted |
+| [x] | Route-time demo quote adapter | Reza/Navid | Card-backed Honest/Cheat quotes are probed from local 402 responses; Cheat execution 402 requests 0.06 vs 0.04 quoted |
 | [ ] | Add MCP capability adapter | Reza | Ingest MCP server metadata/tool list names/descriptions into the shared service schema |
 | [ ] | Add A2A capability adapter | Reza | Ingest A2A agent card capability names/descriptions into the shared service schema |
 | [x] | Add local/demo agent adapter | Reza | `seed.ts` fallback tagged `source:"seed"`; card ingestion replaces seeded service on success |
@@ -60,7 +60,7 @@ the client agent to the selected agent wallet.
 | Status | Task | Owner | Evidence |
 |---|---|---|---|
 | [ ] | Define proxy invocation shape | Reza/Navid | Client calls our service/tool endpoint; request carries `service_id` or task intent |
-| [ ] | Add quote policy layer | Reza/Navid | Convert fresh listing metadata into an active quote commitment before routing |
+| [x] | Add quote policy layer | Reza/Navid | `/api/route` probes `AgentService.endpoint` in quote mode and stores 402 response as `ActiveQuote` |
 | [ ] | Select concrete agent by trust + price | Reza/Shayaun | Selection reads reputation, active quote, and availability |
 | [ ] | Forward agent x402 challenge | Navid/Reza | Return agent `402 PaymentRequirements` with agent `payTo`; router does not settle or custody funds |
 | [ ] | Preserve challenge correlation | Navid | Carry `route_id`, `agent_id`, active `quote_id`, x402 `nonce`, `resource`, amount, asset, network |
@@ -133,7 +133,7 @@ Run before calling the current build demo-ready:
 - [x] Discovery catalog groups at least one service with multiple agents
 - [x] Route request can target a service/tool rather than a register lane
 - [ ] Target flow forwards agent x402 challenge with agent wallet as `payTo`
-- [ ] Quote policy pins a fresh listing into an active quote commitment
+- [x] Quote policy pins a fresh listing into an active quote commitment
 - [ ] Target flow records quote-vs-challenge drift without blocking payment
 - [ ] Automatic validation can lower reputation without user feedback
 - [ ] Future active validation/attestation path is represented in docs or code
