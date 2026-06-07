@@ -12,13 +12,13 @@
 // ABI verified against ReputationRegistry.arc56.json: giveFeedback now takes the mandatory
 // x402 coupling paymentTxid(byte[32]) + nonce(uint64); the contract rejects an all-zero proof
 // and replay-guards each settlement txid to one feedback. We pass the real x402 settlement
-// txid + a random nonce. agentId is the REAL Identity-registry id from the on-boot registration
-// (identity-onchain.ts), falling back to a per-run counter when that map is empty.
+// txid + a random nonce. agentId is the REAL Identity-registry id loaded from committed
+// known-agent registration evidence, falling back to a per-run counter when that map is empty.
 import type { Ctx } from './contract.js';
 import { registryAgentIdFor } from './identity-onchain.js';
 
 // fallback registry agent id per router agent_id for this server run (used only if
-// the agent wasn't registered on-chain at boot).
+// there is no committed known-agent registration evidence for the agent).
 const agentIds = new Map<string, bigint>();
 let nextAgentId = 1n;
 function agentIdFor(agent_id: string): bigint {

@@ -276,7 +276,7 @@ Gate:
 | Phase | Status | Validation evidence | Notes |
 |---|---|---|---|
 | Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
-| Phase 1 - Known-Agent Identity Registration | TODO | Pending. | Use `IDENTITY_APP_ID=764031067` and funded `IDENTITY_SUBMITTER_MNEMONIC`; otherwise record blocker. |
+| Phase 1 - Known-Agent Identity Registration | BLOCKED | Code path landed; `npm test` PASS; `npm run check-types` PASS; `npm run setup:testnet-identity -- --check` found `IDENTITY_SUBMITTER_ADDRESS=ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` with `0` ALGO; `npm run register:testnet-agents -- --check` stopped before tx with the same blocker. | Fund with `algokit dispenser fund --receiver ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU --amount 2 --whole-units`, then rerun checks and `npm run register:testnet-agents`. No TestNet registration tx sent. |
 | Phase 2 - x402 Readiness Checklist | TODO | Pending. | Current cards already declare `x402Support: true`; confirm parser/tests remain aligned. |
 | Phase 3 - Direct-Payment Proof Path Design | TODO | Pending. | Future interfaces are planned, not live. |
 | Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
@@ -288,6 +288,8 @@ Non-spending checks:
 
 - `npm test`
 - `npm run check-types`
+- `npm run setup:testnet-identity -- --check`
+- `npm run register:testnet-agents -- --check`
 
 Registration checks:
 

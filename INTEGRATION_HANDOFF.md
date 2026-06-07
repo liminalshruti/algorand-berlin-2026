@@ -22,7 +22,7 @@ Everyone's Claude should read this before writing anything.
 - Shared state lives in `ctx` (built by `context.ts`) — use the Maps, don't create your own stores.
 - Active router identity language is **Agent**. `agent_id` means the router-stable selected-agent id `algorand:{net}:{address}`; `registry_agent_id` means the IdentityRegistry uint64 when available.
 - Wire your routes into your stub file, not into `router-server.ts`
-- Live TestNet identity operator setup: `npm run setup:testnet-identity` writes local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS` + dispenser command; `npm start` warns/no-ops when submitter is missing.
+- Live TestNet identity operator setup: `npm run setup:testnet-identity` writes local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS` + dispenser command; batch mint is explicit via `npm run register:testnet-agents`; `npm start` only loads `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` evidence and never mints IdentityRegistry records.
 
 ---
 
@@ -79,7 +79,7 @@ npm start                # funds agents automatically, prints option_ids on boot
 
 ---
 
-## Reza — Identity Registry + Demo Discovery + Ranking 🟡 CARD CATALOG WIRED / FULL DISCOVERY OPEN
+## Reza — Identity Registry + Demo Discovery + Ranking 🟡 CARD CATALOG WIRED / PHASE 1 REGISTRATION BLOCKED ON FUNDING
 
 `POST /api/route`, `GET /api/agents`, and `GET /api/services` live (`routes.agents.ts` + `agents.ts`,
 with `agents.test.ts`). Discovery now has seeded fallback plus Honest/Cheat ARC-8004 card ingestion from
@@ -114,7 +114,9 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
 - URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; runtime still falls back to direct card URLs if the manifest is unavailable.
-- TestNet registration blocker: `.env.demo` provides `IDENTITY_APP_ID=764031067`; run `npm run setup:testnet-identity`, fund `IDENTITY_SUBMITTER_ADDRESS`, then on-chain registration can use local `IDENTITY_SUBMITTER_MNEMONIC`.
+- Phase 1 known-agent batch registration: `npm run register:testnet-agents` registers only the canonical Honest/Cheat card URLs, calls `setAgentWallet`, and writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; use `--check` for no-tx preflight.
+- Current blocker: `IDENTITY_SUBMITTER_ADDRESS=ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `0` ALGO; fund with `algokit dispenser fund --receiver ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU --amount 2 --whole-units`, then rerun `npm run setup:testnet-identity -- --check` and `npm run register:testnet-agents`.
+- `npm start` no longer runs registration. It calls `applyKnownAgentRegistrations(ctx)` after card ingestion so `GET /api/agents` + `GET /api/services` expose `registry_agent_id` only when evidence is recorded.
 
 **What teammates can consume:**
 
@@ -123,6 +125,8 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - `registerServiceLocal(ctx,input)` stores resolved MCP/A2A services; `quote` is optional for card-backed endpoint facts
 - `parseAgentCard(raw, agent_uri)` validates clean ARC-8004 card shape: `type`, active/x402 flags, `MCP`, and `algorand-wallet`
 - `ingestAgentCardsFromManifest(ctx)` fetches manifest/cards, falls back to direct Honest/Cheat URLs, and replaces seeded `diligence.report` on success; card-backed services store endpoint facts only; full fetch failure keeps seeded fallback
+- `knownAgentRegistrationTargets(ctx)` returns exactly card-backed Honest/Cheat targets; seeded fallback returns none
+- `applyKnownAgentRegistrations(ctx)` maps committed evidence into `registryAgentIdFor(agent_id)` without on-chain writes
 - `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload with router-derived quote snapshots; no `challenge_*` fields
 - `/api/route` creates active quotes/payment requirements at route time and routes by `service_id`; Honest quotes 0.1/requests 0.1, Cheat quotes 0.04/requests 0.06 through the demo adapter
 - `ActiveQuote` now includes `observed_at` + `expires_at`
@@ -155,7 +159,7 @@ ctx.routeStore.set(route_id, {
 - On-chain registries deploy via new `contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
 - **Feedback helper available but not called by quote validation:** `onchain.ts::maybeWriteReputation` remains the env-gated Reputation `giveFeedback` helper for future user feedback. `/api/validate` no longer writes quote drift through `giveFeedback`.
 - ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`.
-- 🟡 `onchain.ts` feedback helper: `maybeWriteReputation(ctx, agent_id, response, paymentTxid)` passes `paymentTxid` (real x402 settlement txid → 32 bytes via base32 decode) + a random `nonce`, and uses the Identity `registry_agent_id` from `registerSeededAgents` when present. Keep this for explicit user feedback, not automatic quote validation.
+- 🟡 `onchain.ts` feedback helper: `maybeWriteReputation(ctx, agent_id, response, paymentTxid)` passes `paymentTxid` (real x402 settlement txid → 32 bytes via base32 decode) + a random `nonce`, and uses the Identity `registry_agent_id` loaded from known-agent evidence when present. Keep this for explicit user feedback, not automatic quote validation.
 - 🟢 Router glue tests cover quote-vs-settlement validation, reputation score math, correction tags, reroute hook, and per-agent isolation. Run with `npm test`. Pure logic, no network.
 
 **What's ready for you to consume:**
@@ -208,4 +212,4 @@ POST /api/agents/register { name, agent_uri, address }
      → { agent_id, registry_agent_id?, tx_id, app_id, owner, agent_uri, explorer, on_chain }
 GET  /api/agents → { network, app_id, agents:[{ agent_id, registry_agent_id?, agent_uri, agent_wallet, services }] }
 ```
-Server: `routes.agents.ts` + `identity-onchain.ts` (env-gated `registerAgent`/`registerSeededAgents`, mirrors `onchain.ts`). On boot, seeded agents are registered on-chain + mapped `agent_id → registry_agent_id` when `IDENTITY_APP_ID` (`764031067`, from `.env.demo`) + a funded private `IDENTITY_SUBMITTER_MNEMONIC` are set; otherwise no-op. Mounted via `app.route('/', makeAgentRoutes(ctx))`. Uses Reza's `register(string,(string,byte[])[])→uint64` ABI (verified against the generated client). Env vars: `.env.demo` + optional `.env`. Spec: `docs/specs/TESTNET_AGENT_REGISTRATION_SPEC_2026-06-06.md`. _(No-impersonation reconciled with Pera: `setCaller` honors a real connected wallet, else pins to the fixed operator wallet.)_
+Server: `routes.agents.ts` + `identity-onchain.ts` (`registerAgent` for manual POST, `npm run register:testnet-agents` for Honest/Cheat batch). On boot, no on-chain registration runs; known-agent evidence is mapped from `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` into `agent_id → registry_agent_id`. Mounted via `app.route('/', makeAgentRoutes(ctx))`. Uses Reza's `register(string,(string,byte[])[])→uint64` ABI (verified against the generated client). Env vars: `.env.demo` + optional `.env`. Spec: `docs/specs/TESTNET_AGENT_REGISTRATION_SPEC_2026-06-06.md`. _(No-impersonation reconciled with Pera: `setCaller` honors a real connected wallet, else pins to the fixed operator wallet.)_

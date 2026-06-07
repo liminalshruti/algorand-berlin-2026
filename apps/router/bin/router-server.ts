@@ -10,7 +10,7 @@ import {
 } from "../src/seed.js";
 import { makeValidationRoutes } from "../src/routes.validation.js";
 import { makeAgentRoutes } from "../src/routes.agents.js";
-import { registerSeededAgents } from "../src/identity-onchain.js";
+import { applyKnownAgentRegistrations } from "../src/identity-onchain.js";
 import { ingestAgentCardsFromManifest } from "../src/agents.js";
 
 function logIdentityRegistrationPreflight() {
@@ -24,13 +24,13 @@ function logIdentityRegistrationPreflight() {
 
   if (!submitter) {
     console.warn(
-      `identity registration disabled for app ${appId}: missing IDENTITY_SUBMITTER_MNEMONIC; ` +
-      "run `npm run setup:testnet-identity` and fund the printed address."
+      `identity registration script disabled for app ${appId}: missing IDENTITY_SUBMITTER_MNEMONIC; ` +
+      "run `npm run setup:testnet-identity` and fund the printed address before `npm run register:testnet-agents`."
     );
     return;
   }
 
-  console.log(`identity registration enabled: app_id=${appId}`);
+  console.log(`identity registration script configured: app_id=${appId}`);
 }
 
 async function main() {
@@ -43,12 +43,13 @@ async function main() {
   if (cardIngestion.status === "loaded") {
     console.log(`loaded ${cardIngestion.cards.length} TestNet agent cards`);
   }
+  const mappedRegistrations = applyKnownAgentRegistrations(ctx);
+  if (mappedRegistrations > 0) {
+    console.log(`loaded ${mappedRegistrations} known TestNet agent registrations`);
+  }
   logIdentityRegistrationPreflight();
   console.log("funding agents...");
   await fundAgents(ctx);
-  // Best-effort: register the current agents on-chain (Identity registry) and map
-  // agent_id -> registry_agent_id. No-op unless IDENTITY_APP_ID + submitter mnemonic are set.
-  await registerSeededAgents(ctx);
   const app = new Hono();
   app.use("*", cors());
 

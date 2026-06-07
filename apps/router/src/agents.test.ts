@@ -14,6 +14,8 @@ import {
   registerAgentLocal,
   registerServiceLocal,
 } from './agents.js';
+import { applyKnownAgentRegistrations, type KnownAgentRegistrationRecord } from './identity-onchain.js';
+import { knownAgentRegistrationTargets } from './known-agents.js';
 import { makeAgentRoutes } from './routes.agents.js';
 import { seedAgents } from './seed.js';
 
@@ -314,6 +316,26 @@ test('manifest ingestion replaces seeded diligence agents with card-backed Hones
   assert.equal(body.agents.every((agent) => agent.services[0].source === 'agent_uri'), true);
 });
 
+test('known-agent registration targets include only card-backed Honest/Cheat agents', async () => {
+  const fixtures = await cardFixtures();
+  const ctx = mockCtx();
+  seedAgents(ctx);
+
+  assert.deepEqual(knownAgentRegistrationTargets(ctx), []);
+
+  await ingestAgentCardsFromManifest(ctx, {
+    fetchJson: fixtureFetch(fixtures),
+  });
+
+  const targets = knownAgentRegistrationTargets(ctx);
+  assert.deepEqual(targets.map((target) => target.name), ['Honest Agent', 'Cheat Agent']);
+  assert.deepEqual(targets.map((target) => target.agent_uri), [HONEST_CARD_URI, CHEAT_CARD_URI]);
+  assert.deepEqual(targets.map((target) => target.agent_wallet), [
+    'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY',
+    '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ',
+  ]);
+});
+
 test('manifest ingestion failure or disabled mode preserves seeded fallback', async () => {
   const failedCtx = mockCtx();
   seedAgents(failedCtx);
@@ -395,6 +417,68 @@ test('GET /api/services returns grouped diligence catalog without hidden cheat b
   assert.deepEqual(body.services[0].options.map((option) => option.quote.amount).sort(), [0.04, 0.1]);
   assert.equal(body.services[0].options.every((option) => option.trust.reputation === 50), true);
   assert.equal(JSON.stringify(body).includes('challenge'), false);
+});
+
+test('known-agent registration evidence adds registry_agent_id to public catalogs', async () => {
+  const fixtures = await cardFixtures();
+  const ctx = mockCtx();
+  seedAgents(ctx);
+  await ingestAgentCardsFromManifest(ctx, { fetchJson: fixtureFetch(fixtures) });
+
+  const records: KnownAgentRegistrationRecord[] = [
+    {
+      name: 'Honest Agent',
+      agent_uri: HONEST_CARD_URI,
+      agent_wallet: 'J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY',
+      registry_agent_id: '501',
+      app_id: 764031067,
+      owner: 'OWNER',
+      tx_id: 'REGISTER-HONEST',
+      wallet_tx_id: 'WALLET-HONEST',
+      wallet_set_error: null,
+      explorer: 'https://example.com/REGISTER-HONEST',
+      wallet_explorer: 'https://example.com/WALLET-HONEST',
+      registered_at: '2026-06-07T00:00:00.000Z',
+      status: 'registered',
+    },
+    {
+      name: 'Cheat Agent',
+      agent_uri: CHEAT_CARD_URI,
+      agent_wallet: '3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ',
+      registry_agent_id: '502',
+      app_id: 764031067,
+      owner: 'OWNER',
+      tx_id: 'REGISTER-CHEAT',
+      wallet_tx_id: 'WALLET-CHEAT',
+      wallet_set_error: null,
+      explorer: 'https://example.com/REGISTER-CHEAT',
+      wallet_explorer: 'https://example.com/WALLET-CHEAT',
+      registered_at: '2026-06-07T00:00:00.000Z',
+      status: 'registered',
+    },
+  ];
+  assert.equal(applyKnownAgentRegistrations(ctx, records), 2);
+
+  const router = makeAgentRoutes(ctx);
+  const agentsRes = await router.request('/api/agents');
+  const agentsBody = await agentsRes.json() as {
+    agents: Array<{ name: string; registry_agent_id?: string }>;
+  };
+  assert.equal(agentsRes.status, 200);
+  assert.deepEqual(
+    agentsBody.agents.map((agent) => [agent.name, agent.registry_agent_id]).sort(),
+    [['Cheat Agent', '502'], ['Honest Agent', '501']],
+  );
+
+  const servicesRes = await router.request('/api/services');
+  const servicesBody = await servicesRes.json() as {
+    services: Array<{ options: Array<{ agent: { name: string }; registry_agent_id?: string }> }>;
+  };
+  assert.equal(servicesRes.status, 200);
+  assert.deepEqual(
+    servicesBody.services[0].options.map((option) => [option.agent.name, option.registry_agent_id]).sort(),
+    [['Cheat Agent', '502'], ['Honest Agent', '501']],
+  );
 });
 
 test('card-backed route options remain payable and preserve cheat quote drift', async () => {

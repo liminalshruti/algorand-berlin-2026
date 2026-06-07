@@ -1,0 +1,37 @@
+{
+  "network": "testnet",
+  "app_id": 764031067,
+  "updated_at": null,
+  "agents": [
+    {
+      "name": "Honest Agent",
+      "agent_uri": "https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json",
+      "agent_wallet": "J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY",
+      "registry_agent_id": null,
+      "app_id": null,
+      "owner": null,
+      "tx_id": null,
+      "wallet_tx_id": null,
+      "wallet_set_error": null,
+      "explorer": null,
+      "wallet_explorer": null,
+      "registered_at": null,
+      "status": "pending"
+    },
+    {
+      "name": "Cheat Agent",
+      "agent_uri": "https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json",
+      "agent_wallet": "3VLE26AHVE5E5N3QTRJTMG2EEY5J2CY627G73MEARSHEII3DLCPM4H37BQ",
+      "registry_agent_id": null,
+      "app_id": null,
+      "owner": null,
+      "tx_id": null,
+      "wallet_tx_id": null,
+      "wallet_set_error": null,
+      "explorer": null,
+      "wallet_explorer": null,
+      "registered_at": null,
+      "status": "pending"
+    }
+  ]
+}
