@@ -64,8 +64,8 @@ One line in Beat 5 ("the router's pick score reads the registry's earned score")
 ## Honesty (criterion 7 — precision, not apology)
 - **Live on TestNet:** x402 settlement + hash-only ledger anchoring (real txids; explorer links resolve to `lora.algokit.io/testnet`).
 - **Deployed + cross-linked on TestNet (done, not a milestone):** the three ARC-8004 registries — Identity `764031067`, Reputation `764031363` (x402-coupled feedback), Validation `764031094`; code-hash verifiable (`docs/status/DEPLOYED.md`).
-- **In the router today (on-chain next):** the demo's automatic validation, reputation/reroute, and user-feedback separation run in the router's in-memory state and are *anchored* hash-only — say "anchored," not "computed on-chain." That wire-up is the roadmap.
-- **Demo payment is router-settled;** no-custody forwarding (client pays the vendor directly) is the next wire-up.
+- **Proven on TestNet (audit trail):** a full register → pay → review → validate trail across three independent wallets — `audit/LATEST.md`; every txid resolves on the explorer.
+- **Proof path wired (router):** `/api/challenge → /api/payment-proof → /api/feedback` verify a real confirmed payment and write ValidationRegistry + `giveFeedback` (env-gated, hash-anchor fallback). The **on-stage UI** drives the router-settled shim and anchors hash-only — say "anchored," not "computed on-chain"; surfacing the proof path in the UI is the final wire-up.
 - ERC-8004-**shaped**, Algorand-native; "validated reputation" = active quote vs x402 charge + future attestations — not a general oracle.
 
 ## Video production notes (≤3-min recording)

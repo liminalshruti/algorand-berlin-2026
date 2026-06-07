@@ -2,7 +2,7 @@
 
 6 slides (5 core + close). Each: **on-slide text** (terse — speak the rest) · **visual** ·
 **speaker note**. Design: Liminal frontier palette (near-black bg, warm-cream text,
-clarity-violet accent), Geist + Geist Mono + a serif display. Keep ≤12 words per line on screen.
+electric triad — Liminal pink `#E90095` · cerulean blue `#197EEB` · electric green `#70F32F`; full visual spec in `DECK_DESIGN_HANDOFF.md`), Geist + Geist Mono + a serif display. Keep ≤12 words per line on screen.
 
 **Narrative flow:** Hook → Why now → Solution → DEMO → Why it's defensible → Vision · Roadmap · Ask.
 The demo is the center of gravity — everything before earns the right to show it, everything after
@@ -60,6 +60,7 @@ L2  Earned-trust       ←  the layer we built: payment proof → reputation
 L1  Algorand              sub-cent · instant-final · same-ledger proof
 ```
 - **Deployed + cross-linked on TestNet** — verify the code hashes yourself.
+- **Confirmed on TestNet:** a full register → pay → review → validate audit trail across three independent wallets (`audit/LATEST.md`).
 **Visual:** the stack, L2 in clarity-violet; three app-id chips → explorer (`764031067 / 764031363 / 764031094`).
 **Note:** "x402 is the rail; ERC-8004 names the registries but not what makes an entry *earned* — that discipline is our layer. Same-ledger proof is the moat: proof-of-payment is native, not a foreign hash you have to trust. A marketplace won't build this — they rank on their own take-rate; we're the neutral layer above them. And trust is the first primitive of Liminal's larger control plane."
 
@@ -69,8 +70,8 @@ L1  Algorand              sub-cent · instant-final · same-ledger proof
 **On slide:**
 - **The wedge is trust; the company is the control plane.**
 - Govern your agents *and* the agents they buy from — inside the org and across org boundaries.
-- **Live today:** registries deployed · x402 settlement · catch → drop → reroute · one review per proof.
-- **Next (highest leverage):** no-custody x402 forwarding · on-chain ranking · network-wide discovery.
+- **Live today:** registries deployed + a real TestNet audit trail · proof-backed challenge→payment-proof→feedback wired · catch → drop → reroute.
+- **Next (highest leverage):** surface the proof path + client-signed on-chain write in the UI · on-chain ranking · network-wide discovery.
 - **Ask:** first real routing volume · design partners · backing to land the three wire-ups.
 - *ERC-8004 gives agents a passport. We give the marketplace a conscience.*
 **Visual:** tagline large; the 3-step roadmap as a short arrow; small repo/QR.
