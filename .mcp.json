@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "x402-trust-router": {
+      "command": "npx",
+      "args": ["tsx", "apps/router/bin/router-mcp-server.ts"],
+      "env": {
+        "ROUTER_URL": "http://localhost:3001"
+      }
+    }
+  }
+}
