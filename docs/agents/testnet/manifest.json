@@ -1,0 +1,12 @@
+{
+  "cards": [
+    {
+      "name": "Honest Agent",
+      "agent_uri": "https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json"
+    },
+    {
+      "name": "Cheat Agent",
+      "agent_uri": "https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json"
+    }
+  ]
+}

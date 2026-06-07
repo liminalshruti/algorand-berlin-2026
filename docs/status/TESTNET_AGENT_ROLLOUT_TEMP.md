@@ -46,9 +46,10 @@ router is no longer only seeded by `seed.ts`, without taking on full ARC-8004/MC
 
 ## Current Repo State
 
-- Current agents are seeded in memory by `apps/router/src/seed.ts`.
-- Current live discovery endpoints are `GET /api/agents` and `POST /api/route`.
-- There is no `GET /api/services` or `GET /api/tools` yet.
+- Current agents are seeded in memory by `apps/router/src/seed.ts` as fallback.
+- Router boot attempts Honest/Cheat card ingestion from the raw GitHub URL for `docs/agents/testnet/manifest.json`, then falls back to the direct Honest/Cheat card URLs; fetch failure is non-fatal.
+- Current live discovery endpoints are `GET /api/agents`, `GET /api/services`, and `POST /api/route`.
+- There is no `GET /api/tools` yet.
 - `/api/pay` is router-settled through the shared demo payer.
 - `/api/validate` currently compares `PaymentResult.settled <= PaymentResult.quoted`.
 - `apps/router/src/identity-onchain.ts` has env-gated Identity registration helpers.
@@ -84,6 +85,18 @@ Identity registration caveat:
   so registry owner/wallet will be the submitter unless registration is Pera-signed or the owner later
   calls `setAgentWallet(registry_agent_id, PeraAddress)`.
 - Local router/card ingestion can still use the Pera wallets as canonical `agent_wallet`/`pay_to`.
+
+## Canonical Card Artifacts
+
+- Manifest: `docs/agents/testnet/manifest.json`
+  - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
+- Honest Agent: `docs/agents/testnet/honest-agent.json`
+  - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
+- Cheat Agent: `docs/agents/testnet/cheat-agent.json`
+  - `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
+
+Status: Honest/Cheat raw GitHub URLs resolve and return the expected cards. Manifest URL is currently
+404, so runtime falls back to the direct Honest/Cheat card URLs.
 
 ## Must Read First
 
@@ -312,12 +325,12 @@ Update this log after each phase before advancing.
 
 | Phase | Status | Validation evidence | Notes |
 |---|---|---|---|
-| Phase 0 - Baseline, Hosting, And Registration Decision | PENDING |  |  |
-| Phase 1 - Card Shape, Fixtures, And Parser | PENDING |  |  |
-| Phase 2 - Resolver And Local Ingestion | PENDING |  |  |
-| Phase 3 - Grouped Services Catalog And Route Compatibility | PENDING |  |  |
-| Phase 4 - TestNet Registration Evidence | PENDING |  |  |
-| Phase 5 - End-To-End Verification And Handoff | PENDING |  |  |
+| Phase 0 - Baseline, Hosting, And Registration Decision | PASS | Must-read docs read; TestNet app ids confirmed in `docs/status/DEPLOYED.md`; canonical raw GitHub URL shape recorded above. | Registration path: backend-signed `register` then generated `setAgentWallet(uint256,address)void`; no TestNet-spending command run. |
+| Phase 1 - Card Shape, Fixtures, And Parser | PASS | `docs/agents/testnet/{honest-agent,cheat-agent}.json`; `agents.ts::parseAgentCard`; `npm test` pass. | Parser requires ARC-8004 `type`, active card, MCP, `algorand-wallet`, `x402Support:true`, proxy quote, and `quote.pay_to` match. |
+| Phase 2 - Resolver And Local Ingestion | PASS | `agents.ts::resolveCardsFromManifest` + `resolveDefaultTestnetCards` + `ingestAgentCardsFromManifest`; tests cover success, manifest-404 direct URL fallback, failure fallback, disabled fallback, idempotency; live resolver check returned Honest/Cheat loaded. | Successful card ingestion replaces seeded `diligence.report`; full fetch failure keeps seeded demo path. |
+| Phase 3 - Grouped Services Catalog And Route Compatibility | PASS | `GET /api/services`; tests cover grouped catalog, quote/trust metadata, no hidden challenge fields, route-by-service compatibility; `npm test`; `npm run check-types`. | `ActiveQuote` includes `observed_at` and `expires_at`; Cheat drift remains a local demo override. |
+| Phase 4 - TestNet Registration Evidence | BLOCKED | Honest/Cheat raw GitHub card URLs verified over HTTPS; live default ingestion loads both direct URLs; manifest URL currently 404; env check shows `IDENTITY_APP_ID` absent in current process. | No registration command run. Set `IDENTITY_APP_ID=764031067`, keep submitter funded, then register and record txids. |
+| Phase 5 - End-To-End Verification And Handoff | PASS | `npm test` pass; `npm run check-types` pass; `INTEGRATION_HANDOFF.md` updated. | Live smoke skipped because `npm start` spends TestNet funds and Phase 4 is blocked until registration env is ready. |
 
 ## Implementation Entry Points
 

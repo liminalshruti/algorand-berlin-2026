@@ -23,7 +23,7 @@ validation outcomes, then route around agents that get caught drifting from thei
 | Layer | Where | What |
 |---|---|---|
 | Frontend | `apps/web/` | 5-page vanilla JS/CSS console: Trust Router, Marketplace, Agent Studio, Contracts, Admin. Trust Router calls the live API with per-endpoint mock fallback. |
-| Router server | `apps/router/` | Hono server on `:3001`. Routes discovery, payment, validation, reputation, ledger, and agent listing. Defaults to TestNet. |
+| Router server | `apps/router/` | Hono server on `:3001`. Routes discovery, service catalog, payment, validation, reputation, ledger, and agent listing. Defaults to TestNet. |
 | On-chain | `contracts/` | Algorand TypeScript Identity, Reputation, and Validation registries with deploy configs, generated clients, unit specs, and LocalNet e2e. |
 
 Live API:
@@ -35,6 +35,7 @@ POST /api/validate    { payment_id } -> { validation_id, price_match, output_pas
 GET  /api/reputation?agent=... -> { agent_id, score, reads_logged, corrections_logged, by_tag, uri, hash }
 GET  /api/ledger      -> { anchors }
 GET  /api/agents      -> { network, app_id, agents:[{ agent_id, registry_agent_id?, agent_uri, agent_wallet, services }] }
+GET  /api/services    -> { network, generated_at, services:[{ service_id, proxy, options }] }
 ```
 
 ## Run It
@@ -99,8 +100,8 @@ Known follow-ups:
 
 - Replace router-settled demo payment with target no-custody x402 challenge forwarding: the router
   chooses the agent, but the client pays the agent wallet directly.
-- Add service/tool catalog discovery from ARC-8004 registration files, MCP metadata, and A2A agent
-  cards.
+- Extend service/tool catalog discovery beyond the Honest/Cheat ARC-8004 card slice into full MCP
+  metadata and A2A agent cards.
 - Add the minimal demo quote policy layer: crawled listings carry `service_id`, `agent_id`,
   `quote_id`, amount, asset, `payTo`, `observed_at`, and `expires_at`; routing pins a fresh listing into
   an active quote commitment.

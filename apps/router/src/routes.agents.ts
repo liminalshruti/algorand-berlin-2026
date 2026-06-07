@@ -8,6 +8,7 @@ import {
   DEFAULT_SERVICE_ID,
   agentId,
   agentRow,
+  buildServicesCatalog,
   candidateFor,
   discoverServices,
   discoveryOptions,
@@ -44,6 +45,7 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
       agent_id: id,
       agentURI: agent_uri,
       metadata: [['name', utf8(name)]],
+      agentWallet: wallet,
     });
 
     const local = registerAgentLocal(ctx, {
@@ -59,16 +61,21 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
       endpoint: `${agent_uri.replace(/\/$/, '')}/mcp`,
       name: 'Diligence report',
       quote: 0.1,
+      source: 'manual',
     });
 
     return {
       agent_id: local.id,
       registry_agent_id: onchain?.registryAgentId ?? null,
       tx_id: onchain?.txid ?? '',
+      wallet_tx_id: onchain?.walletTxid ?? '',
+      wallet_set_error: onchain?.walletSetError ?? '',
       app_id: Number(process.env.IDENTITY_APP_ID || 0),
       owner: onchain?.owner ?? '(local)',
+      agent_wallet: local.agent_wallet,
       agent_uri: local.agent_uri,
       explorer: onchain ? ctx.deps.explorerFor(onchain.txid) : null,
+      wallet_explorer: onchain?.walletTxid ? ctx.deps.explorerFor(onchain.walletTxid) : null,
       on_chain: Boolean(onchain),
     };
   }
@@ -83,6 +90,10 @@ export function makeAgentRoutes(ctx: Ctx): Hono {
       app_id: Number(process.env.IDENTITY_APP_ID || 0),
       agents,
     });
+  });
+
+  app.get('/api/services', (c) => {
+    return c.json(buildServicesCatalog(ctx, registryAgentIdFor));
   });
 
   app.post('/api/route', async (c) => {

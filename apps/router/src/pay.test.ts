@@ -34,6 +34,8 @@ function quote(agent_id: string, quote_id: string, amount: number): ActiveQuote 
     amount,
     asset: "ALGO",
     pay_to: agent_id === "agent-honest" ? honestAgent.agent_wallet : cheatAgent.agent_wallet,
+    observed_at: "2026-06-07T00:00:00.000Z",
+    expires_at: "2026-06-07T00:05:00.000Z",
   };
 }
 

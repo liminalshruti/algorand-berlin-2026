@@ -11,15 +11,22 @@ import {
 import { makeValidationRoutes } from "../src/routes.validation.js";
 import { makeAgentRoutes } from "../src/routes.agents.js";
 import { registerSeededAgents } from "../src/identity-onchain.js";
+import { ingestAgentCardsFromManifest } from "../src/agents.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
 async function main() {
   const ctx = await buildContext();
   seedAgents(ctx);
+  const cardIngestion = await ingestAgentCardsFromManifest(ctx, {
+    warn: (message) => console.warn(message),
+  });
+  if (cardIngestion.status === "loaded") {
+    console.log(`loaded ${cardIngestion.cards.length} TestNet agent cards`);
+  }
   console.log("funding agents...");
   await fundAgents(ctx);
-  // Best-effort: register the seeded agents on-chain (Identity registry) and map
+  // Best-effort: register the current agents on-chain (Identity registry) and map
   // agent_id -> registry_agent_id. No-op unless IDENTITY_APP_ID + submitter mnemonic are set.
   await registerSeededAgents(ctx);
   const app = new Hono();
@@ -65,7 +72,7 @@ async function main() {
     console.log(`\nrouter-server :${PORT}  network=${ctx.net}`);
     console.log(`payer:   ${ctx.session.payer.addr}\n`);
 
-    console.log("--- seeded agents ---");
+    console.log("--- discovered agents ---");
     for (const agent of ctx.agents.values()) {
       const service = ctx.services.find((s) => s.agent_id === agent.id);
       console.log(
@@ -80,6 +87,7 @@ async function main() {
     console.log("  GET  /api/reputation?agent=");
     console.log("  GET  /api/ledger");
     console.log("  GET  /api/agents");
+    console.log("  GET  /api/services");
     console.log("  POST /api/agents/register { name, agent_uri, address }");
   });
 }

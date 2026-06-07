@@ -5,11 +5,11 @@ Everyone's Claude should read this before writing anything.
 
 ## Current state (origin/main) — core loop landed ✅
 
-- **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`.
+- **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/services`.
 - **On-chain:** ARC-8004 Identity + Reputation + Validation registries (Algorand TS) with deploy configs, unit specs, and `scripts/localnet-e2e.ts`.
 - **✅ DEPLOYED ON TESTNET (wired):** Identity `764031067`, Reputation `764031363`, Validation `764031094` — both Reputation & Validation are `initialize()`'d so their global `idApp` = `764031067` (verified on-chain). Reputation `764031363` ships the x402 `giveFeedback` coupling (supersedes earlier `764031075`). Deployer/creator = shared payer `24E3…`. **See `docs/status/DEPLOYED.md`** for code hashes + creation txids; app ids also in `apps/web/deployed.testnet.json`; UI (`arc8004.js`) consumes them. Redeploy: `npm run deploy:testnet` (orchestrator: `scripts/deploy-testnet.ts`, idempotent via indexer).
 - **Frontend:** 5 pages + a left sidebar (Trust Router · Marketplace · Agent Studio · Contracts · Admin) under `apps/web/`.
-- **Open follow-ups:** target discovery proxy/tool catalog (ARC-8004 + MCP + A2A) is not wired; minimal quote policy layer is not wired (`quote_id`, amount, asset, `payTo`, `observed_at`, `expires_at`); target no-custody x402 flow is not wired (`/api/pay` currently settles through the router demo payer); automatic validation for active quote vs challenge drift after settlement is not wired; user feedback is separate from validation; current env-gated `/api/validate` → `giveFeedback` bridge must be split so hidden-fee validation is not modeled as user feedback; contract-side x402 `giveFeedback` coupling is landed + deployed (Reputation `764031363`) but `onchain.ts` still needs verified wiring for `paymentTxid`/`nonce`; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
+- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog slice is wired; full chain scan/MCP tool-list/A2A discovery is not wired; target no-custody x402 flow is not wired (`/api/pay` currently settles through the router demo payer); automatic validation for active quote vs challenge drift after settlement is not wired; user feedback is separate from validation; current env-gated `/api/validate` → `giveFeedback` bridge must be split so hidden-fee validation is not modeled as user feedback; contract-side x402 `giveFeedback` coupling is landed + deployed (Reputation `764031363`) but `onchain.ts` still needs verified wiring for `paymentTxid`/`nonce`; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
 
 ---
 
@@ -78,12 +78,12 @@ npm start                # funds agents automatically, prints option_ids on boot
 
 ---
 
-## Reza — Identity Registry + Demo Discovery + Ranking ✅ DEMO DONE / TOOL CATALOG OPEN
+## Reza — Identity Registry + Demo Discovery + Ranking 🟡 CARD CATALOG WIRED / FULL DISCOVERY OPEN
 
-`POST /api/route` + `GET /api/agents` live (`routes.agents.ts` + `agents.ts`, with
-`agents.test.ts`); current discovery is seeded identity + resolved MCP service only. Target discovery
-proxy/tool catalog from ARC-8004 agent URIs, MCP metadata, and A2A agent cards is open. Current ranking
-is in `agents.ts::discoveryOptions` (`ranking.ts` is an unused stub). On-chain Identity registry below.
+`POST /api/route`, `GET /api/agents`, and `GET /api/services` live (`routes.agents.ts` + `agents.ts`,
+with `agents.test.ts`). Discovery now has seeded fallback plus Honest/Cheat ARC-8004 card ingestion from
+`docs/agents/testnet/manifest.json` or direct canonical card URLs; full chain scan, MCP tool-list parsing, and A2A cards remain open.
+Current ranking is in `agents.ts::discoveryOptions` (`ranking.ts` is an unused stub). On-chain Identity registry below.
 
 **Chain identity registry:**
 
@@ -101,15 +101,28 @@ is in `agents.ts::discoveryOptions` (`ranking.ts` is an unused stub). On-chain I
 
 ```
 GET  /api/agents → { network, app_id, agents:[{ agent_id, registry_agent_id?, agent_uri, agent_wallet, services }] }
+GET  /api/services → { network, generated_at, services:[{ service_id, name, description, proxy, options }] }
 POST /api/route { task, service_id? } → { route_id, task, service_id, options:[RouteOption] }
 ```
+
+**Honest/Cheat card URLs:**
+
+- Manifest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/manifest.json`
+- Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
+- Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
+- URL status: Honest/Cheat card URLs resolve over HTTPS; manifest URL currently 404, so runtime falls back to direct card URLs.
+- TestNet registration blocker: current env has no `IDENTITY_APP_ID=764031067`.
 
 **What teammates can consume:**
 
 - `agentId(net,address)` → `algorand:{net}:{address}`
 - `registerAgentLocal(ctx,input)` stores identity-only `Agent` in `ctx.agents`
 - `registerServiceLocal(ctx,input)` stores resolved MCP/A2A services and quote templates
+- `parseAgentCard(raw, agent_uri)` validates ARC-8004 card shape + `quote.pay_to == algorand-wallet`
+- `ingestAgentCardsFromManifest(ctx)` fetches manifest/cards, falls back to direct Honest/Cheat URLs, and replaces seeded `diligence.report` on success; full fetch failure keeps seeded fallback
+- `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload; no `challenge_*` fields
 - `/api/route` creates active quotes and routes by `service_id`
+- `ActiveQuote` now includes `observed_at` + `expires_at`
 - `/api/route` stores:
 
 ```ts

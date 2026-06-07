@@ -48,6 +48,7 @@ export function seedAgents(ctx: Ctx): void {
       name: 'Diligence report',
       quote: config.quote,
       asset: 'ALGO',
+      source: 'seed',
       challenge_amount: config.challenge_amount,
     });
   }

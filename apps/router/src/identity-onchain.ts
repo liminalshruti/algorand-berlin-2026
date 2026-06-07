@@ -22,9 +22,12 @@ import type { Ctx } from './contract.js';
 export interface RegisteredAgent {
   registryAgentId: string; // on-chain IdentityRegistry uint64
   txid: string;
+  walletTxid?: string;
+  walletSetError?: string;
   appId: number;
   owner: string;
   agentURI: string;
+  agentWallet?: string;
 }
 
 // router agent_id → on-chain registry_agent_id, for this server run.
@@ -41,6 +44,7 @@ function utf8(s: string): Uint8Array {
 interface RegisterInput {
   agent_id?: string;                     // optional router key to remember the registry id under
   agentURI: string;
+  agentWallet?: string;
   metadata: Array<[string, Uint8Array]>; // [key, value][]
 }
 
@@ -71,7 +75,35 @@ export async function registerAgent(ctx: Ctx, input: RegisterInput): Promise<Reg
     const txid = res?.txIds?.[0] ?? res?.transaction?.txID?.() ?? '';
     const owner = submitter.addr.toString();
     if (registryAgentId && input.agent_id) registryAgentIdByAgentId.set(input.agent_id, registryAgentId);
-    return txid ? { registryAgentId, txid, appId, owner, agentURI: input.agentURI } : null;
+    if (!txid) return null;
+
+    let walletTxid: string | undefined;
+    let walletSetError: string | undefined;
+    if (registryAgentId && input.agentWallet) {
+      try {
+        const walletRes = await client.send.setAgentWallet({
+          sender: submitter.addr,
+          args: {
+            tokenId: BigInt(registryAgentId),
+            wallet: input.agentWallet,
+          },
+        });
+        walletTxid = walletRes?.txIds?.[0] ?? walletRes?.transaction?.txID?.() ?? undefined;
+      } catch (error) {
+        walletSetError = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    return {
+      registryAgentId,
+      txid,
+      ...(walletTxid ? { walletTxid } : {}),
+      ...(walletSetError ? { walletSetError } : {}),
+      appId,
+      owner,
+      agentURI: input.agentURI,
+      ...(input.agentWallet ? { agentWallet: input.agentWallet } : {}),
+    };
   } catch (_) {
     return null;                                             // best-effort: never break boot/loop
   }
@@ -86,11 +118,16 @@ export async function registerSeededAgents(ctx: Ctx): Promise<void> {
     const out = await registerAgent(ctx, {
       agent_id: agent.id,
       agentURI: agent.agent_uri,
+      agentWallet: agent.agent_wallet,
       metadata: [['name', utf8(agent.name)]],
     });
     if (out) {
       // eslint-disable-next-line no-console
-      console.log(`  registered on-chain: ${agent.name} -> registry_agent_id=${out.registryAgentId} tx=${out.txid}`);
+      console.log(
+        `  registered on-chain: ${agent.name} -> registry_agent_id=${out.registryAgentId} tx=${out.txid}` +
+        `${out.walletTxid ? ` wallet_tx=${out.walletTxid}` : ''}` +
+        `${out.walletSetError ? ` wallet_set_error=${out.walletSetError}` : ''}`,
+      );
     }
   }
 }

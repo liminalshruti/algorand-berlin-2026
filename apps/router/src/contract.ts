@@ -1,7 +1,7 @@
 // lib/router/contract.ts — shared router wire/state types.
 // Agent:        { id, name, agent_uri, agent_wallet }
-// AgentService: { service_id, agent_id, protocol, endpoint, name }
-// ActiveQuote:  { quote_id, agent_id, service_id, amount, asset, pay_to }
+// AgentService: { service_id, agent_id, protocol, endpoint, name, description?, source? }
+// ActiveQuote:  { quote_id, agent_id, service_id, amount, asset, pay_to, observed_at, expires_at }
 // RouteOption:  { option_id, agent_id, service_id, quote_id, name, price, asset, pay_to, reputation, trust_score }
 // PaymentResult:{ payment_id, agent_id, quote_id, quoted, settled, txids:[], read }
 // Verdict:      { validation_id, price_match:bool, output_pass:bool|null, response:0..100, verdict_txid }
@@ -16,6 +16,7 @@ export const ROUTER_ROUTES = [
   "POST /api/validate",
   "GET /api/reputation",
   "GET /api/ledger",
+  "GET /api/services",
 ];
 
 export type AlgoAccount = {
@@ -36,6 +37,8 @@ export type AgentService = {
   protocol: "MCP" | "A2A";
   endpoint: string;
   name: string;
+  description?: string;
+  source?: "seed" | "agent_uri" | "manual";
 };
 
 export type ActiveQuote = {
@@ -45,6 +48,8 @@ export type ActiveQuote = {
   amount: number;
   asset: string;
   pay_to: string;
+  observed_at: string;
+  expires_at: string;
 };
 
 export type PaymentRequirement = {

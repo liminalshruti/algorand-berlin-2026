@@ -34,17 +34,17 @@ service/tool groups; then routes by requested service instead of a single `regis
 |---|---|---|---|
 | [x] | Demo discovery primitive | Reza | In-memory agents + `register` filter in `agents.ts` |
 | [x] | Define service/tool schema | Reza | Demo fields only: `service_id`, `agent_id`, protocol, endpoint, name |
-| [ ] | Agent registration/intake | Reza | Accept or discover `agent_uri`, agent wallet, MCP/A2A endpoints |
-| [ ] | Parse ARC-8004 agent registration files | Reza | Resolve `agent_uri`; read MCP/A2A `services[]` plus wallet/service endpoints |
-| [ ] | Verify agent payment wallet | Reza/Navid | Resolve `agentWallet` or `algorand-wallet`; ensure x402 `payTo` matches agent wallet |
+| [x] | Agent registration/intake | Reza | Honest/Cheat cards in `docs/agents/testnet/`; `ingestAgentCardsFromManifest` |
+| [x] | Parse ARC-8004 agent registration files | Reza | `agents.ts::parseAgentCard`; reads `services[]`, wallet, `trust_router.proxy_services[]` |
+| [x] | Verify agent payment wallet | Reza/Navid | Parser enforces `quote.pay_to == algorand-wallet`; tests cover mismatch |
 | [ ] | Add MCP capability adapter | Reza | Ingest MCP server metadata/tool list names/descriptions into the shared service schema |
 | [ ] | Add A2A capability adapter | Reza | Ingest A2A agent card capability names/descriptions into the shared service schema |
-| [ ] | Add local/demo agent adapter | Reza | Preserve current seeded agents as one adapter source |
+| [x] | Add local/demo agent adapter | Reza | `seed.ts` fallback tagged `source:"seed"`; card ingestion replaces seeded service on success |
 | [ ] | Semantic grouping | Reza | Cluster/normalize capabilities into available service/tool categories |
-| [ ] | Expose tool catalog endpoint | Reza/Shruti | `GET /api/tools` or `GET /api/services` returns grouped services with agents |
+| [x] | Expose tool catalog endpoint | Reza/Shruti | `GET /api/services` returns grouped services with agents |
 | [ ] | Route by service/tool intent | Reza | `POST /api/route` accepts `service_id` or inferred intent, not only `register` |
-| [ ] | Include trust/payment metadata in catalog | Reza/Shayaun/Navid | Each tool group exposes reputation, quote amount, asset, `payTo`, `agent_id`, and `registry_agent_id` when available |
-| [ ] | Add discovery tests | Reza | ARC-8004/MCP/A2A/local fixtures, grouping, unsupported service, route-by-service |
+| [x] | Include trust/payment metadata in catalog | Reza/Shayaun/Navid | `/api/services` options expose reputation, quote amount, asset, `pay_to`, `agent_id`, `registry_agent_id?` |
+| [x] | Add discovery tests | Reza | `agents.test.ts`: cards, grouping, unsupported service, fallback, route-by-service |
 
 Minimal demo routing metadata: `service_id`, `agent_id`, `quote_id`, amount, asset, `payTo`,
 `observed_at`, `expires_at`. Discovery stores identity/service facts from `agent_uri`; active quotes
@@ -121,16 +121,16 @@ proof.
 
 Run before calling the current build demo-ready:
 
-- [ ] `npm test`
+- [x] `npm test`
 - [ ] `npm run test:contracts`
-- [ ] `npm run check-types`
+- [x] `npm run check-types`
 - [ ] `npm start`
 - [ ] Honest agent: `settled_amount == quoted_amount`
 - [ ] Cheat agent: `settled_amount > quoted_amount`
 - [ ] `/api/validate` lowers the cheat agent reputation
 - [ ] Re-running `/api/route` avoids the caught agent
 - [ ] `/api/ledger` contains hash-only anchors with explorer-ready txids
-- [ ] Discovery catalog groups at least one service with multiple agents
+- [x] Discovery catalog groups at least one service with multiple agents
 - [x] Route request can target a service/tool rather than a register lane
 - [ ] Target flow forwards agent x402 challenge with agent wallet as `payTo`
 - [ ] Quote policy pins a fresh listing into an active quote commitment
