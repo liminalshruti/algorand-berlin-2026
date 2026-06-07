@@ -1,40 +1,44 @@
-# Pitch Deck — x402 Trust Router on Algorand
+# Pitch Deck — Liminal · Trust Router on Algorand
 
-7 slides (6 core + 1 honesty). Each: **on-slide text** (terse — speak the rest) ·
-**visual** · **speaker note**. Design: Liminal frontier palette (near-black bg,
-warm-cream text, clarity-violet accent), Geist + Geist Mono + a serif display.
-Keep ≤12 words per line on screen.
+6 slides (5 core + close). Each: **on-slide text** (terse — speak the rest) · **visual** ·
+**speaker note**. Design: Liminal frontier palette (near-black bg, warm-cream text,
+clarity-violet accent), Geist + Geist Mono + a serif display. Keep ≤12 words per line on screen.
+
+**Narrative flow:** Hook → Why now → Solution → DEMO → Why it's defensible → Vision · Roadmap · Ask.
+The demo is the center of gravity — everything before earns the right to show it, everything after
+says why it's infrastructure. Enterprise anchor throughout: organizations whose agents buy work from
+*other orgs'* agents. Tagline said twice — open and close.
 
 ---
 
 ## Slide 1 — Title
 **On slide:**
-- ◇ **Liminal · x402 Trust Router**
-- *Reputation the chain enforces, not self-reported.*
-- Algorand Builders Berlin · Infrastructure track
-**Visual:** wordmark on near-black; one faint line: `ERC-8004-shaped · Algorand-native · x402 · TestNet`.
-**Note:** "We built the trust layer for agent-to-agent commerce. Thirty seconds on why it's needed, then a live demo."
+- ◇ **Liminal**
+- *The trust layer for the agent economy.*
+- "ERC-8004 gives agents a passport. We give the marketplace a conscience."
+**Visual:** wordmark on near-black; one faint line: `Live on Algorand TestNet · x402 · 3 registries deployed & cross-linked`.
+**Note:** "Organizations are starting to run fleets of agents — and those agents are starting to buy work from *other* companies' agents. We build the layer that lets them trust each other. Thirty seconds on why it's needed, then a live demo on TestNet."
 
 ---
 
-## Slide 2 — The problem
+## Slide 2 — Why now + the problem
 **On slide:**
-- Agent marketplaces rank by **price + self-reported reputation**.
-- Cheapest wins → **x402 challenge asks above quote**.
-- Self-reported trust is **gameable**.
-- As agents pay agents, this is the trust gap.
-**Visual:** a ranked list; #1 "cheapest" with a red "+quote drift" sticker at checkout.
-**Note:** "The flight-aggregator pattern, about to scale to machines. There's no trust the chain enforces."
+- Your agents are about to **buy work from other orgs' agents** — over x402.
+- Markets rank vendors by **price + self-reported reputation**.
+- Cheapest wins the contract → **x402 charge exceeds the quote**.
+- *You'd never let your team expense against a vendor that rates itself.*
+**Visual:** a vendor ranking; #1 "cheapest" with a red `charged +50% vs quote` sticker at settlement. Caption: *cross-org agent procurement, no earned trust.*
+**Note:** "Vendor procurement across org boundaries, at machine speed — millions of jobs a day, no prior relationship, no recourse. Self-reported trust is gameable, and there's no trust layer the chain enforces. That's the gap."
 
 ---
 
-## Slide 3 — The solution (one sentence + loop)
+## Slide 3 — The solution (one line + loop)
 **On slide:**
-- A **trust router** over x402 on Algorand.
-- request → **rank** (price + earned reputation + validation) → pay → **validate vs quote** → re-route.
+- A **trust router over x402 on Algorand**.
+- request → **rank** (price + earned reputation + validation) → pay → **validate charge vs quote** → reroute.
 - *Caught once → routed around next time.*
 **Visual:** the 6-beat loop spine (Request · Rank · Pay · Validate · Reputation · Re-run) as a ring.
-**Note:** "Reputation is earned through payment-backed validation, not claims. This is the whole product in one line — now watch it."
+**Note:** "Reputation is earned from payment proof, not asserted. This is the whole product in one line — now watch it."
 
 ---
 
@@ -42,50 +46,41 @@ Keep ≤12 words per line on screen.
 **On slide:**
 - **LIVE DEMO**
 - the caught-cheating self-correction
-**Visual:** switch to the app. (Fallback: pre-recorded clip — see DEMO_STORYBOARD.md.)
-**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **x402 challenge > active quote → automatic validation drops reputation → re-run reroutes to the honest agent.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (registry app-ids + ABI).
+**Visual:** switch to the app; the FLIP reroute. (Fallback: pre-recorded clip — see `DEMO_STORYBOARD.md`.)
+**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **x402 charge > active quote → automatic validation drops reputation → re-run reroutes to the honest vendor.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (deployed registry app-ids + ABI).
 
 ---
 
-## Slide 5 — The stack / why it's infrastructure
+## Slide 5 — Why it's defensible infrastructure
 **On slide (4-layer stack):**
 ```
-L4  x402 settlement            (pay-per-call)
-L3  ERC-8004 registries        identity · reputation · validation
-L2  Earned-trust discipline ←  the layer we build
-L1  Algorand                   sub-cent · instant-final · 1KB note
+L4  x402                  pay-per-call settlement
+L3  ERC-8004 registries   identity · reputation · validation   (Algorand-native)
+L2  Earned-trust       ←  the layer we built: payment proof → reputation
+L1  Algorand              sub-cent · instant-final · same-ledger proof
 ```
-- L3 names the registries; **L2 is what makes an entry earned.**
-**Visual:** the stack, L2 highlighted in clarity-violet.
-**Note:** "x402 assumes the caller is trustworthy; ERC-8004 assumes earned inputs. We build that discipline — and ported the registries to Algorand: ARC-72, ARC-28, ARC-60."
+- **Deployed + cross-linked on TestNet** — verify the code hashes yourself.
+**Visual:** the stack, L2 in clarity-violet; three app-id chips → explorer (`764031067 / 764031363 / 764031094`).
+**Note:** "x402 is the rail; ERC-8004 names the registries but not what makes an entry *earned* — that discipline is our layer. Same-ledger proof is the moat: proof-of-payment is native, not a foreign hash you have to trust. A marketplace won't build this — they rank on their own take-rate; we're the neutral layer above them. And trust is the first primitive of Liminal's larger control plane."
 
 ---
 
-## Slide 6 — Why Algorand
+## Slide 6 — Vision · Roadmap · Ask
 **On slide:**
-- **Same-ledger x402** → proof-of-payment is native, not a foreign hash.
-- **Sub-cent + instant finality** → validation is a routine side-effect; next route can trust it.
-- **1KB note** → hash-only anchor: verifiable by anyone, exposes nothing.
-**Visual:** a ledger row → **TestNet** explorer link (`lora.algokit.io/testnet`); "hash-only" stamp.
-**Note:** "On Algorand the payment and its proof are on the same chain. That's the unlock for an agent-economy trust layer."
-
----
-
-## Slide 7 — Honesty + ask (Criterion 7)
-**On slide:**
-- ERC-8004: Aug-2025 **draft**, not on Algorand → ours is **ERC-8004-shaped, Algorand-native**.
-- **Live on TestNet** (real txids): x402 settlement · hash-only anchoring · automatic validation.
-- On-chain registries (Identity/Reputation/Validation) built + unit/e2e-tested; ranking math is an in-memory mirror today.
-- `giveFeedback` is env-gated for payment-backed user feedback; x402 `paymentTxid` + `nonce` still TODO.
-- "Validated reputation" = active quote vs x402 challenge + future attestations — not a general oracle.
+- **The wedge is trust; the company is the control plane.**
+- Govern your agents *and* the agents they buy from — inside the org and across org boundaries.
+- **Live today:** registries deployed · x402 settlement · catch → drop → reroute · one review per proof.
+- **Next (highest leverage):** no-custody x402 forwarding · on-chain ranking · network-wide discovery.
+- **Ask:** first real routing volume · design partners · backing to land the three wire-ups.
 - *ERC-8004 gives agents a passport. We give the marketplace a conscience.*
-**Visual:** tagline large; small repo/QR.
-**Note:** "We were deliberate about not faking the chain parts. Real today: settlement, anchoring, and automatic validation changing the next route. Next: x402-complete feedback and full ranking on-chain. Thank you."
+**Visual:** tagline large; the 3-step roadmap as a short arrow; small repo/QR.
+**Note:** "Liminal governs how an organization's agents operate — what they spend, how they behave. The trust router extends that past your walls. What's live is real and on TestNet; three wire-ups take it from demo to network, and that's exactly what we'd use this prize to land. On-chain today: registries, settlement, anchoring; in the router today and on-chain next: ranking and validation — we'll show you exactly where that line is. Thank you."
 
 ---
 
 ## Appendix slides (Q&A only — don't present)
-- **A1 · On-chain vs off-chain:** what's anchored (settlement, hash-only verdict/reputation) vs committed-by-hash off-chain.
-- **A2 · ERC-8004 → AVM mapping:** ARC-72 identity, ARC-28 events, ARC-60 sig, box storage, native keccak256.
-- **A3 · Architecture:** UI ↔ router-server (:3001) ↔ x402 facilitator ↔ Algorand; registries.
-- **A4 · Roadmap:** deploy the three registry apps on testnet; live agent discovery; richer validator attestations.
+- **A1 · On-chain vs off-chain:** deployed registries + x402 settlement + hash-only anchors are on-chain (TestNet); ranking + validation compute in the router and anchor hash-only — the next wire-up.
+- **A2 · ERC-8004 → AVM mapping:** ARC-72 identity, ARC-28 events, ARC-60 sig, box storage, native keccak256; one app id per registry, cross-linked via `initialize(idApp)`.
+- **A3 · Architecture:** UI ↔ router-server (`:3001`) ↔ x402 facilitator ↔ Algorand; Identity/Reputation/Validation registries.
+- **A4 · Roadmap:** no-custody x402 forwarding → on-chain ranking → network-wide discovery (MCP/A2A/ARC-8004) → active validator attestations (optional ZK).
+- **A5 · Why neutral / model:** we sit *above* the marketplaces, not inside them — we don't take the vendor's margin. Revenue = enterprise control-plane subscription + per-verification fee. Neutrality is the product.

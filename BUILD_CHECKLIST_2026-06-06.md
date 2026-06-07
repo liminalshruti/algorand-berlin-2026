@@ -94,7 +94,7 @@ proof.
 | [x] | Env-gated on-chain reputation write | Shayaun | `apps/router/src/onchain.ts::maybeWriteReputation` |
 | [x] | Split validation from user feedback chain writes | Shayaun/Reza | Quote-drift verdicts use validation/anchor evidence; `giveFeedback` is for user satisfaction |
 | [x] | Add x402 `paymentTxid` + `nonce` to `giveFeedback` | Shayaun | Contract + generated client landed; router feedback lane remains separate |
-| [ ] | Confirm public TestNet registry app ids for pitch | Shayaun/Navid | Deploy or document LocalNet-only proof |
+| [x] | Confirm public TestNet registry app ids for pitch | Shayaun/Navid | Deployed + cross-linked on TestNet — Identity 764031067, Reputation 764031363, Validation 764031094 (`docs/status/DEPLOYED.md`, `apps/web/deployed.testnet.json`) |
 
 ## Frontend And Narrative
 
