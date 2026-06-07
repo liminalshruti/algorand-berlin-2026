@@ -62,25 +62,24 @@ the client agent to the selected agent wallet.
 | [ ] | Define proxy invocation shape | Reza/Navid | Client calls our service/tool endpoint; request carries `service_id` or task intent |
 | [x] | Add quote policy layer | Reza/Navid | `refreshQuotes` stores quote-mode 402 snapshots in `ctx.quoteCache`; `/api/route` mints route-specific `ActiveQuote`s from fresh cache |
 | [ ] | Select concrete agent by trust + price | Reza/Shayaun | Selection reads reputation, active quote, and availability |
-| [ ] | Forward agent x402 challenge | Navid/Reza | Return agent `402 PaymentRequirements` with agent `payTo`; router does not settle or custody funds |
-| [ ] | Preserve challenge correlation | Navid | Carry `route_id`, `agent_id`, active `quote_id`, x402 `nonce`, `resource`, amount, asset, network |
-| [ ] | Record quote-vs-challenge mismatch | Navid/Reza | Compare active quote commitment to agent `402 PaymentRequirements`; do not block the happy-flow payment |
+| [x] | Forward agent x402 challenge | Navid/Reza | `POST /api/challenge`; returns execution 402 requirement with agent `pay_to`, nonce, resource, amount, asset, network, and `payment_note` |
+| [x] | Preserve challenge correlation | Navid | `ctx.challengeStore`; carries `route_id`, `option_id`, `agent_id`, active `quote_id`, x402 `nonce`, `resource`, amount, asset, network |
+| [x] | Record quote-vs-challenge mismatch | Navid/Reza | `/api/challenge` sets `quote_drift`; `/api/payment-proof` records ValidationRegistry/hash-anchor evidence without blocking payment |
 | [ ] | Decide post-payment invocation path | Reza/Navid | Either client calls agent directly, or client calls proxy with proof and proxy forwards the request |
-| [ ] | Capture payment proof | Navid | Store txid/nonce/payer/agent/amount/asset after client payment settles |
-| [ ] | Verify proof off-chain | Navid/Shayaun | Confirm txid paid selected agent wallet; reject replay or mismatched payer/agent |
-| [ ] | Trigger automatic validation for quote drift | Shayaun/Reza | Quote drift, wrong `payTo`, invalid challenge, replay, or timeout creates validation evidence without user feedback |
-| [ ] | Automatic validation updates reputation | Shayaun | `/api/validate` or successor writes validation result into in-memory reputation and validation/anchor evidence |
-| [ ] | Feedback endpoint | Shayaun | `POST /api/feedback` or extended `/api/validate` accepts proof + satisfaction/verdict |
-| [ ] | One feedback per proof | Shayaun/Navid | Dedupe by `paymentTxid` + `nonce` |
-| [ ] | User-triggered reputation update | Shayaun | Update in-memory score and env-gated on-chain `giveFeedback` using payment proof + feedback |
-| [ ] | Active validation / attestation path | Shayaun/Reza | Future validators can test an agent and award reputation through attestations, including optional ZK proofs |
+| [x] | Capture payment proof | Navid | `POST /api/payment-proof {challenge_id, txid, payer}` stores accepted proof on the challenge |
+| [x] | Verify proof off-chain | Navid/Shayaun | `ctx.deps.lookupPayment`; confirms sender/receiver/amount/asset/network/note, rejects replay/mismatch/stale challenge |
+| [x] | Trigger automatic validation for quote drift | Shayaun/Reza | Quote drift only creates validation evidence; other failures reject proof/auth without reputation penalty |
+| [x] | Automatic validation updates reputation | Shayaun | `/api/payment-proof` lowers `ctx.repState` for `quote_drift` and writes ValidationRegistry/hash-anchor evidence |
+| [x] | Feedback endpoint | Shayaun | `POST /api/feedback/intent` + `POST /api/feedback`; requires payer self-auth tx |
+| [x] | One feedback per proof | Shayaun/Navid | `ctx.usedFeedbackPaymentTxids` app pre-check plus ReputationRegistry `usedPayment(paymentTxid)` final guard |
+| [x] | User-triggered reputation update | Shayaun | Payer-authorized feedback updates `ctx.repState`; ReputationRegistry write is env-gated/payer-signer-only with hash-anchor fallback |
+| [x] | Third-party validator path out of scope | Shayaun/Reza | Active trust mechanisms are payer-authorized feedback and router policy validation for quote drift only |
 | [ ] | UI shows direct-payment proof | Shruti | Catalog/route/pay flow shows selected agent wallet, txid, nonce, and feedback status |
 
-Reputation has three input classes in the target flow: payment-backed user feedback, automatic
-validations for objectively captured quote drift, and future active validations/attestations. Quote
-drift means the x402 challenge violates an active quote commitment; it is validation evidence, not
-`giveFeedback`. The TestNet happy flow lets the payment settle, then validates the mismatch using the
-proof.
+Reputation has two input classes in the target flow: payment-backed user feedback and automatic
+validation for objectively captured quote drift. Quote drift means the x402 challenge violates an
+active quote commitment; it is validation evidence, not `giveFeedback`. Wrong payer/receiver/amount,
+stale challenge, bad nonce, and replay are proof/auth failures, not reputation penalties.
 
 ## Contracts And Registry Surface
 
@@ -132,12 +131,12 @@ Run before calling the current build demo-ready:
 - [ ] `/api/ledger` contains hash-only anchors with explorer-ready txids
 - [x] Discovery catalog groups at least one service with multiple agents
 - [x] Route request can target a service/tool rather than a register lane
-- [ ] Target flow forwards agent x402 challenge with agent wallet as `payTo`
+- [x] Target flow forwards agent x402 challenge with agent wallet as `payTo`
 - [x] Quote policy pins a fresh listing into an active quote commitment
-- [ ] Target flow records quote-vs-challenge drift without blocking payment
-- [ ] Automatic validation can lower reputation without user feedback
-- [ ] Future active validation/attestation path is represented in docs or code
-- [ ] Target flow accepts feedback only with valid `paymentTxid` + `nonce`
+- [x] Target flow records quote-vs-challenge drift without blocking payment
+- [x] Automatic validation can lower reputation without user feedback
+- [x] Third-party validator/attestation path is explicitly out of scope for this slice
+- [x] Target flow accepts feedback only with valid `paymentTxid` + payer self-auth note nonce
 
 ## Guardrails
 

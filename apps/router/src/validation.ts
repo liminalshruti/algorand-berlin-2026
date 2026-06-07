@@ -5,6 +5,7 @@ export interface ValidationResult {
   price_match: boolean;
   output_pass: boolean | null;
   response: number; // 0..100
+  tag?: string;
 }
 
 /**

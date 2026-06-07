@@ -50,7 +50,7 @@ export function createRepState(): RouterRepState {
       e.reads += 1;
       if (v.response < 100) {
         e.corrections += 1;
-        const tag = !v.price_match ? 'missed_compensation' : 'validation_failed';
+        const tag = v.tag ?? (!v.price_match ? 'missed_compensation' : 'validation_failed');
         e.by_tag[tag] = (e.by_tag[tag] ?? 0) + 1;
       }
       return { score: score(e), reads_logged: e.reads, corrections_logged: e.corrections, by_tag: e.by_tag };

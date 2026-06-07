@@ -5,11 +5,11 @@ Everyone's Claude should read this before writing anything.
 
 ## Current state (origin/main) — core loop landed ✅
 
-- **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/services`.
+- **Endpoints live on `:3001`:** `POST /api/route`, `POST /api/challenge`, `POST /api/payment-proof`, `POST /api/feedback/intent`, `POST /api/feedback`, `POST /api/pay`, `POST /api/validate`, `GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`, `GET /api/services`.
 - **On-chain:** ARC-8004 Identity + Reputation + Validation registries (Algorand TS) with deploy configs, unit specs, and `scripts/localnet-e2e.ts`.
 - **✅ DEPLOYED ON TESTNET (wired):** Identity `764031067`, Reputation `764031363`, Validation `764031094` — both Reputation & Validation are `initialize()`'d so their global `idApp` = `764031067` (verified on-chain). Reputation `764031363` ships the x402 `giveFeedback` coupling (supersedes earlier `764031075`). Deployer/creator = shared payer `24E3…`. **See `docs/status/DEPLOYED.md`** for code hashes + creation txids; app ids also in `apps/web/deployed.testnet.json`; UI (`arc8004.js`) consumes them. Redeploy: `npm run deploy:testnet` (orchestrator: `scripts/deploy-testnet.ts`, idempotent via indexer).
 - **Frontend:** 5 pages + a left sidebar (Trust Router · Marketplace · Agent Studio · Contracts · Admin) under `apps/web/`.
-- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog + local 402 quote ingestion are wired; full chain scan/MCP tool-list/A2A discovery is not wired; target no-custody payment proof path is not wired (`/api/pay` still settles through the router demo payer); user feedback is separate from validation; contract-side x402 `giveFeedback` coupling is landed + deployed (Reputation `764031363`) but `onchain.ts` still needs verified wiring for `paymentTxid`/`nonce`; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
+- **Open follow-ups:** Honest/Cheat ARC-8004 card catalog + local 402 quote ingestion are wired; proof-backed `/api/challenge` -> `/api/payment-proof` and payer-authorized `/api/feedback` are wired in the router; full chain scan/MCP tool-list/A2A discovery is not wired; `/api/pay` still exists as the router-settled demo shim; registry writes are env-gated with hash-anchor fallback; UI has not consumed the new proof endpoints yet; `apps/router/src/ranking.ts` is an unused stub (ranking lives in `agents.ts::discoveryOptions`). _(The TEMP `/api/route` stub was removed in d9c303c.)_
 
 ---
 
@@ -139,7 +139,7 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - `paymentRequirementForExecution(ctx, option)` asks the selected agent endpoint for execution-mode 402; Honest returns `0.10`, Cheat returns `0.06`
 - `buildServicesCatalog(ctx, registryAgentIdFor)` returns grouped `/api/services` payload from fresh cached quote snapshots; no `challenge_*` fields
 - `/api/route` ranks from fresh `ctx.quoteCache` snapshots; missing/stale quotes are refreshed first, then route-specific `ActiveQuote`/`PaymentRequirement` records are minted.
-- `PaymentChallenge` type added in `contract.ts` for future proof path; no `/api/challenge` or `/api/payment-proof` route yet
+- `PaymentChallenge` type is live in `contract.ts`; `challengeStore` holds short-lived challenge sessions for `/api/challenge` + `/api/payment-proof`
 - `ActiveQuote` now includes `observed_at` + `expires_at`
 - `/api/route` stores:
 
@@ -163,16 +163,17 @@ ctx.routeStore.set(route_id, {
 
 ---
 
-## Shayaun — Reputation Registry + Validation Registry ✅ ROUTER GLUE WIRED
+## Shayaun — Reputation Registry + Validation Registry ✅ PROOF ROUTER GLUE WIRED
 
-- Live: `POST /api/validate {payment_id}` → `{validation_id, price_match, output_pass:null, response, new_reputation, verdict_txid}`; this is automatic quote-vs-settlement validation, not user feedback. `GET /api/reputation?agent=` → `{agent_id, score, reads_logged, corrections_logged, by_tag, uri, hash}`.
+- Live legacy shim validation: `POST /api/validate {payment_id}` → `{validation_id, price_match, output_pass:null, response, new_reputation, verdict_txid}`; this is automatic quote-vs-settlement validation, not user feedback. `GET /api/reputation?agent=` → `{agent_id, score, reads_logged, corrections_logged, by_tag, uri, hash}`.
+- Live proof path: `POST /api/challenge {route_id, option_id}` → execution x402 challenge + `payment_note` + `quote_drift`; `POST /api/payment-proof {challenge_id, txid, payer}` verifies confirmed payment sender/receiver/amount/network/note and lowers reputation only for quote drift; `POST /api/feedback/intent {challenge_id, payment_txid, payer, response}` returns a 0-ALGO self-payment auth note; `POST /api/feedback {feedback_intent_id, auth_txid}` accepts payer-authorized feedback, dedupes payment txids, updates `ctx.repState`, and optionally pays `FEEDBACK_REBATE_ALGO` when `FEEDBACK_REBATE_ENABLED=true`.
 - `makeValidationRoutes(ctx)` **injects `ctx.repState`** (in-memory; score = (landed−corrected)/landed) so `/api/route` reroutes after a write-back — no `router-server.ts` change needed.
 - Verdict anchored hash-only via `ctx.deps.anchorNote` (real txid on LocalNet; skipped if algod down).
 - On-chain registries deploy via new `contracts/{reputation,validation}_registry/deploy-config.ts` (`npm run deploy`).
-- **Feedback helper available but not called by quote validation:** `onchain.ts::maybeWriteReputation` remains the env-gated Reputation `giveFeedback` helper for future user feedback. `/api/validate` no longer writes quote drift through `giveFeedback`.
+- **Registry helpers available:** `onchain.ts::maybeWriteValidation` writes ValidationRegistry request/response for proof policy evidence when `VALIDATION_SUBMITTER_MNEMONIC` is configured; otherwise proof evidence is hash-anchored. `onchain.ts::maybeWriteReputation` writes ReputationRegistry `giveFeedback` only when the configured signer matches the proven payer; otherwise verified feedback is hash-anchored and the client-side/Pera registry write remains the honest next step. `/api/validate` and `/api/payment-proof` do not write quote drift through `giveFeedback`.
 - ✅ Contract side LANDED (cross-lane, at owner's request): `giveFeedback` now takes mandatory `paymentTxid: byte[32]` + `nonce: uint64`, rejects an all-zero proof, and replay-guards each settlement to one feedback (new tests in `reputation-registry.spec.ts`, all green). Recompiled + deployed as Reputation `764031363`.
-- 🟡 `onchain.ts` feedback helper: `maybeWriteReputation(ctx, agent_id, response, paymentTxid)` passes `paymentTxid` (real x402 settlement txid → 32 bytes via base32 decode) + a random `nonce`, and uses the Identity `registry_agent_id` loaded from known-agent evidence when present. Keep this for explicit user feedback, not automatic quote validation.
-- 🟢 Router glue tests cover quote-vs-settlement validation, reputation score math, correction tags, reroute hook, and per-agent isolation. Run with `npm test`. Pure logic, no network.
+- `onchain.ts` feedback helper: `maybeWriteReputation(ctx, agent_id, response, paymentTxid, payer, nonce, "user_feedback")` passes `paymentTxid` (real x402 settlement txid -> 32 bytes via base32 decode) + nonce, uses the Identity `registry_agent_id` loaded from known-agent evidence when present, and refuses to backend-sign as anyone except the proven payer.
+- Router glue tests cover quote-vs-settlement validation, proof challenge creation, proof rejection cases, quote-drift reputation drop/reroute, payer self-auth feedback, feedback replay guard, rebate, reputation score math, correction tags, reroute hook, and per-agent isolation. Run with `npm test`. Pure logic, no network.
 
 **What's ready for you to consume:**
 

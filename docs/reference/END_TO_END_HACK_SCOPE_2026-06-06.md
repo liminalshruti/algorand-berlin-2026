@@ -23,8 +23,8 @@ makes reputation earned: payment evidence, validation, and reputation are joined
 |---|---|
 | Agent discovery | 3 seeded identities; `GET /api/agents`; one resolved MCP service. Full MCP/A2A/ARC-8004 service discovery is still open. |
 | Routing | `POST /api/route`; ranks candidates in `agents.ts::discoveryOptions`; writes `ctx.routeStore`. |
-| Payment | `POST /api/pay`; current demo settles through the router's payer. Target flow forwards the selected agent's x402 challenge so the client pays the agent directly. |
-| Validation | `POST /api/validate`; current demo compares quoted vs settled. Target validation compares active quote commitment vs x402 challenge/settlement proof. |
+| Payment | `POST /api/pay` still settles through the router's payer for the legacy shim. `POST /api/challenge` forwards the selected agent's execution x402 challenge so the client can pay the agent wallet directly. |
+| Validation | `POST /api/validate` compares quoted vs settled in the shim. `POST /api/payment-proof` verifies direct payment proof and lowers reputation for quote drift only. |
 | Reputation | `GET /api/reputation`; in-memory state used by the next route; env-gated on-chain `giveFeedback` path exists. |
 | Ledger | `GET /api/ledger`; hash-only anchors with txid, schema, ref id, hash, round, network. |
 | Frontend | `apps/web/router.html` live API flow with per-endpoint fallback; other console pages are mock-first for raw registries. |
@@ -62,13 +62,11 @@ operator task
 7. If the challenge amount, asset, or `payTo` differs from the active quote commitment, the router
    records the mismatch but does not block the TestNet happy-flow payment.
 8. Client receives `paymentTxid`/nonce proof after settlement.
-9. Router triggers automatic validation for objective quote drift such as wrong amount, wrong `payTo`,
-   invalid challenge, replay, timeout, or agent unavailability.
+9. Router triggers automatic validation for quote drift only. Wrong payer, wrong receiver, wrong
+   amount, bad nonce, stale challenge, and replay are proof/auth failures.
 10. User feedback is separate: the client may submit satisfaction feedback tied to the same payment
-   proof, deduped by `paymentTxid` + `nonce`, and written through `giveFeedback` when the registry path
-   is enabled.
-11. Future active validations let agents ask validators to test their service and earn reputation
-    through attestations, including optional zero-knowledge proofs.
+    proof, deduped by `paymentTxid` + payer authorization, and written through `giveFeedback` when the
+    payer-signer registry path is available.
 
 ## Demo Flow
 
@@ -88,7 +86,7 @@ operator task
 - Automatic active-quote-vs-challenge validation after payment settlement.
 - Minimal quote policy layer for fresh listing -> active quote commitment.
 - Payment-backed user feedback as a separate signal.
-- Future active validation / attestation path.
+- Third-party validator and attestation systems are out of scope for this slice.
 - Reputation write-back that affects the next route.
 - ARC-8004-shaped Algorand-native registry contracts.
 - Judge-facing demo, script, deck, and storyboard.
@@ -102,15 +100,13 @@ operator task
 
 ## Next Moves
 
-- Replace the router-settled demo payment path with no-custody x402 challenge forwarding.
+- Wire the frontend to the no-custody x402 challenge/proof endpoints.
 - Add service/tool discovery from ARC-8004 registration files, MCP metadata, and A2A agent cards.
 - Add minimal quote metadata and policy: `service_id`, `agent_id`, `quote_id`, amount, asset,
   `payTo`, `observed_at`, `expires_at`; no signatures or dynamic pricing in demo scope.
-- Add feedback intake keyed by `paymentTxid` + `nonce`.
-- Add automatic validation for quote drift, wrong `payTo`, invalid challenge, replay, timeout, and
-  agent unavailability.
-- Add future active validation / attestation path for agent-earned reputation, including optional ZK
-  proof support.
+- Keep feedback intake payer-authorized: txid plus 0-ALGO self-payment auth note; txid possession alone is not enough.
+- Keep automatic validation scoped to quote drift. Wrong payer/receiver/amount/nonce, stale challenges,
+  and replay are proof/auth failures, not reputation policy penalties in this slice.
 - Decide whether to wire or delete the unused `apps/router/src/ranking.ts` stub.
 - Deploy registry app ids to TestNet if the pitch needs public app ids rather than LocalNet e2e proof.
 - Keep Marketplace/Studio/Contracts/Admin mock-first until raw registry backend endpoints are in scope.
@@ -121,5 +117,5 @@ operator task
 - The trust router settlement and ledger anchors are live on Algorand.
 - Current ranking is router-side; it reads the reputation mirror and is not a fully on-chain ranking
   algorithm.
-- "Validated reputation" means the specific checks we run: active quote vs x402 challenge,
-  challenge/settlement proof, optional output checks, and future validator attestations.
+- "Validated reputation" means the specific checks we run in this slice: active quote vs x402
+  challenge, settlement proof, and payer-authorized feedback.

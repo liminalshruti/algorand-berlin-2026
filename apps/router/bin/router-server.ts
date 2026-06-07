@@ -10,6 +10,7 @@ import {
 } from "../src/seed.js";
 import { makeValidationRoutes } from "../src/routes.validation.js";
 import { makeAgentRoutes } from "../src/routes.agents.js";
+import { makeTrustRoutes } from "../src/routes.trust.js";
 import { applyKnownAgentRegistrations } from "../src/identity-onchain.js";
 import { ingestAgentCardsFromManifest, refreshQuotes } from "../src/agents.js";
 
@@ -93,6 +94,7 @@ async function main() {
 
   // --- Teammate routes (wired at H3–H4) ---
   app.route("/", makeValidationRoutes(ctx));
+  app.route("/", makeTrustRoutes(ctx));
   app.route("/", makeAgentRoutes(ctx));
 
   serve({ fetch: app.fetch, port }, () => {
@@ -109,6 +111,10 @@ async function main() {
 
     console.log("\n--- endpoints ---");
     console.log("  POST /api/route   { task, service_id? }");
+    console.log("  POST /api/challenge { route_id, option_id }");
+    console.log("  POST /api/payment-proof { challenge_id, txid, payer }");
+    console.log("  POST /api/feedback/intent { challenge_id, payment_txid, payer, response }");
+    console.log("  POST /api/feedback { feedback_intent_id, auth_txid }");
     console.log("  POST /api/pay     { route_id, option_id }");
     console.log("  POST /api/validate { payment_id }");
     console.log("  GET  /api/reputation?agent=");

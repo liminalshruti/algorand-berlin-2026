@@ -30,6 +30,10 @@ Live API:
 
 ```txt
 POST /api/route       { task, service_id? } -> { route_id, task, service_id, options }
+POST /api/challenge   { route_id, option_id } -> { challenge_id, agent_id, quote_id, amount, asset, pay_to, network, nonce, payment_note, quote_drift }
+POST /api/payment-proof { challenge_id, txid, payer } -> { accepted, policy_result, validation_id, new_reputation }
+POST /api/feedback/intent { challenge_id, payment_txid, payer, response } -> { feedback_intent_id, note, note_hash, expires_at }
+POST /api/feedback    { feedback_intent_id, auth_txid } -> { accepted, feedback_id, new_reputation, rebate_txid }
 POST /api/pay         { route_id, option_id } -> { payment_id, agent_id, quote_id, txids, quoted_amount, settled_amount, read }
 POST /api/validate    { payment_id } -> { validation_id, price_match, output_pass, response, new_reputation, verdict_txid }
 GET  /api/reputation?agent=... -> { agent_id, score, reads_logged, corrections_logged, by_tag, uri, hash }
@@ -122,19 +126,18 @@ tsx scripts/localnet-e2e.ts
   MCP/x402 providers, and `/api/route` pins active quotes from cached 402 quote snapshots.
 - Reputation + validation routes are landed; quote-drift validation updates in-memory reputation and
   anchors verdict evidence. Env-gated on-chain `giveFeedback` remains the separate user-feedback lane.
+- Proof-backed trust routes are landed: `/api/challenge` forwards execution x402 requirements,
+  `/api/payment-proof` verifies direct payment proofs and lowers reputation for quote drift only, and
+  `/api/feedback` requires payer wallet control through a 0-ALGO self-payment auth note. Optional
+  router-sponsored feedback rebate is controlled by `FEEDBACK_REBATE_ENABLED` and
+  `FEEDBACK_REBATE_ALGO`.
 
 Known follow-ups:
 
-- Replace router-settled demo payment with target no-custody x402 challenge forwarding: the router
-  chooses the agent, but the client pays the agent wallet directly.
+- Wire the frontend to the target no-custody x402 challenge/proof flow. The backend proof endpoints
+  are live; the Trust Router page still primarily drives the router-settled `/api/pay` shim.
 - Extend service/tool catalog discovery beyond the Honest/Cheat ARC-8004 card slice into full MCP
   metadata and A2A agent cards.
-- Add the no-custody proof path: wallet-owning client pays the selected agent directly, then submits
-  `{ challenge_id, txid, payer }` for verification and reputation updates.
-- Split reputation signals into user feedback and automatic validations. Quote drift means the x402
-  challenge violates the active quote commitment; payment can still settle, then validation uses the
-  proof to write reputation down. Future active validations can let agents earn reputation through
-  validator attestations.
 - `apps/router/src/ranking.ts` is not the active ranking implementation; routing currently ranks in
   `apps/router/src/agents.ts::discoveryOptions`.
 - Marketplace, Studio, Contracts, and Admin are mock-first for raw registry operations; the Trust
