@@ -65,6 +65,13 @@ Raw card URLs:
 - Honest: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/honest-agent.json`
 - Cheat: `https://raw.githubusercontent.com/liminalshruti/algorand-berlin-2026/refs/heads/main/docs/agents/testnet/cheat-agent.json`
 
+Protocol references:
+
+- Coinbase CDP x402 MCP server guide:
+  `https://docs.cdp.coinbase.com/x402/mcp-server` — reference pattern for an MCP tool bridge that
+  receives HTTP 402 payment requirements, signs payment, retries the paid request, and returns tool
+  output. Use for Level 3 direct-payment design, not as current shim behavior.
+
 Identity registration is env-gated:
 
 - `IDENTITY_APP_ID=764031067`
