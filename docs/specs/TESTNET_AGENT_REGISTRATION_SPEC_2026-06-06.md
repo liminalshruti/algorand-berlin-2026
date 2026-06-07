@@ -172,9 +172,9 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
    ```
    Record new app ids in `.env.demo`, `docs/status/DEPLOYED.md`, and `apps/web/deployed.testnet.json`.
 2. **Prepare the identity operator.** Run `npm run setup:testnet-identity` or
-   `npm run setup:testnet-known-agents`. If the printed `IDENTITY_SUBMITTER_ADDRESS` is unfunded,
-   fund it with `algokit dispenser fund --receiver <printed address> --amount 2 --whole-units`, then
-   rerun `npm run setup:testnet-identity -- --check`.
+   `npm run setup:testnet-known-agents`. The printed `IDENTITY_SUBMITTER_ADDRESS` should be the
+   pre-funded submitter with at least `1 ALGO`; if not, fix `IDENTITY_SUBMITTER_MNEMONIC` in local
+   `.env`, then rerun `npm run setup:testnet-identity -- --check`.
 3. **Register the known Honest/Cheat agents.** Run `npm run register:testnet-agents -- --check`, then
    `npm run register:testnet-agents`. This is the only batch command that mints the known agents;
    it writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` with registry ids and explorer links.

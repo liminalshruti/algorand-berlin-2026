@@ -14,7 +14,7 @@ Move the demo from "card-backed catalog + router-settled payment shim" toward kn
 ```txt
 Known Honest/Cheat agents
   -> curated ARC-8004 cards
-  -> registered by us in the TestNet IdentityRegistry when env/funds allow
+  -> registered by us in the TestNet IdentityRegistry when submitter env is ready
   -> x402 readiness is explicit in cards and route-time requirements
   -> current /api/pay remains the router-settled demo shim
   -> future direct-payment proof path is planned but not live yet
@@ -80,7 +80,7 @@ Identity registration is env-gated:
 The backend registration helper signs with `IDENTITY_SUBMITTER_MNEMONIC`, so the submitter is the
 initial registry owner. The helper should call `setAgentWallet(registry_agent_id, cardWallet)` so
 `getAgentWallet` matches the card wallet when registration succeeds. If the submitter is missing or
-unfunded, document the blocker and keep local/card ingestion working.
+does not resolve to the pre-funded key, document the blocker and keep local/card ingestion working.
 
 ## x402 Compliance Levels
 
@@ -180,7 +180,7 @@ Gate:
 
 ### Phase 1 - Known-Agent Identity Registration
 
-Purpose: register Honest/Cheat cards in the deployed TestNet IdentityRegistry when env/funds allow.
+Purpose: register Honest/Cheat cards in the deployed TestNet IdentityRegistry when submitter env is ready.
 
 - Use IdentityRegistry app id `764031067`.
 - Register only Honest Agent and Cheat Agent for this slice.
@@ -188,14 +188,13 @@ Purpose: register Honest/Cheat cards in the deployed TestNet IdentityRegistry wh
 - After `register(...)`, call `setAgentWallet(registry_agent_id, cardWallet)` when supported by the
   current helper.
 - Record `registry_agent_id`, owner, txid, wallet txid, explorer link, and any blocker.
-- If `IDENTITY_SUBMITTER_MNEMONIC` is missing or unfunded, mark this phase `BLOCKED` and keep local
-  ingestion working.
+- If `IDENTITY_SUBMITTER_MNEMONIC` is missing or does not resolve to the funded submitter, mark this
+  phase `BLOCKED` and keep local ingestion working.
 
 Required command order:
 
 ```bash
 npm run setup:testnet-identity          # or: npm run setup:testnet-known-agents
-algokit dispenser fund --receiver <printed IDENTITY_SUBMITTER_ADDRESS> --amount 2 --whole-units
 npm run setup:testnet-identity -- --check
 npm run register:testnet-agents -- --check
 npm run register:testnet-agents
@@ -204,7 +203,7 @@ npm start                              # consumes evidence only; never registers
 
 Gate:
 
-- Both agents have on-chain `registry_agent_id` values recorded, or the exact funding/env blocker is
+- Both agents have on-chain `registry_agent_id` values recorded, or the exact identity submitter/env blocker is
   recorded.
 - Card-backed `/api/agents` and `/api/services` still work without on-chain registration.
 
@@ -288,7 +287,7 @@ Gate:
 | Phase | Status | Validation evidence | Notes |
 |---|---|---|---|
 | Phase 0 - Retire Old Plan And Record Baseline | PASS | This file replaced the completed card-catalog rollout plan; app ids confirmed from `docs/status/DEPLOYED.md`; `INTEGRATION_HANDOFF.md` pointer updated. | No TestNet-spending command run. |
-| Phase 1 - Known-Agent Identity Registration | BLOCKED | Code path landed; `npm test` PASS; `npm run check-types` PASS; `npm run setup:testnet-identity -- --check` found `IDENTITY_SUBMITTER_ADDRESS=ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` with `0` ALGO; `npm run register:testnet-agents -- --check` stopped before tx with the same blocker. | Fund with `algokit dispenser fund --receiver ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU --amount 2 --whole-units`, then resume at `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents`. No TestNet registration tx sent. |
+| Phase 1 - Known-Agent Identity Registration | BLOCKED | Code path landed; `npm test` PASS; `npm run check-types` PASS; known-agent registration evidence is still pending. | Run `npm run setup:testnet-identity -- --check` against the pre-funded identity submitter, then `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents`. If a check reports balance below `1 ALGO`, local `.env` is pointing at the wrong submitter key. No TestNet registration tx sent yet. |
 | Phase 2 - x402 Readiness Checklist | TODO | Pending. | Current cards already declare `x402Support: true`; confirm parser/tests remain aligned. |
 | Phase 3 - Direct-Payment Proof Path Design | TODO | Pending. | Future interfaces are planned, not live. |
 | Phase 4 - Validation And Reputation From Proof | TODO | Pending. | Automatic validation must stay separate from user feedback. |
@@ -306,10 +305,10 @@ Non-spending checks:
 
 Registration checks:
 
-- If `IDENTITY_SUBMITTER_MNEMONIC` is funded, run `npm run register:testnet-agents -- --check`, then
+- If `IDENTITY_SUBMITTER_MNEMONIC` resolves to the pre-funded submitter, run `npm run register:testnet-agents -- --check`, then
   `npm run register:testnet-agents`, and record `registry_agent_id`, txid, owner, wallet txid, and
   explorer links.
-- If not funded, record blocker and keep local/card ingestion working.
+- If it resolves to the wrong submitter, record blocker and keep local/card ingestion working.
 
 Demo checks:
 

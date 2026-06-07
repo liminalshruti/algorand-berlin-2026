@@ -65,7 +65,6 @@ Live TestNet agent registration setup:
 
 ```sh
 npm run setup:testnet-identity          # or: npm run setup:testnet-known-agents
-algokit dispenser fund --receiver <printed address> --amount 2 --whole-units
 npm run setup:testnet-identity -- --check
 npm run register:testnet-agents -- --check
 npm run register:testnet-agents
@@ -74,11 +73,12 @@ npm start
 
 Run the commands in that order. The setup command creates or reuses a private TestNet-only
 identity-operator wallet in your local gitignored `.env`, prints only its address, and never
-registers agents. The dispenser command funds that operator for TestNet app-call fees. The
+registers agents. The identity submitter is expected to already have at least `1 ALGO`; if a check
+reports less, fix `IDENTITY_SUBMITTER_MNEMONIC` in local `.env` before continuing. The
 `register:testnet-agents` command is the explicit mint step: it registers only the canonical
 Honest/Cheat cards in the deployed IdentityRegistry, calls `setAgentWallet`, and writes
 `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`. `npm start` only consumes that evidence; it does
-not create wallets, request dispenser funds, or register agents during boot.
+not create wallets, request TestNet funds, or register agents during boot.
 
 LocalNet option:
 

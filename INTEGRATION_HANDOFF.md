@@ -22,7 +22,7 @@ Everyone's Claude should read this before writing anything.
 - Shared state lives in `ctx` (built by `context.ts`) — use the Maps, don't create your own stores.
 - Active router identity language is **Agent**. `agent_id` means the router-stable selected-agent id `algorand:{net}:{address}`; `registry_agent_id` means the IdentityRegistry uint64 when available.
 - Wire your routes into your stub file, not into `router-server.ts`
-- Live TestNet identity operator setup: `npm run setup:testnet-identity` / `npm run setup:testnet-known-agents` writes or checks local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS`, funding command, and next registration command when funded; setup never registers agents. Batch mint is explicit via `npm run register:testnet-agents`; `npm start` only loads `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` evidence and never mints IdentityRegistry records.
+- Live TestNet identity operator setup: `npm run setup:testnet-identity` / `npm run setup:testnet-known-agents` writes or checks local ignored `.env` (`IDENTITY_APP_ID`, `IDENTITY_SUBMITTER_MNEMONIC`), prints `IDENTITY_SUBMITTER_ADDRESS`, balance, and next registration command when the pre-funded submitter is present; setup never registers agents. Batch mint is explicit via `npm run register:testnet-agents`; `npm start` only loads `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json` evidence and never mints IdentityRegistry records.
 
 ---
 
@@ -116,8 +116,8 @@ POST /api/route { task, service_id? } → { route_id, task, service_id, options:
 - URL status: local Honest/Cheat card files and raw GitHub URLs are clean ARC-8004 cards; runtime still falls back to direct card URLs if the manifest is unavailable.
 - Phase 1 known-agent setup: `npm run setup:testnet-identity` or alias `npm run setup:testnet-known-agents` only prepares/checks the identity operator and prints next steps.
 - Phase 1 known-agent batch registration: `npm run register:testnet-agents` registers only the canonical Honest/Cheat card URLs, calls `setAgentWallet`, and writes `docs/status/TESTNET_KNOWN_AGENT_REGISTRATIONS.json`; use `--check` for no-tx preflight.
-- Required order: `npm run setup:testnet-identity` (or `setup:testnet-known-agents`) → fund printed `IDENTITY_SUBMITTER_ADDRESS` if balance is low → `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents` → `npm start` to consume evidence.
-- Current blocker: `IDENTITY_SUBMITTER_ADDRESS=ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU` has `0` ALGO; fund with `algokit dispenser fund --receiver ABAS5P7RW6JSZKFACWWKGNOIR5HCA2WXBTANZU4GIU7JBWOGRW6TSVLBKU --amount 2 --whole-units`, then resume at `npm run setup:testnet-identity -- --check`.
+- Required order: `npm run setup:testnet-identity` (or `setup:testnet-known-agents`) → `npm run setup:testnet-identity -- --check` → `npm run register:testnet-agents -- --check` → `npm run register:testnet-agents` → `npm start` to consume evidence.
+- Current blocker: complete `npm run setup:testnet-identity -- --check` against the pre-funded identity submitter, then run `npm run register:testnet-agents -- --check`; if either reports a balance below `1 ALGO`, local `.env` is pointing at the wrong submitter key.
 - `npm start` no longer runs registration. It calls `applyKnownAgentRegistrations(ctx)` after card ingestion so `GET /api/agents` + `GET /api/services` expose `registry_agent_id` only when evidence is recorded.
 
 **What teammates can consume:**

@@ -7,7 +7,7 @@ const DEFAULT_IDENTITY_APP_ID = '764031067'
 const DEFAULT_ALGOD_URL = 'https://testnet-api.algonode.cloud'
 const DEFAULT_ALGOD_PORT = 443
 const MICROALGO = 1_000_000
-const MIN_REGISTRATION_BALANCE_ALGO = 2
+const MIN_REGISTRATION_BALANCE_ALGO = 1
 
 type Env = Record<string, string | undefined>
 
@@ -84,18 +84,16 @@ async function main(): Promise<void> {
   if (balance) {
     console.log(`IDENTITY_SUBMITTER_BALANCE_ALGO=${balance.balanceAlgo}`)
     if (!balance.exists || balance.balanceAlgo < MIN_REGISTRATION_BALANCE_ALGO) {
-      console.log('\nFund this address with TestNet ALGO:')
-      console.log(`algokit dispenser fund --receiver ${address} --amount ${MIN_REGISTRATION_BALANCE_ALGO} --whole-units`)
-      console.log('\nAfter funding, re-run:')
+      console.log('\nIdentity submitter is not ready for registration.')
+      console.log(`Expected an already-funded TestNet submitter with at least ${MIN_REGISTRATION_BALANCE_ALGO} ALGO.`)
+      console.log('Set IDENTITY_SUBMITTER_MNEMONIC in local .env to the funded submitter key, then re-run:')
       console.log('npm run setup:testnet-identity -- --check')
-      console.log('\nWhen the check shows enough balance, register known agents with:')
-      console.log('npm run register:testnet-agents')
     } else {
       console.log('\nReady to register known Honest/Cheat agents:')
       console.log('npm run register:testnet-agents')
     }
   } else {
-    console.log('\nBalance could not be confirmed; after funding, re-run:')
+    console.log('\nBalance could not be confirmed; verify local .env points at the funded submitter key, then re-run:')
     console.log('npm run setup:testnet-identity -- --check')
   }
 

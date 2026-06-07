@@ -13,7 +13,7 @@ import {
 import { KNOWN_TESTNET_AGENTS, type KnownTestnetAgent } from '../apps/router/src/known-agents.js';
 
 const EXPECTED_IDENTITY_APP_ID = 764031067;
-const MIN_OPERATOR_BALANCE_ALGO = 2;
+const MIN_OPERATOR_BALANCE_ALGO = 1;
 const MICROALGO = 1_000_000;
 
 const args = new Set(process.argv.slice(2));
@@ -112,7 +112,7 @@ async function main(): Promise<void> {
   const balance = await readOperatorBalance(submitter);
   if (balance < MIN_OPERATOR_BALANCE_ALGO) {
     throw new Error(
-      `IDENTITY_SUBMITTER_ADDRESS ${submitter} has ${balance} ALGO; fund at least ${MIN_OPERATOR_BALANCE_ALGO} TestNet ALGO`,
+      `IDENTITY_SUBMITTER_ADDRESS ${submitter} has ${balance} ALGO; expected an already-funded TestNet submitter with at least ${MIN_OPERATOR_BALANCE_ALGO} ALGO. Check IDENTITY_SUBMITTER_MNEMONIC in local .env.`,
     );
   }
 
