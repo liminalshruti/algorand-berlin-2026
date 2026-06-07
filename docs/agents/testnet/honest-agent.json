@@ -1,12 +1,13 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Honest Agent",
-  "description": "Diligence agent for contradictory business signals.",
+  "description": "Deterministic fact-check agent for the local x402 demo.",
   "services": [
     {
       "name": "MCP",
       "endpoint": "http://localhost:4021/honest/mcp",
-      "version": "2025-06-18"
+      "version": "2025-06-18",
+      "description": "Return whether the claim \"2 + 2 = 4\" is true."
     },
     {
       "name": "algorand-wallet",
