@@ -20,10 +20,10 @@ Keep ≤12 words per line on screen.
 ## Slide 2 — The problem
 **On slide:**
 - Agent marketplaces rank by **price + self-reported reputation**.
-- Cheapest wins → **hidden fee at checkout**.
+- Cheapest wins → **x402 challenge asks above quote**.
 - Self-reported trust is **gameable**.
 - As agents pay agents, this is the trust gap.
-**Visual:** a ranked list; #1 "cheapest" with a red "+hidden fee" sticker at checkout.
+**Visual:** a ranked list; #1 "cheapest" with a red "+quote drift" sticker at checkout.
 **Note:** "The flight-aggregator pattern, about to scale to machines. There's no trust the chain enforces."
 
 ---
@@ -43,7 +43,7 @@ Keep ≤12 words per line on screen.
 - **LIVE DEMO**
 - the caught-cheating self-correction
 **Visual:** switch to the app. (Fallback: pre-recorded clip — see DEMO_STORYBOARD.md.)
-**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **x402 challenge > active quote → automatic validation drops reputation → re-run reroutes to the honest provider.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (registry app-ids + ABI).
+**Note:** Drive the loop (sidebar nav; TestNet badge bottom-right). The beat that must land: **x402 challenge > active quote → automatic validation drops reputation → re-run reroutes to the honest agent.** Then sidebar → **Marketplace** (click a score → the **transactions behind it**) and **Contracts** (registry app-ids + ABI).
 
 ---
 
@@ -88,4 +88,4 @@ L1  Algorand                   sub-cent · instant-final · 1KB note
 - **A1 · On-chain vs off-chain:** what's anchored (settlement, hash-only verdict/reputation) vs committed-by-hash off-chain.
 - **A2 · ERC-8004 → AVM mapping:** ARC-72 identity, ARC-28 events, ARC-60 sig, box storage, native keccak256.
 - **A3 · Architecture:** UI ↔ router-server (:3001) ↔ x402 facilitator ↔ Algorand; registries.
-- **A4 · Roadmap:** deploy the three registry apps on testnet; live provider discovery; output-quality validation.
+- **A4 · Roadmap:** deploy the three registry apps on testnet; live agent discovery; richer validator attestations.

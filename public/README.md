@@ -11,7 +11,7 @@ npx serve public          # then open any page, e.g. http://localhost:<port>/rou
 
 | Page | Role / JTBD |
 |---|---|
-| `router.html` | **Trust Router** (operator) — request → rank → pay → validate → re-run that reroutes off a caught provider. The demo centerpiece. |
+| `router.html` | **Trust Router** (operator) — request → rank → pay → validate → re-run that reroutes off a caught agent. The demo centerpiece. |
 | `marketplace.html` | **Marketplace** (client) — discover agents by earned trust; leave a **verified, payment-anchored** review. |
 | `studio.html` | **Agent Studio** (owner) — fetch & manage *your* agents (identity, metadata, replies). |
 | `contracts.html` | **Contracts** (developer) — deployed ARC-8004 app-ids + the full ABI, callable. |
@@ -33,7 +33,7 @@ console (`arc8004.js`) is mock-first — an ABI-faithful client with the spec gu
 proof-of-payment reviews, self-feedback/self-validation prevention, satisfaction-based trust).
 
 The trust router consumes the frozen API: `POST /api/route`, `POST /api/pay`, `POST /api/validate`,
-`GET /api/reputation`, `GET /api/ledger`, `GET /api/providers`.
+`GET /api/reputation`, `GET /api/ledger`, `GET /api/agents`.
 
 ## Files
 

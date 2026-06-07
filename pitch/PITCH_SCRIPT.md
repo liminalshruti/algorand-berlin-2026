@@ -12,13 +12,13 @@
 ## A) 75-second version (Round 1 · judging groups)
 
 **[0:00–0:12 · Hook]**
-"Agent marketplaces rank by price. The cheapest provider wins — then adds a hidden fee at checkout. Reputation is self-reported, so it's gameable. As agents start paying agents, that's the trust gap."
+"Agent marketplaces rank by price. The cheapest agent wins with one quote — then the x402 challenge asks for more. Reputation is self-reported, so it's gameable. As agents start paying agents, that's the trust gap."
 
 **[0:12–0:25 · What it is]**
-"We built a **trust router** over x402 on Algorand. An operator asks for a service; competing agents return quotes; we rank them by **price + earned reputation + validation**, the selected provider is paid over x402, then **validated against its quote using payment proof**."
+"We built a **trust router** over x402 on Algorand. An operator asks for a service; competing agents return quotes; we rank them by **price + earned reputation + validation**, the selected agent is paid over x402, then **validated against its quote using payment proof**."
 
 **[0:25–0:50 · The demo beat — show, don't tell]**
-"Watch. The cheapest provider wins the route. It advertised the lowest quote, but the returned x402 challenge asks for more. The payment settles on **TestNet** for that challenge amount, and automatic validation catches the quote drift, drops its reputation, and anchors the verdict. Re-run the same request — and the router **routes around it** to the honest provider. The marketplace self-corrected. Reputation is *earned*, not asserted."
+"Watch. The cheapest agent wins the route. It advertised the lowest quote, but the returned x402 challenge asks for more. The payment settles on **TestNet** for that challenge amount, and automatic validation catches the quote drift, drops its reputation, and anchors the verdict. Re-run the same request — and the router **routes around it** to the honest agent. The marketplace self-corrected. Reputation is *earned*, not asserted."
 
 **[0:50–1:05 · Why it's infrastructure]**
 "ERC-8004 names the registries an agent economy needs — identity, reputation, validation. x402 names the settlement rail. Neither specifies what makes an entry *earned*. That discipline — automatic validation, payment-anchored feedback, hash-only provenance — is the layer we built, ERC-8004-shaped and Algorand-native."
@@ -40,10 +40,10 @@
 - "An operator needs a diligence read. The router collects competing quotes and ranks them — **price, earned reputation, and validation**, in one pick score. Cheapest here is *Vega*, and it leads. Bottom-right: we're on Algorand **TestNet**."
 - "Operator approves. The returned x402 challenge is higher than the active quote commitment. Payment settles over x402 — a real TestNet transaction — for that challenge amount."
 - "Automatic validation writes the verdict: *reputation drops, 88 to 78, **because** the challenge exceeded the active quote* — anchored hash-only, with the chain path env-gated. Here's the signed packet, here's the txid."
-- "Now the payoff. Re-run the **same** request. Vega falls; the router **reroutes to the honest provider**. No human edited a list. The chain caught it and the next decision changed."
+- "Now the payoff. Re-run the **same** request. Vega falls; the router **reroutes to the honest agent**. No human edited a list. The chain caught it and the next decision changed."
 
 **[1:50–2:20 · The substrate — ERC-8004 on Algorand]**
-"In the **sidebar**, the Marketplace shows trust as **% of verified buyers satisfied** — click a score and every review traces to an **x402 payment** you can audit, not a number a provider typed. And the **Contracts** page shows these are real apps — Identity, Reputation, Validation — with deployed app-ids and the full ABI. The router's pick score reads the registry's earned score."
+"In the **sidebar**, the Marketplace shows trust as **% of verified buyers satisfied** — click a score and every review traces to an **x402 payment** you can audit, not a number an agent typed. And the **Contracts** page shows these are real apps — Identity, Reputation, Validation — with deployed app-ids and the full ABI. The router's pick score reads the registry's earned score."
 
 **[2:20–2:45 · Why Algorand + the stack]**
 "Why Algorand: x402 settles on the **same ledger** as the registries, so proof-of-payment is native, not a foreign hash you have to trust. Sub-cent fees make validation and feedback routine side-effects of doing business; instant finality means the next route can rely on them; the 1KB note is our hash-only anchor — verifiable by anyone, exposing nothing."
@@ -55,12 +55,12 @@
 
 ## C) Q&A — 20-second answers
 
-- **"Isn't this just a reputation system?"** Reputation systems take self-reported feedback. Ours separates payment-backed user feedback from automatic validation: verified purchasers can review once per proof, while hidden fees are caught from quote drift plus settlement proof without waiting for a complaint. Earned, not asserted.
+- **"Isn't this just a reputation system?"** Reputation systems take self-reported feedback. Ours separates payment-backed user feedback from automatic validation: verified purchasers can review once per proof, while quote drift is caught from settlement proof without waiting for a complaint. Earned, not asserted.
 - **"What's actually on-chain vs off?"** On-chain (TestNet): the x402 settlement and hash-only ledger anchors. Off-chain today: the validation detail the hash commits to and the ranking math — an in-memory mirror of the on-chain score. Env-gated `giveFeedback` exists for payment-backed user feedback but still needs `paymentTxid` + `nonce`.
 - **"How is this different from ERC-8004?"** ERC-8004 *names* the registries; it doesn't specify what makes an entry earned. We add that discipline and port the registries to Algorand (ARC-72 / ARC-28 / ARC-60). Composes with the standard, doesn't compete.
 - **"Why not Ethereum?"** Same-ledger x402 settlement: proof-of-payment is a native reference, not a foreign `{chainId, txHash}`. Plus sub-cent fees make per-interaction feedback economical.
 - **"Is it live?"** Yes — on TestNet, with real txids: x402 settlement and hash-only anchoring. Automatic validation changes the next route today; `giveFeedback` is env-gated and still needs x402 `paymentTxid` + `nonce`. The three registries are AVM contracts with unit + LocalNet e2e suites.
-- **"Who's the buyer?"** Whoever operates an agent marketplace or routes agent work — they need provider trust they can defend. The console (Marketplace / Studio / Contracts / Admin) is the operator's surface.
+- **"Who's the buyer?"** Whoever operates an agent marketplace or routes agent work — they need agent trust they can defend. The console (Marketplace / Studio / Contracts / Admin) is the operator's surface.
 
 ---
 

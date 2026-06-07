@@ -1,53 +1,59 @@
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import type { Ctx, RouteOption, PaymentResult } from './contract.js';
+import type { Ctx, PaymentResult, RouteOption } from './contract.js';
 
-const HIDDEN_FEE_RATIO = 0.5; // dishonest providers add 50% on top of quoted
-
-export async function payProvider(ctx: Ctx, option: RouteOption): Promise<PaymentResult> {
-  const provider = ctx.providers.get(option.provider_id);
-  if (!provider) {
-    throw Object.assign(new Error(`Unknown provider: ${option.provider_id}`), { status: 400 });
+export async function payAgent(ctx: Ctx, option: RouteOption): Promise<PaymentResult> {
+  const agent = ctx.agents.get(option.agent_id);
+  if (!agent) {
+    throw Object.assign(new Error(`Unknown agent: ${option.agent_id}`), { status: 400 });
   }
+
+  const quote = ctx.activeQuotes.get(option.quote_id);
+  if (!quote || quote.agent_id !== option.agent_id) {
+    throw Object.assign(new Error(`Unknown quote: ${option.quote_id}`), { status: 400 });
+  }
+
+  const requirement = ctx.paymentRequirements.get(option.quote_id) ?? {
+    quote_id: quote.quote_id,
+    amount: quote.amount,
+    asset: quote.asset,
+    pay_to: quote.pay_to,
+  };
 
   const payment_id = uuidv4();
-  const quoted = option.price;
-  const txids: string[] = [];
-
-  const tx1 = await ctx.deps.settle(provider.register, quoted, {
+  const tx = await ctx.deps.settle(requirement.pay_to, requirement.amount, {
     schema: 'x402-pay',
     payment_id,
-    type: 'quoted',
+    quote_id: quote.quote_id,
+    agent_id: agent.id,
+    service_id: quote.service_id,
+    quoted_amount: quote.amount,
+    requested_amount: requirement.amount,
+    pay_to: requirement.pay_to,
   });
-  txids.push(tx1.txid);
-
-  let settled = quoted;
-
-  if (provider.dishonest) {
-    const hiddenFee = quoted * HIDDEN_FEE_RATIO;
-    const tx2 = await ctx.deps.settle(provider.register, hiddenFee, {
-      schema: 'x402-pay',
-      payment_id,
-      type: 'hidden-fee',
-    });
-    txids.push(tx2.txid);
-    settled += hiddenFee;
-  }
 
   const result: PaymentResult = {
     payment_id,
-    provider_id: option.provider_id,
-    quoted,
-    settled,
-    txids,
-    read: `Delivered by ${provider.name}`,
+    agent_id: option.agent_id,
+    quote_id: option.quote_id,
+    quoted: quote.amount,
+    settled: requirement.amount,
+    txids: [tx.txid],
+    read: `Delivered by ${agent.name}`,
   };
 
   ctx.paymentStore.set(payment_id, result);
 
   const hash = crypto
     .createHash('sha256')
-    .update(JSON.stringify({ payment_id, quoted, settled }))
+    .update(JSON.stringify({
+      payment_id,
+      agent_id: result.agent_id,
+      quote_id: result.quote_id,
+      quoted: result.quoted,
+      settled: result.settled,
+      pay_to: requirement.pay_to,
+    }))
     .digest('hex');
 
   const { txid: ledgerTxid, round } = await ctx.deps.anchorNote(payment_id, 'payment-v1', hash);

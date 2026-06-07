@@ -32,12 +32,12 @@ register(agentURI: string, metadata: (string,byte[])[]) -> uint64   // agentId
 - `metadata` is an array of `{ key: string, value: byte[] }` (`MetadataEntry`). Key `agentWallet` is reserved.
 - Generated client: `smart_contracts/artifacts/identity_registry/IdentityRegistryClient.ts`
   - Factory: `IdentityRegistryFactory` · Client: `IdentityRegistryClient`
-  - Call shape (mirror `onchain.ts`): `client.send.register({ sender, args: { agentURI, metadata } })` → returns agentId in the ABI return + a `Registered` ARC-28 event.
+  - Call shape (mirror `identity-onchain.ts`): `client.send.register({ sender, args: { agentUri, metadata } })` → returns agentId in the ABI return + a `Registered` ARC-28 event.
 
 ### 1.2 Server — route + on-chain module patterns
-- Endpoint pattern: `sandbox/lib/router/routes.providers.ts::makeProviderRoutes(ctx)` (Hono sub-app, wired in `router-server.ts` via `app.route('/', …)`).
+- Endpoint pattern: `sandbox/lib/router/routes.agents.ts::makeAgentRoutes(ctx)` (Hono sub-app, wired in `router-server.ts` via `app.route('/', …)`).
 - On-chain call pattern (env-gated, best-effort, dynamic import): `sandbox/lib/router/onchain.ts::maybeWriteReputation` — **copy this exact shape** for identity writes.
-- In-memory provider store + validation: `sandbox/lib/router/providers.ts::registerProvider` (validates Algorand address, stores `Provider` in `ctx.providers`).
+- In-memory agent store + validation: `sandbox/lib/router/agents.ts::registerAgentLocal` (validates `agent_wallet`, stores `Agent` in `ctx.agents`).
 - TestNet payer/algod + `ctx.deps`: `sandbox/lib/router/context.ts` (already TestNet-default).
 
 ### 1.3 Frontend — register flow that already exists
@@ -66,13 +66,13 @@ Each agent registers as:
   - `role` → one-line from the agency canon (e.g. Witness = "reads what is materially/somatically true of an artifact").
   - (optional) `quote` / `asset` if we want these to also be routable agents in the trust router.
 
-> The **adversary stays**: keep ONE labeled `Cheat Agent` (test provider) per the earlier decision, so the demo's "caught + rerouted" beat still has a target. It is explicitly labeled a test fixture, not a Liminal agent.
+> The **adversary stays**: keep ONE labeled `Cheat Agent` (test agent) per the earlier decision, so the demo's "caught + rerouted" beat still has a target. It is explicitly labeled a test fixture, not a Liminal agent.
 
 ---
 
 ## 3. New surface — endpoints
 
-Add a Hono sub-app `makeAgentRoutes(ctx)` in **`sandbox/lib/router/routes.agents.ts`** (new file; mirrors `routes.providers.ts`). Wire in `router-server.ts` with `app.route('/', makeAgentRoutes(ctx))`.
+Use the Hono sub-app `makeAgentRoutes(ctx)` in **`sandbox/lib/router/routes.agents.ts`**. It owns local agent discovery/routing plus the Identity registration surface and is mounted with `app.route('/', makeAgentRoutes(ctx))`.
 
 ### 3.1 `POST /api/agents/register`
 Register an agent on-chain (TestNet) via the Identity registry.
@@ -81,23 +81,21 @@ Register an agent on-chain (TestNet) via the Identity registry.
 ```jsonc
 {
   "name": "Operator",
-  "register": "Diligence",
   "agent_uri": "https://agents.local/operator",
-  "role": "drives the read; proposes the primary hypothesis",   // optional → metadata
-  "quote": 0.1,                                                  // optional → routable
-  "asset": "ALGO"                                               // optional
+  "address": "NDX7OC2…HVUCIQ"                                    // agent_wallet/payTo
 }
 ```
 
 **Behaviour**
-1. Validate `name` + `register` (must be one of the 4 registers) + `agent_uri` non-empty.
-2. Build `metadata = [["name",name],["register",register],["role",role?]]` (utf-8 → byte[]).
+1. Validate `name` + `agent_uri` + `address` non-empty.
+2. Build `metadata = [["name",name]]` (utf-8 → byte[]).
 3. Call `identityOnchain.registerAgent(ctx, { agentURI, metadata })` (§4). The **submitter wallet is the owner** (single consistent wallet — Reza's — per the no-impersonation decision; see §6).
-4. On success, also store the agent in `ctx.providers` (so `/api/route` + `/api/providers` can surface it) keyed by its on-chain identity.
+4. Store the identity in `ctx.agents` keyed by `agent_id = algorand:{net}:{agent_wallet}` and add one default MCP service for the demo route.
 5. Return:
 ```jsonc
 {
-  "agent_id": 1,                          // on-chain uint64
+  "agent_id": "algorand:testnet:NDX7…",   // router identity
+  "registry_agent_id": "1",               // on-chain uint64 when available
   "tx_id": "ABC…",                        // register txn
   "app_id": 1001,                         // IdentityRegistry app id
   "owner": "NDX7OC2…HVUCIQ",
@@ -106,19 +104,17 @@ Register an agent on-chain (TestNet) via the Identity registry.
   "on_chain": true                        // false when env not configured (mock fallback)
 }
 ```
-6. **Env-gated, best-effort:** if `IDENTITY_APP_ID` / submitter mnemonic are unset, return `on_chain:false` with a deterministic mock agentId so the UI flow still completes (never 500 the demo).
+6. **Env-gated, best-effort:** if `IDENTITY_APP_ID` / submitter mnemonic are unset, return `on_chain:false` and keep the local router identity live.
 
 ### 3.2 `GET /api/agents`
-List registered agents (on-chain reads + the in-memory mirror), so the Marketplace can render the live roster.
+List routable agents from the in-memory mirror plus on-chain registration state when available, so the Marketplace can render the live roster.
 ```jsonc
 { "network": "testnet", "app_id": 1001,
-  "agents": [{ "agent_id":1, "name":"Operator", "register":"Diligence",
-               "owner":"NDX7…", "agent_uri":"…", "agent_wallet":"NDX7…" }] }
+  "agents": [{ "agent_id":"algorand:testnet:NDX7…", "registry_agent_id":"1", "name":"Operator",
+               "agent_uri":"…", "agent_wallet":"NDX7…",
+               "services":[{ "service_id":"diligence.report", "protocol":"MCP", "endpoint":"…/mcp", "name":"Diligence report" }] }] }
 ```
 Reads via the generated client's readonly methods (`ownerOf`, `getAgentURI`, `getMetadata`, `arc72_totalSupply`, `tokenByIndex`). For the demo a thin cache in `ctx` is acceptable; full chain-scan is optional.
-
-### 3.3 (optional) `POST /api/agents/seed`
-One-shot dev helper that loops the §2 roster through `register`, so "register all real Liminal agents" is one call tonight. Gate behind `ALLOW_SEED=1`.
 
 ---
 
@@ -200,8 +196,8 @@ Encoding notes (match `onchain.ts`): use `AlgorandClient.fromEnvironment()` + `g
 
 | File | New? | Lane | Change |
 |---|---|---|---|
-| `sandbox/lib/router/routes.agents.ts` | new | server | `makeAgentRoutes(ctx)` — `POST /api/agents/register`, `GET /api/agents`, opt `POST /api/agents/seed` |
-| `sandbox/lib/router/identity-onchain.ts` | new | server | env-gated `registerAgent` / `listAgents` via generated `IdentityRegistryClient` |
+| `sandbox/lib/router/routes.agents.ts` | edit | server | `makeAgentRoutes(ctx)` — `GET /api/agents`, `POST /api/route`, `POST /api/agents/register`, opt `POST /api/agents/seed` |
+| `sandbox/lib/router/identity-onchain.ts` | edit | server | env-gated `registerAgent` via generated `IdentityRegistryClient` |
 | `sandbox/bin/router-server.ts` | edit | Navid (ask) | one `app.route('/', makeAgentRoutes(ctx))` line |
 | `.env.example` | new | shared | document `IDENTITY_APP_ID`, `*_SUBMITTER_MNEMONIC`, algod vars |
 | `public/arc8004.js` | edit | UI | `NET="testnet"`, real `APP` ids, roster = real Liminal agents |

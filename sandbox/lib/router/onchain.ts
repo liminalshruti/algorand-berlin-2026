@@ -15,17 +15,17 @@
 // txid + a random nonce. agentId is the REAL Identity-registry id from the on-boot registration
 // (identity-onchain.ts), falling back to a per-run counter when that map is empty.
 import type { Ctx } from './contract.js';
-import { onChainAgentId } from './identity-onchain.js';
+import { registryAgentIdFor } from './identity-onchain.js';
 
-// fallback agentId per provider for this server run (used only if the agent wasn't
-// registered on-chain at boot — i.e. onChainAgentId() returns null).
+// fallback registry agent id per router agent_id for this server run (used only if
+// the agent wasn't registered on-chain at boot).
 const agentIds = new Map<string, bigint>();
 let nextAgentId = 1n;
-function agentIdFor(provider_id: string): bigint {
-  const real = onChainAgentId(provider_id);
+function agentIdFor(agent_id: string): bigint {
+  const real = registryAgentIdFor(agent_id);
   if (real) return BigInt(real);
-  let id = agentIds.get(provider_id);
-  if (id === undefined) { id = nextAgentId++; agentIds.set(provider_id, id); }
+  let id = agentIds.get(agent_id);
+  if (id === undefined) { id = nextAgentId++; agentIds.set(agent_id, id); }
   return id;
 }
 
@@ -56,7 +56,7 @@ export interface OnChainFeedback { txid: string; round?: number; appId: number; 
 
 // paymentTxid = the x402 settlement txid (from ctx.paymentStore → pay.txids[0]); required by the
 // coupled contract. Returns null (no-op) when unconfigured OR when no valid proof is available.
-export async function maybeWriteReputation(ctx: Ctx, provider_id: string, response: number, paymentTxid = ''): Promise<OnChainFeedback | null> {
+export async function maybeWriteReputation(ctx: Ctx, agent_id: string, response: number, paymentTxid = ''): Promise<OnChainFeedback | null> {
   const appId = Number(process.env.REPUTATION_APP_ID || 0);
   if (!appId) return null;                                  // not configured → no-op
   const proof = txidToBytes(paymentTxid);
@@ -76,7 +76,7 @@ export async function maybeWriteReputation(ctx: Ctx, provider_id: string, respon
       defaultSender: submitter.addr,
     });
 
-    const agentId = agentIdFor(provider_id);
+    const agentId = agentIdFor(agent_id);
     const res = await client.send.giveFeedback({
       sender: submitter.addr,
       args: {
@@ -86,7 +86,7 @@ export async function maybeWriteReputation(ctx: Ctx, provider_id: string, respon
         tag1: 'x402',
         tag2: response >= 100 ? 'satisfied' : 'corrected',
         endpoint: '',
-        feedbackURI: `liminal://verdict/${provider_id}`,
+        feedbackUri: `liminal://verdict/${agent_id}`,
         feedbackHash: new Uint8Array(32),
         paymentTxid: proof,                                 // x402 settlement proof (byte[32])
         nonce: BigInt(Date.now()) * 1000n + BigInt((Math.random() * 1000) | 0),

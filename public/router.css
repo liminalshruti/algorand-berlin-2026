@@ -3,19 +3,19 @@
  * ════════════════════════════════════════════════════════════════════
  * The x402 trust router rendered as a flow inside the Liminal desktop app.
  * No token redefinition. Layout/affordances specific to the router map onto
- * the slate-tray shell: left rail = route + providers, center slate-area =
- * selected provider → brief → signed packet → ledger, right rail = registry.
+ * the slate-tray shell: left rail = route + agents, center slate-area =
+ * selected agent → brief → signed packet → ledger, right rail = registry.
  */
 
 /* fade-in to match slate-tray boot */
 body { opacity: 0; transition: opacity 240ms ease-out; }
 body.ready { opacity: 1; }
 
-/* ── product-row repurposed as register lanes ──────────────────────── */
+/* ── product-row repurposed as service lanes ───────────────────────── */
 .reg-tab.is-active { color: var(--p-accent); box-shadow: inset 0 -2px 0 0 var(--p-accent); background: transparent; }
 .reg-tab.is-active .pt-glyph { background: var(--p-accent); }
 
-/* ── left rail · route box + provider list ─────────────────────────── */
+/* ── left rail · route box + agent list ─────────────────────────── */
 .route-box { padding: 12px 18px 14px; border-bottom: 1px solid var(--frame-border); display: flex; flex-direction: column; gap: 10px; }
 .route-box .rb-label { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); }
 .route-box .rb-input {
@@ -33,20 +33,20 @@ body.ready { opacity: 1; }
 }
 .rail-subhead .rs-meta { color: var(--p-accent); }
 
-/* provider as case-item */
-.case-item.provider { position: relative; padding: 11px 18px; }
-.prov-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
-.prov-name { font-family: var(--serif); font-size: var(--fs-md); color: var(--text); }
-.prov-rank { margin-left: auto; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
-.case-item.provider.is-active .prov-rank { color: var(--p-accent); }
-.prov-flag { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; }
-.prov-flag.caught { color: var(--red); background: var(--stability-bg); border: 1px solid var(--stability-edge); }
-.prov-stats { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-dim); }
-.prov-stats b { color: var(--text-mid); font-weight: 500; }
-.prov-trust { margin-top: 8px; height: 3px; border-radius: 2px; background: var(--card-border); overflow: hidden; }
-.prov-trust > i { display: block; height: 100%; background: var(--p-accent); border-radius: 2px; transition: width var(--tx-long) var(--ease); }
-.case-item.provider.is-dropped { opacity: 0.6; }
-.case-item.provider.is-dropped .prov-trust > i { background: var(--text-dim); }
+/* agent as case-item */
+.case-item.agent { position: relative; padding: 11px 18px; }
+.agent-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.agent-name { font-family: var(--serif); font-size: var(--fs-md); color: var(--text); }
+.agent-rank { margin-left: auto; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
+.case-item.agent.is-active .agent-rank { color: var(--p-accent); }
+.agent-flag { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; }
+.agent-flag.caught { color: var(--red); background: var(--stability-bg); border: 1px solid var(--stability-edge); }
+.agent-stats { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-dim); }
+.agent-stats b { color: var(--text-mid); font-weight: 500; }
+.agent-trust { margin-top: 8px; height: 3px; border-radius: 2px; background: var(--card-border); overflow: hidden; }
+.agent-trust > i { display: block; height: 100%; background: var(--p-accent); border-radius: 2px; transition: width var(--tx-long) var(--ease); }
+.case-item.agent.is-dropped { opacity: 0.6; }
+.case-item.agent.is-dropped .agent-trust > i { background: var(--text-dim); }
 
 /* ── center · slate-area ordering ───────────────────────────────────── */
 .slate-area { display: flex; flex-direction: column; }
@@ -104,7 +104,7 @@ body.ready { opacity: 1; }
 .reg-row .rr-bar { height: 4px; border-radius: 2px; background: var(--card-border); overflow: hidden; }
 .reg-row .rr-bar > i { display: block; height: 100%; border-radius: 2px; background: var(--good); transition: width var(--tx-long) var(--ease), background var(--tx-base) var(--ease); }
 .reg-row.is-caught .rr-bar > i { background: var(--red); }
-/* a caught provider's row flashes once so the score-drop reads as the consequence */
+/* a caught agent's row flashes once so the score-drop reads as the consequence */
 .reg-row.is-caught { animation: caught-flash 900ms var(--ease) 1; }
 @keyframes caught-flash { 0% { background: transparent; } 25% { background: color-mix(in srgb, var(--red) 16%, transparent); } 100% { background: transparent; } }
 .reg-row .rr-delta { font-family: var(--mono); font-size: var(--fs-mono-sm); font-weight: 600; margin-left: 6px; }
@@ -131,14 +131,14 @@ body.ready { opacity: 1; }
   font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
 .brief-txids { margin-top: 10px; font-family: var(--mono); font-size: var(--fs-mono-xs); color: var(--text-faint); }
 
-/* ── left-rail excluded provider (bounded-refusal guard, visible) ───── */
-.case-item.provider.is-excluded { cursor: default; opacity: 0.7; }
-.case-item.provider.is-excluded:hover { background: transparent; }
-.prov-flag.excluded { color: var(--text-dim); background: var(--frame-bg-3); border: 1px solid var(--card-border-2); }
-.prov-excluded-note { font-family: var(--serif); font-size: var(--fs-xs); font-style: italic; color: var(--text-faint); margin-top: 4px; }
+/* ── left-rail excluded agent (bounded-refusal guard, visible) ───── */
+.case-item.agent.is-excluded { cursor: default; opacity: 0.7; }
+.case-item.agent.is-excluded:hover { background: transparent; }
+.agent-flag.excluded { color: var(--text-dim); background: var(--frame-bg-3); border: 1px solid var(--card-border-2); }
+.agent-excluded-note { font-family: var(--serif); font-size: var(--fs-xs); font-style: italic; color: var(--text-faint); margin-top: 4px; }
 
 /* ── registry provenance + tags + unrated ───────────────────────────── */
-.reg-row .rr-prov { margin-top: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em; color: var(--text-faint); }
+.reg-row .rr-agent { margin-top: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em; color: var(--text-faint); }
 .reg-row .rr-tag { color: var(--red); }
 .reg-row .rr-score.unrated { font-family: var(--mono); font-size: var(--fs-mono-sm); color: var(--text-faint); text-transform: uppercase; letter-spacing: var(--ls-mono-sm); }
 .reg-row.is-excluded { opacity: 0.66; }
@@ -225,7 +225,7 @@ body.ready { opacity: 1; }
 .slate-canvas.is-collapsed { flex: 0 0 auto; min-height: 0; padding-top: 0; padding-bottom: 0; }
 .slate-canvas.is-collapsed #quoteWrap { display: none; }
 
-/* ── #11 secondary register lanes ───────────────────────────────────── */
+/* ── #11 secondary service lanes ────────────────────────────────────── */
 .reg-tab[data-secondary]:not(.is-active) { opacity: 0.5; }
 .reg-tab[data-secondary]:not(.is-active):hover { opacity: 0.8; }
 
@@ -263,7 +263,7 @@ body.ready { opacity: 1; }
 body.present .frame { box-shadow: var(--shadow-card-lifted), 0 0 0 1px var(--p-accent-edge) inset; }
 body.present .slate-title { font-size: 30px; }
 body.present .metric-number { font-size: 30px; }
-body.present .prov-name { font-size: var(--fs-lg); }
+body.present .agent-name { font-size: var(--fs-lg); }
 body.present .loop-spine { padding-top: 16px; padding-bottom: 14px; }
 body.present .ls-step { font-size: var(--fs-mono); }
 body.present .causal-line { font-size: var(--fs-lg); }
@@ -274,8 +274,8 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 .cross-nav:hover { color: var(--text); }
 
 /* admin-operator affordances */
-.prov-inspect { margin-left: 6px; font-size: 12px; color: var(--text-faint); cursor: pointer; transition: color var(--tx-base) var(--ease); }
-.prov-inspect:hover { color: var(--p-accent); }
+.agent-inspect { margin-left: 6px; font-size: 12px; color: var(--text-faint); cursor: pointer; transition: color var(--tx-base) var(--ease); }
+.agent-inspect:hover { color: var(--p-accent); }
 .copyable { cursor: copy; }
 .copyable:hover { color: var(--p-accent); }
 .copy-ic { margin-left: 6px; color: var(--text-faint); cursor: copy; }
@@ -283,7 +283,7 @@ body.present .present-toggle { color: var(--p-accent); border-color: var(--p-acc
 .lm-sub { font-family: var(--mono); font-size: var(--fs-mono-xs); letter-spacing: var(--ls-mono); text-transform: uppercase; color: var(--text-faint); margin: 14px 0 8px; }
 
 /* #2 flag / dispute + #4 schema raw */
-.prov-flag.flagged { color: var(--watch); background: var(--amber-orn-bg); border: 1px solid var(--amber-orn-edge); }
+.agent-flag.flagged { color: var(--watch); background: var(--amber-orn-bg); border: 1px solid var(--amber-orn-edge); }
 .dispo-btn.da-flag { color: var(--red); border-color: var(--stability-edge); }
 .dispo-btn.da-flag:hover { background: var(--stability-bg); }
 .dispo-btn.da-flag[disabled] { opacity: 0.6; color: var(--watch); }

@@ -20,26 +20,26 @@
 import type { Ctx } from './contract.js';
 
 export interface RegisteredAgent {
-  agentId: string;       // on-chain uint64
+  registryAgentId: string; // on-chain IdentityRegistry uint64
   txid: string;
   appId: number;
   owner: string;
   agentURI: string;
 }
 
-// provider_id → on-chain agentId, for this server run (the map step 2 asks for).
-const agentIdByProvider = new Map<string, string>();
-export const onChainAgentId = (provider_id: string): string | null =>
-  agentIdByProvider.get(provider_id) ?? null;
-export const onChainAgents = (): Array<{ provider_id: string; agentId: string }> =>
-  [...agentIdByProvider.entries()].map(([provider_id, agentId]) => ({ provider_id, agentId }));
+// router agent_id → on-chain registry_agent_id, for this server run.
+const registryAgentIdByAgentId = new Map<string, string>();
+export const registryAgentIdFor = (agent_id: string): string | null =>
+  registryAgentIdByAgentId.get(agent_id) ?? null;
+export const onChainAgents = (): Array<{ agent_id: string; registry_agent_id: string }> =>
+  [...registryAgentIdByAgentId.entries()].map(([agent_id, registry_agent_id]) => ({ agent_id, registry_agent_id }));
 
 function utf8(s: string): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
 interface RegisterInput {
-  provider_id?: string;                  // optional key to remember the agentId under
+  agent_id?: string;                     // optional router key to remember the registry id under
   agentURI: string;
   metadata: Array<[string, Uint8Array]>; // [key, value][]
 }
@@ -62,38 +62,35 @@ export async function registerAgent(ctx: Ctx, input: RegisterInput): Promise<Reg
       defaultSender: submitter.addr,
     });
 
-    const metadata = input.metadata.map(([key, value]) => ({ key, value }));
     const res = await client.send.register({
       sender: submitter.addr,
-      args: { agentURI: input.agentURI, metadata },
+      args: { agentUri: input.agentURI, metadata: input.metadata },
     });
 
-    const agentId = (res?.return ?? '').toString();
+    const registryAgentId = (res?.return ?? '').toString();
     const txid = res?.txIds?.[0] ?? res?.transaction?.txID?.() ?? '';
     const owner = submitter.addr.toString();
-    if (agentId && input.provider_id) agentIdByProvider.set(input.provider_id, agentId);
-    return txid ? { agentId, txid, appId, owner, agentURI: input.agentURI } : null;
+    if (registryAgentId && input.agent_id) registryAgentIdByAgentId.set(input.agent_id, registryAgentId);
+    return txid ? { registryAgentId, txid, appId, owner, agentURI: input.agentURI } : null;
   } catch (_) {
     return null;                                             // best-effort: never break boot/loop
   }
 }
 
-// On-boot helper (step 2): register everything currently in ctx.providers on-chain and
-// remember provider_id → agentId. Best-effort; logs a line per agent. No-op when unconfigured.
+// On-boot helper: register everything currently in ctx.agents on-chain and
+// remember agent_id → registry_agent_id. Best-effort; logs a line per agent. No-op when unconfigured.
 export async function registerSeededAgents(ctx: Ctx): Promise<void> {
   if (!Number(process.env.IDENTITY_APP_ID || 0)) return;
-  for (const p of ctx.providers.values()) {
-    if (agentIdByProvider.has(p.id)) continue;
-    // providerRegisters() is the canonical lane source (currently the Diligence hack);
-    // the true lane rides in metadata even if discovery ignores it for now.
+  for (const agent of ctx.agents.values()) {
+    if (registryAgentIdByAgentId.has(agent.id)) continue;
     const out = await registerAgent(ctx, {
-      provider_id: p.id,
-      agentURI: p.agent_uri,
-      metadata: [['name', utf8(p.name)], ['register', utf8('Diligence')]],
+      agent_id: agent.id,
+      agentURI: agent.agent_uri,
+      metadata: [['name', utf8(agent.name)]],
     });
     if (out) {
       // eslint-disable-next-line no-console
-      console.log(`  registered on-chain: ${p.name} → agentId=${out.agentId} tx=${out.txid}`);
+      console.log(`  registered on-chain: ${agent.name} -> registry_agent_id=${out.registryAgentId} tx=${out.txid}`);
     }
   }
 }

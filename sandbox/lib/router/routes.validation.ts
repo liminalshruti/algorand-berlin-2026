@@ -5,20 +5,18 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Ctx } from './contract.js';
 import { validate } from './validation.js';
 import { createRepState } from './reputation-state.js';
-import { maybeWriteReputation } from './onchain.js';
 
 /**
- * Wires the frozen API:
+ * Wires the reputation/validation API:
  *   POST /api/validate   { payment_id } → { validation_id, price_match, output_pass, response, new_reputation, verdict_txid }
- *   GET  /api/reputation?provider=…     → { provider_id, score, reads_logged, corrections_logged, by_tag, uri, hash }
+ *   GET  /api/reputation?agent=…        → { agent_id, score, reads_logged, corrections_logged, by_tag, uri, hash }
  *
  * Verdict = price-vs-quote (validation.ts) → reputation write-back → hash-only anchor on
  * Algorand via ctx.deps.anchorNote (real txid on LocalNet; skipped gracefully if down).
  * Injects the live repState into ctx so /api/route + Reza's ranking reroute on re-run.
  *
- * Production seam (on-chain): also call ValidationRegistry.validationResponse and
- * ReputationRegistry.giveFeedback (with x402 paymentTxid + nonce) via the generated
- * clients in smart_contracts/artifacts/* once their app-ids are configured.
+ * Production seam (on-chain): quote drift belongs to ValidationRegistry /
+ * validation evidence. ReputationRegistry.giveFeedback remains for user feedback.
  */
 export function makeValidationRoutes(ctx: Ctx): Hono {
   const rep = createRepState();
@@ -34,14 +32,13 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
     const pay = ctx.paymentStore.get(payment_id);
     if (!pay) return c.json({ error: 'unknown payment_id' }, 400);
 
-    const provider = ctx.providers.get(pay.provider_id);
-    const v = validate(pay, provider);
-    const newRep = rep.writeBack(pay.provider_id, v);
+    const v = validate(pay);
+    const newRep = rep.writeBack(pay.agent_id, v);
 
     // hash-only verdict anchor — note carries only the schema + hash, never content
     const hash = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ payment_id, ...v }))
+      .update(JSON.stringify({ payment_id, agent_id: pay.agent_id, quote_id: pay.quote_id, ...v }))
       .digest('hex');
     let verdict_txid = '';
     try {
@@ -59,13 +56,6 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
       // LocalNet/algod not reachable → skip the anchor; the verdict still returns.
     }
 
-    // one REAL on-chain reputation write (env-gated, best-effort): verdict → giveFeedback
-    // on the deployed Reputation registry. null when not configured — loop unaffected.
-    const onchain = await maybeWriteReputation(ctx, pay.provider_id, v.response, pay.txids?.[0] ?? '');
-    if (onchain) {
-      ctx.ledger.push({ txid: onchain.txid, schema: 'erc8004.giveFeedback', ref_id: pay.provider_id, hash: '', round: onchain.round ?? 0, network: ctx.net });
-    }
-
     return c.json({
       validation_id: uuidv4(),
       price_match: v.price_match,
@@ -73,24 +63,23 @@ export function makeValidationRoutes(ctx: Ctx): Hono {
       response: v.response,
       new_reputation: newRep.score,
       verdict_txid,
-      on_chain_feedback_txid: onchain ? onchain.txid : null,
     });
   });
 
   app.get('/api/reputation', (c) => {
-    const provider = c.req.query('provider') ?? '';
-    const full = rep.full(provider);
+    const agent_id = c.req.query('agent') ?? '';
+    const full = rep.full(agent_id);
     if (!full) {
-      return c.json({ provider_id: provider, score: null, reads_logged: 0, corrections_logged: 0, by_tag: {}, uri: '', hash: '' });
+      return c.json({ agent_id, score: null, reads_logged: 0, corrections_logged: 0, by_tag: {}, uri: '', hash: '' });
     }
     return c.json({
-      provider_id: provider,
+      agent_id,
       score: full.score,
       reads_logged: full.reads_logged,
       corrections_logged: full.corrections_logged,
       by_tag: full.by_tag,
-      uri: `liminal://corrections/${provider}`,
-      hash: crypto.createHash('sha256').update(`${provider}:${full.reads_logged}:${full.corrections_logged}`).digest('hex'),
+      uri: `liminal://corrections/${agent_id}`,
+      hash: crypto.createHash('sha256').update(`${agent_id}:${full.reads_logged}:${full.corrections_logged}`).digest('hex'),
     });
   });
 

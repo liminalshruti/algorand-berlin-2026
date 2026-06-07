@@ -45,12 +45,12 @@
       <button class="vault-pill" id="ledgerPill" title="Open the on-chain ledger"><span class="diamond">◇</span>ledger: <strong id="ledgerCount">0</strong></button>
     </header>
 
-    <!-- product row · register lanes -->
+    <!-- product row · service lanes -->
     <nav class="product-row">
-      <button class="product-tab reg-tab is-active" data-register="Diligence"><span class="pt-glyph"></span>diligence<span class="pt-shape">read</span></button>
-      <button class="product-tab reg-tab" data-register="Outreach" data-secondary><span class="pt-glyph"></span>outreach<span class="pt-shape">draft</span></button>
-      <button class="product-tab reg-tab" data-register="Judgment" data-secondary><span class="pt-glyph"></span>judgment<span class="pt-shape">verdict</span></button>
-      <button class="product-tab reg-tab" data-register="Operations" data-secondary><span class="pt-glyph"></span>operations<span class="pt-shape">run</span></button>
+      <button class="product-tab reg-tab is-active" data-service-id="diligence.report"><span class="pt-glyph"></span>diligence<span class="pt-shape">read</span></button>
+      <button class="product-tab reg-tab" data-service-id="outreach.draft" data-secondary><span class="pt-glyph"></span>outreach<span class="pt-shape">draft</span></button>
+      <button class="product-tab reg-tab" data-service-id="judgment.verdict" data-secondary><span class="pt-glyph"></span>judgment<span class="pt-shape">verdict</span></button>
+      <button class="product-tab reg-tab" data-service-id="operations.reconcile" data-secondary><span class="pt-glyph"></span>operations<span class="pt-shape">run</span></button>
       <div class="surface-meta"><span class="sm-src" id="srcMode">—</span><span class="sm-banner" id="netBanner">ALGORAND · TESTNET · MOCK</span></div>
     </nav>
 
@@ -66,12 +66,12 @@
           <button id="routeBtn" class="dispo-btn is-primary">Route →</button>
           <div class="scenario-chips">
             <span class="sc-label">Scenarios</span>
-            <button class="scenario-chip" data-register="Diligence" data-task="Diligence read: partner email says rejected; dashboard says in-review">▶ Routing-mismatch read</button>
-            <button class="scenario-chip" data-register="Judgment" data-task="Verdict: is this LOI worth countersigning as written?">▶ LOI verdict</button>
+            <button class="scenario-chip" data-service-id="diligence.report" data-task="Diligence read: partner email says rejected; dashboard says in-review">▶ Routing-mismatch read</button>
+            <button class="scenario-chip" data-service-id="judgment.verdict" data-task="Verdict: is this LOI worth countersigning as written?">▶ LOI verdict</button>
           </div>
         </div>
         <div class="rail-subhead"><span>Ranked agents · this route</span><span class="rs-meta" id="railSub">price · rep · trust</span></div>
-        <div id="providerList" aria-live="polite"></div>
+        <div id="agentList" aria-live="polite"></div>
       </aside>
 
       <!-- center · slate -->

@@ -10,19 +10,19 @@ export interface RepFull {
 }
 
 export interface RouterRepState extends RepState {
-  writeBack(provider_id: string, v: ValidationResult): RepFull;
-  full(provider_id: string): RepFull | null;
+  writeBack(agent_id: string, v: ValidationResult): RepFull;
+  full(agent_id: string): RepFull | null;
 }
 
 /**
  * In-memory Reputation Registry (ref/SPEC_shayaun). Reputation is *earned*:
  *   score = round(100 * (landed - corrected) / landed); null when there's no history.
- * Reza's ranking / the /api/route handler read getReputation, so a write-back here
+ * Ranking / the /api/route handler read getReputation, so a write-back here
  * reroutes the next request (caught once → routed around). On a failed verdict we tag
- * the correction with the 9-tag taxonomy (`missed_compensation` for a hidden fee).
+ * the correction with the 9-tag taxonomy (`missed_compensation` for quote drift).
  *
- * Production seam: also mirror each write to the on-chain ReputationRegistry via the
- * generated client (giveFeedback with x402 paymentTxid + nonce) once app-ids are set.
+ * Production seam: quote drift should be mirrored to the ValidationRegistry /
+ * validation anchors. User satisfaction feedback remains the ReputationRegistry lane.
  */
 export function createRepState(): RouterRepState {
   const m = new Map<string, { reads: number; corrections: number; by_tag: Record<string, number> }>();
@@ -50,7 +50,7 @@ export function createRepState(): RouterRepState {
       e.reads += 1;
       if (v.response < 100) {
         e.corrections += 1;
-        const tag = !v.price_match ? 'missed_compensation' : 'quality_drift';
+        const tag = !v.price_match ? 'missed_compensation' : 'validation_failed';
         e.by_tag[tag] = (e.by_tag[tag] ?? 0) + 1;
       }
       return { score: score(e), reads_logged: e.reads, corrections_logged: e.corrections, by_tag: e.by_tag };

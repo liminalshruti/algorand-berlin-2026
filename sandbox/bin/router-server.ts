@@ -3,13 +3,11 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { buildContext } from "../lib/router/context.js";
-import { payProvider } from "../lib/router/pay.js";
+import { payAgent } from "../lib/router/pay.js";
 import {
-  seedProviders,
-  seedTestRoute,
-  fundProviders
+  seedAgents,
+  fundAgents
 } from "../lib/router/seed.js";
-import { makeProviderRoutes } from "../lib/router/routes.providers.js";
 import { makeValidationRoutes } from "../lib/router/routes.validation.js";
 import { makeAgentRoutes } from "../lib/router/routes.agents.js";
 import { registerSeededAgents } from "../lib/router/identity-onchain.js";
@@ -18,12 +16,11 @@ const PORT = Number(process.env.PORT ?? 3001);
 
 async function main() {
   const ctx = await buildContext();
-  seedProviders(ctx);
-  console.log("funding providers...");
-  await fundProviders(ctx);
-  seedTestRoute(ctx);
-  // Best-effort: register the seeded providers on-chain (Identity registry) and map
-  // provider_id → agentId. No-op unless IDENTITY_APP_ID + submitter mnemonic are set.
+  seedAgents(ctx);
+  console.log("funding agents...");
+  await fundAgents(ctx);
+  // Best-effort: register the seeded agents on-chain (Identity registry) and map
+  // agent_id -> registry_agent_id. No-op unless IDENTITY_APP_ID + submitter mnemonic are set.
   await registerSeededAgents(ctx);
   const app = new Hono();
   app.use("*", cors());
@@ -43,11 +40,13 @@ async function main() {
 
     if (paidOptions.has(body.option_id)) return c.json({ error: "Replay rejected" }, 400);
 
-    const result = await payProvider(ctx, option);
+    const result = await payAgent(ctx, option);
     paidOptions.add(body.option_id);
 
     return c.json({
       payment_id: result.payment_id,
+      agent_id: result.agent_id,
+      quote_id: result.quote_id,
       settle_txid: result.txids[0],
       txids: result.txids,
       quoted_amount: result.quoted,
@@ -59,7 +58,6 @@ async function main() {
   app.get("/api/ledger", c => c.json({ anchors: ctx.ledger }));
 
   // --- Teammate routes (wired at H3–H4) ---
-  app.route("/", makeProviderRoutes(ctx));
   app.route("/", makeValidationRoutes(ctx));
   app.route("/", makeAgentRoutes(ctx));
 
@@ -67,21 +65,22 @@ async function main() {
     console.log(`\nrouter-server :${PORT}  network=${ctx.net}`);
     console.log(`payer:   ${ctx.session.payer.addr}\n`);
 
-    console.log("--- seeded providers ---");
-    for (const p of ctx.providers.values()) {
+    console.log("--- seeded agents ---");
+    for (const agent of ctx.agents.values()) {
+      const service = ctx.services.find((s) => s.agent_id === agent.id);
       console.log(
-        `  ${p.dishonest ? "🔴 CHEAT" : "🟢 honest"}  ${p.name.padEnd(14)} ${p.quote} ALGO  id=${p.id}`
+        `  ${agent.name.padEnd(14)} id=${agent.id} service=${service?.service_id ?? "none"}`
       );
     }
 
     console.log("\n--- endpoints ---");
-    console.log("  POST /api/route   { task, register }");
+    console.log("  POST /api/route   { task, service_id? }");
     console.log("  POST /api/pay     { route_id, option_id }");
     console.log("  POST /api/validate { payment_id }");
-    console.log("  GET  /api/reputation?provider=");
+    console.log("  GET  /api/reputation?agent=");
     console.log("  GET  /api/ledger");
-    console.log("  POST /api/agents/register { name, register, agent_uri }");
     console.log("  GET  /api/agents");
+    console.log("  POST /api/agents/register { name, agent_uri, address }");
   });
 }
 

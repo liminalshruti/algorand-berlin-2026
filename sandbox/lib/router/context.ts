@@ -66,7 +66,10 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     net: NETWORK,
     store: algodClient,
     session: { payer, facilitator, funded },
-    providers: new Map(),
+    agents: new Map(),
+    services: [],
+    activeQuotes: new Map(),
+    paymentRequirements: new Map(),
     routeStore: new Map(),
     paymentStore: new Map(),
     repState,
@@ -74,7 +77,7 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
     deps: {
       settle: (to, amountAlgo, note) => submitTxn(payer, to, amountAlgo, note),
       anchorNote,
-      buildReputationEntry: (provider_id, score) => ({ provider_id, score }),
+      buildReputationEntry: (agent_id, score) => ({ agent_id, score }),
       anchorReputationEntry: async (entry) => {
         const hash = crypto
           .createHash('sha256')
