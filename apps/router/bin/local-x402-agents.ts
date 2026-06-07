@@ -51,7 +51,9 @@ function modeFromBody(body: unknown): ChallengeMode {
 
 function paymentRequired(agent: DemoAgent, baseUrl: string, mode: ChallengeMode): Record<string, unknown> {
   const amount = mode === 'execute' ? agent.executionAmount : agent.quoteAmount;
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  // 30-min window so a slow/lagging TestNet indexer can't expire the challenge
+  // before payment-proof lands (the demo waits on the indexer the router reads).
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   return {
     x402Version: 1,
     error: 'X-PAYMENT header required',
