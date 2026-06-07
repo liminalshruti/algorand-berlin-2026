@@ -77,22 +77,28 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
 
   async function lookupPayment(txid: string): Promise<OnChainPayment | null> {
     try {
+      // algosdk v3 returns camelCase typed models (paymentTransaction / confirmedRound);
+      // older raw-REST shapes use kebab-case. Accept both so the proof lookup works
+      // against a live indexer regardless of SDK version.
+      type PaymentLeg = { receiver?: string; amount?: number | bigint };
       const raw = await indexerClient.lookupTransactionByID(txid).do() as {
         transaction?: {
           id?: string;
           sender?: string;
-          note?: string;
+          note?: string | Uint8Array;
           'confirmed-round'?: number | bigint;
-          'payment-transaction'?: {
-            receiver?: string;
-            amount?: number | bigint;
-          };
+          confirmedRound?: number | bigint;
+          'payment-transaction'?: PaymentLeg;
+          paymentTransaction?: PaymentLeg;
         };
       };
       const txn = raw.transaction;
-      const payment = txn?.['payment-transaction'];
+      const payment = txn?.['payment-transaction'] ?? txn?.paymentTransaction;
       if (!txn?.sender || !payment?.receiver) return null;
-      const note = txn.note ? Buffer.from(txn.note, 'base64').toString('utf8') : undefined;
+      const confirmedRound = txn['confirmed-round'] ?? txn.confirmedRound;
+      let note: string | undefined;
+      if (typeof txn.note === 'string') note = Buffer.from(txn.note, 'base64').toString('utf8');
+      else if (txn.note) note = Buffer.from(txn.note).toString('utf8');
       return {
         txid: txn.id ?? txid,
         sender: txn.sender,
@@ -101,7 +107,7 @@ export async function buildContext(repState: RepState = stubRepState): Promise<C
         asset: 'ALGO',
         network,
         ...(note ? { note } : {}),
-        ...(txn['confirmed-round'] !== undefined ? { round: Number(txn['confirmed-round']) } : {}),
+        ...(confirmedRound !== undefined ? { round: Number(confirmedRound) } : {}),
       };
     } catch {
       return null;

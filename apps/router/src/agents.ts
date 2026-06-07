@@ -739,8 +739,11 @@ export function discoveryOptions(
 
   return candidates
     .map((candidate) => {
+      // Reputation-dominant ranking: a single verified quote-drift must be able to
+      // outweigh a cheaper price so the router reroutes around an agent that overcharges.
+      // Price stays a minor tiebreaker between agents of comparable reputation.
       const trust_score = Math.round(
-        (priceScore(candidate.quote.amount) * 0.4) + (candidate.reputation * 0.6),
+        (priceScore(candidate.quote.amount) * 0.1) + (candidate.reputation * 0.9),
       );
       return { candidate, trust_score };
     })
