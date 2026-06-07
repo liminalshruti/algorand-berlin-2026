@@ -210,7 +210,7 @@ Purpose: define the smallest trustworthy registration-file contract before wirin
   - `services[]` containing `MCP` and `algorand-wallet`;
   - valid Algorand wallet format;
   - `x402Support: true`;
-  - `x402_router.proxy_services[]`;
+  - `trust_router.proxy_services[]`;
   - `quote.pay_to == algorand-wallet endpoint`;
   - no required challenge/proof fields.
 
@@ -397,7 +397,7 @@ Update this log after each phase before advancing.
     }
   ],
   "supportedTrust": ["reputation", "validation"],
-  "x402_router": {
+  "trust_router": {
     "proxy_services": [
       {
         "service_id": "diligence.report",
@@ -423,7 +423,7 @@ Notes:
   registration-file `type` discriminator, not a JSON Schema URL.
 - `services[]` stays ARC-8004-shaped. The router reads `MCP` for capability endpoint and
   `algorand-wallet` for the receiving wallet.
-- `x402_router.proxy_services[]` is the demo extension that maps the ARC-8004 registration file into the
+- `trust_router.proxy_services[]` is the demo extension that maps the ARC-8004 registration file into the
   router's grouped `diligence.report` service catalog.
 - `quote.pay_to` should match the `algorand-wallet` endpoint for this slice.
 - Honest Agent wallet: `J44P77VO6ECEIFCMMWU257VCIB7CFHXMYWPQPJLZFIEREFX7IUXB3MBKQY`.
